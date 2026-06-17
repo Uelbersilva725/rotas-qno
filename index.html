@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#1D9E75" />
+<title>Rotas QNO</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+  #app { display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; background: #fff; box-shadow: 0 0 20px rgba(0,0,0,0.08); }
+
+  /* Header */
+  .header { display: flex; align-items: center; gap: 10px; padding: 12px 14px 8px; background: #fff; border-bottom: 0.5px solid #e5e5e5; }
+  .header-icon { width: 34px; height: 34px; background: #1D9E75; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .header-title { font-size: 15px; font-weight: 600; color: #111; }
+  .header-sub { font-size: 11px; color: #888; }
+
+  /* Tabs */
+  .tab-bar { display: flex; gap: 4px; padding: 8px; background: #fff; border-bottom: 0.5px solid #e5e5e5; }
+  .tab { flex: 1; padding: 8px 4px; font-size: 12px; font-weight: 500; border: 0.5px solid #ddd; background: #f5f5f5; cursor: pointer; border-radius: 8px; color: #666; transition: all 0.15s; }
+  .tab.active { background: #1D9E75; color: #fff; border-color: #0F6E56; }
+
+  /* Screens */
+  .screen { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
+  .screen.active { display: flex; }
+
+  /* Map */
+  #map { flex: 1; z-index: 0; min-height: 0; }
+  .stats-bar { display: flex; padding: 8px; background: #f9f9f9; border-bottom: 0.5px solid #e5e5e5; gap: 6px; }
+  .stat { flex: 1; text-align: center; background: #fff; border-radius: 8px; padding: 6px 4px; border: 0.5px solid #eee; }
+  .stat .num { font-size: 20px; font-weight: 600; color: #1D9E75; }
+  .stat .lbl { font-size: 10px; color: #888; margin-top: 1px; }
+  .map-toolbar { display: flex; gap: 6px; padding: 8px; background: #fff; border-bottom: 0.5px solid #e5e5e5; }
+  .map-toolbar select { flex: 1; font-size: 12px; padding: 7px 8px; border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; }
+  .btn { padding: 7px 12px; font-size: 12px; font-weight: 500; border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; cursor: pointer; white-space: nowrap; }
+  .btn-green { background: #1D9E75; color: #fff; border-color: #0F6E56; }
+  .btn-red { background: #E24B4A; color: #fff; border-color: #A32D2D; }
+
+  /* Register */
+  .reg-screen { padding: 12px; overflow-y: auto; flex: 1; }
+  .form-group { margin-bottom: 12px; }
+  .form-group label { font-size: 12px; color: #666; display: block; margin-bottom: 4px; font-weight: 500; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; font-size: 14px; padding: 10px 12px;
+    border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111;
+    -webkit-appearance: none; appearance: none;
+  }
+  .form-group textarea { height: 70px; resize: none; }
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-group { flex: 1; }
+  .photo-area { border: 1.5px dashed #ccc; border-radius: 10px; padding: 20px; text-align: center; font-size: 13px; color: #888; cursor: pointer; background: #fafafa; }
+  .photo-area .icon { font-size: 28px; display: block; margin-bottom: 6px; }
+  .gps-box { background: #f5f5f5; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #666; display: flex; align-items: center; gap: 8px; margin-bottom: 14px; border: 0.5px solid #e5e5e5; }
+  .gps-dot { width: 9px; height: 9px; border-radius: 50%; background: #ccc; flex-shrink: 0; transition: background 0.3s; }
+  .gps-dot.ok { background: #1D9E75; }
+  .gps-dot.loading { background: #EF9F27; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .save-btn { width: 100%; padding: 13px; font-size: 15px; font-weight: 600; background: #1D9E75; color: #fff; border: none; border-radius: 10px; cursor: pointer; margin-top: 4px; }
+  .save-btn:active { transform: scale(0.98); }
+  .msg { margin-top: 10px; font-size: 13px; text-align: center; padding: 8px; border-radius: 8px; display: none; }
+  .msg.ok { background: #E1F5EE; color: #0F6E56; }
+  .msg.err { background: #FCEBEB; color: #A32D2D; }
+
+  /* List */
+  .list-toolbar { padding: 8px; border-bottom: 0.5px solid #e5e5e5; background: #fff; }
+  .list-toolbar input { width: 100%; font-size: 13px; padding: 8px 12px; border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; }
+  .list-screen { padding: 8px; overflow-y: auto; flex: 1; }
+  .entry-card { background: #fff; border: 0.5px solid #eee; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; display: flex; gap: 10px; align-items: center; }
+  .entry-thumb { width: 54px; height: 54px; border-radius: 8px; object-fit: cover; border: 0.5px solid #eee; flex-shrink: 0; }
+  .entry-thumb-empty { width: 54px; height: 54px; border-radius: 8px; background: #f5f5f5; border: 0.5px solid #eee; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .entry-info { flex: 1; min-width: 0; }
+  .entry-addr { font-size: 13px; font-weight: 600; color: #111; }
+  .entry-obs { font-size: 11px; color: #888; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry-ts { font-size: 10px; color: #bbb; margin-top: 3px; }
+  .badge-gps { font-size: 10px; padding: 1px 6px; border-radius: 20px; background: #E1F5EE; color: #0F6E56; margin-left: 4px; font-weight: 500; }
+  .delete-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #ccc; padding: 6px; flex-shrink: 0; }
+  .empty { text-align: center; padding: 50px 20px; color: #aaa; font-size: 13px; line-height: 1.8; }
+  .empty .icon { font-size: 40px; display: block; margin-bottom: 10px; }
+
+  /* Foto preview */
+  #foto-preview { margin-top: 8px; display: none; position: relative; }
+  #foto-preview img { width: 100%; border-radius: 10px; border: 0.5px solid #eee; }
+  #foto-remove { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 50%; width: 26px; height: 26px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+  /* Quadra selector */
+  .quadra-selector { display: flex; gap: 6px; padding: 8px; background: #f9f9f9; border-bottom: 0.5px solid #e5e5e5; overflow-x: auto; }
+  .quadra-btn { padding: 6px 12px; font-size: 12px; font-weight: 500; border: 0.5px solid #ddd; border-radius: 20px; background: #fff; cursor: pointer; white-space: nowrap; color: #666; flex-shrink: 0; }
+  .quadra-btn.active { background: #1D9E75; color: #fff; border-color: #0F6E56; }
+
+  .loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; font-size: 13px; color: #666; gap: 8px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-icon">📦</div>
+    <div>
+      <div class="header-title">Rotas QNO</div>
+      <div class="header-sub" id="header-sub">Ceilândia · Expansão Setor O</div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab active" onclick="showTab('mapa')">🗺 Mapa</button>
+    <button class="tab" onclick="showTab('registrar')">📍 Registrar</button>
+    <button class="tab" onclick="showTab('lista')">📋 Registros</button>
+  </div>
+
+  <!-- MAPA -->
+  <div id="screen-mapa" class="screen active">
+    <div class="stats-bar">
+      <div class="stat"><div class="num" id="stat-total">0</div><div class="lbl">mapeadas</div></div>
+      <div class="stat"><div class="num" id="stat-gps">0</div><div class="lbl">com GPS</div></div>
+      <div class="stat"><div class="num" id="stat-foto">0</div><div class="lbl">com foto</div></div>
+    </div>
+    <div class="map-toolbar">
+      <select id="filtro-quadra" onchange="filtrarMapa()">
+        <option value="">Todas as quadras</option>
+        <option>QNO 16</option>
+        <option>QNO 17</option>
+        <option>QNO 18</option>
+        <option>QNO 19</option>
+        <option>QNO 20</option>
+      </select>
+      <select id="filtro-cj" onchange="filtrarMapa()">
+        <option value="">Todos conjuntos</option>
+      </select>
+      <button class="btn btn-green" onclick="centralizarMapa()">📍</button>
+    </div>
+    <div id="map" style="position:relative;">
+      <div class="loading-overlay" id="map-loading">⏳ Carregando mapa...</div>
+    </div>
+  </div>
+
+  <!-- REGISTRAR -->
+  <div id="screen-registrar" class="screen">
+    <div class="reg-screen">
+      <div class="gps-box">
+        <div class="gps-dot" id="gps-dot"></div>
+        <span id="gps-text">Toque em Capturar para obter localização</span>
+        <button class="btn" style="margin-left:auto;padding:5px 10px;font-size:11px;" onclick="capturarGPS()">Capturar</button>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Quadra</label>
+          <select id="reg-quadra" onchange="atualizarConjuntos()">
+            <option value="">...</option>
+            <option>QNO 16</option>
+            <option>QNO 17</option>
+            <option>QNO 18</option>
+            <option>QNO 19</option>
+            <option>QNO 20</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Conjunto</label>
+          <select id="reg-cj"><option value="">...</option></select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Número da casa</label>
+        <input type="number" id="reg-casa" placeholder="Ex: 15" min="1" max="200"/>
+      </div>
+
+      <div class="form-group">
+        <label>Observação</label>
+        <textarea id="reg-obs" placeholder="Casa azul, portão preto, sem placa, referência..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Foto da fachada</label>
+        <div class="photo-area" onclick="document.getElementById('foto-input').click()">
+          <span class="icon">📷</span>
+          Tirar foto da fachada
+        </div>
+        <div id="foto-preview">
+          <img id="foto-img" src="" alt="Fachada" />
+          <button id="foto-remove" onclick="removerFoto()">✕</button>
+        </div>
+        <input type="file" id="foto-input" accept="image/*" capture="environment" style="display:none;" onchange="previewFoto(event)" />
+      </div>
+
+      <button class="save-btn" onclick="salvar()">💾 Salvar registro</button>
+      <div class="msg" id="save-msg"></div>
+    </div>
+  </div>
+
+  <!-- LISTA -->
+  <div id="screen-lista" class="screen">
+    <div class="list-toolbar">
+      <input type="text" id="busca-lista" placeholder="🔍  Buscar por conjunto, casa ou observação..." oninput="renderLista()" />
+    </div>
+    <div class="list-screen" id="lista-content">
+      <div class="empty"><span class="icon">📭</span>Nenhum registro ainda.<br>Use a aba Registrar durante as entregas.</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ─── Dados dos conjuntos por quadra ───────────────────────────────────────────
+const CONJUNTOS = {
+  'QNO 16': ['02','04','06','08','10','12','14','16','18','20','22','24','26','28','30','32','34','36','38','40','42','44','46','48','50','52','54','56','58','60','62','64','01','03','05','07','09','11','13','15','17','19','21','23','25','27','29','31','33','35','37','39','41','43','45','47','49','51','53','55','57','59','61','63','65','67','69','71','73','75','A','B','C','D','E','F','G','H','I','J','K'],
+  'QNO 17': ['02','04','06','08','10','12','14','16','18','20','22','24','26','28','30','32','34','36','38','40','42','44','46','48','50','52','54','56','58','60','62','64','01','03','05','07','09','11','13','15','17','19','21','23','25','27','29','31','33','35','37','39','41','43','45','47','49','51','53','55','57','59','61','63','65','A','B','C','D','E'],
+  'QNO 18': ['02','04','06','08','10','12','14','16','18','20','22','24','26','28','30','32','34','36','38','40','42','44','46','48','50','52','54','56','58','60','62','64','66','68','70','72','01','03','05','07','09','11','13','15','17','19','21','23','25','27','29','31','33','35','37','39','41','43','45','47','49','51','53','55','57','59','61','63','65','67','69','71','73','75','77','79','81','A','B','C','D'],
+  'QNO 19': ['02','04','06','08','10','12','14','16','18','20','22','24','26','28','30','32','34','36','38','40','42','44','46','48','50','52','54','56','01','03','05','07','09','11','13','15','17','19','21','23','25','27','29','31','33','35','37','39','41','43','45','47','49','51','53','55','57','A','B','C','D','G','H'],
+  'QNO 20': ['03','05','07','09','11','13','17','19','21','23','25','27','29','31','33','35','37','39','40','41','43','45','47','51','53','63','65','A','B','D','E']
+};
+
+const CENTER = [-15.8485, -48.1080];
+let map, markersLayer;
+let registros = [];
+let gpsCoords = null;
+let mapReady = false;
+let fotoBase64 = null;
+let activeTab = 'mapa';
+
+// ─── IndexedDB ────────────────────────────────────────────────────────────────
+let db;
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('rotasqno', 2);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('registros')) {
+        d.createObjectStore('registros', { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbGetAll() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('registros', 'readonly');
+    const store = tx.objectStore('registros');
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbPut(record) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('registros', 'readwrite');
+    const store = tx.objectStore('registros');
+    const req = store.put(record);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbDelete(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('registros', 'readwrite');
+    const store = tx.objectStore('registros');
+    const req = store.delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+function atualizarStats() {
+  document.getElementById('stat-total').textContent = registros.length;
+  document.getElementById('stat-gps').textContent = registros.filter(r => r.lat).length;
+  document.getElementById('stat-foto').textContent = registros.filter(r => r.foto).length;
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function showTab(t) {
+  activeTab = t;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + t).classList.add('active');
+  event.target.classList.add('active');
+  if (t === 'mapa') { if (!mapReady) initMap(); else { setTimeout(() => map.invalidateSize(), 100); filtrarMapa(); } }
+  if (t === 'lista') renderLista();
+}
+
+// ─── Conjuntos dinâmicos ──────────────────────────────────────────────────────
+function atualizarConjuntos(quadra, selectId) {
+  const q = quadra || document.getElementById('reg-quadra').value;
+  const sid = selectId || 'reg-cj';
+  const sel = document.getElementById(sid);
+  sel.innerHTML = '<option value="">...</option>';
+  if (q && CONJUNTOS[q]) {
+    CONJUNTOS[q].forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      sel.appendChild(opt);
+    });
+  }
+}
+
+function atualizarFiltroConjunto() {
+  const q = document.getElementById('filtro-quadra').value;
+  atualizarConjuntos(q, 'filtro-cj');
+  document.getElementById('filtro-cj').insertAdjacentHTML('afterbegin', '<option value="">Todos conjuntos</option>');
+  filtrarMapa();
+}
+
+// ─── Mapa ─────────────────────────────────────────────────────────────────────
+function initMap() {
+  map = L.map('map', { zoomControl: true }).setView(CENTER, 16);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom: 19
+  }).addTo(map);
+  markersLayer = L.layerGroup().addTo(map);
+
+  // Escola
+  const escolaIcon = L.divIcon({
+    html: '<div style="background:#E1F5EE;border:2px solid #1D9E75;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 1px 4px rgba(0,0,0,0.2);">🏫</div>',
+    className:'', iconSize:[30,30], iconAnchor:[15,15]
+  });
+  L.marker([-15.8490, -48.1068], { icon: escolaIcon }).addTo(map)
+    .bindPopup('<b>Escola Classe 55</b><br>QNO 20 · Conjunto C');
+
+  // BR-070
+  L.polyline([[-15.8440,-48.0950],[-15.8440,-48.1250]], {
+    color:'#854F0B', weight:3, dashArray:'8,5', opacity:0.7
+  }).addTo(map).bindPopup('BR-070');
+
+  document.getElementById('map-loading').style.display = 'none';
+  mapReady = true;
+  filtrarMapa();
+  setTimeout(() => map.invalidateSize(), 200);
+}
+
+function centralizarMapa() { if (map) map.setView(CENTER, 16); }
+
+function filtrarMapa() {
+  if (!markersLayer) return;
+  markersLayer.clearLayers();
+  const q = document.getElementById('filtro-quadra').value;
+  const cj = document.getElementById('filtro-cj').value;
+  let filtrado = registros;
+  if (q) filtrado = filtrado.filter(r => r.quadra === q);
+  if (cj) filtrado = filtrado.filter(r => r.cj === cj);
+  filtrado.forEach(r => adicionarPin(r));
+}
+
+function corPorQuadra(q) {
+  const cores = { 'QNO 16':'#1D9E75','QNO 17':'#378ADD','QNO 18':'#D85A30','QNO 19':'#BA7517','QNO 20':'#D4537E' };
+  return cores[q] || '#1D9E75';
+}
+
+function adicionarPin(r) {
+  if (!r.lat || !map) return;
+  const cor = corPorQuadra(r.quadra);
+  const icon = L.divIcon({
+    html: '<div style="background:'+cor+';border:2px solid white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;box-shadow:0 2px 5px rgba(0,0,0,0.25);">'+r.cj+'</div>',
+    className:'', iconSize:[28,28], iconAnchor:[14,14]
+  });
+  let popup = '<b>'+(r.quadra||'')+'</b><br>Cj. '+r.cj+' · Casa '+r.casa;
+  if (r.obs) popup += '<br><span style="font-size:12px;color:#666;">'+r.obs+'</span>';
+  if (r.foto) popup += '<br><img src="'+r.foto+'" style="width:140px;margin-top:6px;border-radius:6px;">';
+  L.marker([r.lat, r.lng], { icon }).addTo(markersLayer).bindPopup(popup);
+}
+
+// ─── GPS ──────────────────────────────────────────────────────────────────────
+function capturarGPS() {
+  const dot = document.getElementById('gps-dot');
+  const txt = document.getElementById('gps-text');
+  dot.className = 'gps-dot loading';
+  txt.textContent = 'Buscando sinal GPS...';
+  if (!navigator.geolocation) { txt.textContent = 'GPS não disponível.'; dot.className = 'gps-dot'; return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      gpsCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      dot.className = 'gps-dot ok';
+      txt.textContent = '✓ ' + gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5);
+    },
+    () => { txt.textContent = 'Erro ao capturar GPS. Tente novamente.'; dot.className = 'gps-dot'; },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+// ─── Foto ─────────────────────────────────────────────────────────────────────
+function previewFoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    fotoBase64 = ev.target.result;
+    document.getElementById('foto-img').src = fotoBase64;
+    document.getElementById('foto-preview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removerFoto() {
+  fotoBase64 = null;
+  document.getElementById('foto-preview').style.display = 'none';
+  document.getElementById('foto-input').value = '';
+}
+
+// ─── Salvar ───────────────────────────────────────────────────────────────────
+async function salvar() {
+  const quadra = document.getElementById('reg-quadra').value;
+  const cj = document.getElementById('reg-cj').value;
+  const casa = document.getElementById('reg-casa').value;
+  const obs = document.getElementById('reg-obs').value.trim();
+  const msg = document.getElementById('save-msg');
+
+  if (!quadra || !cj || !casa) {
+    showMsg('Preencha quadra, conjunto e número da casa.', 'err'); return;
+  }
+
+  const existente = registros.findIndex(r => r.quadra === quadra && r.cj === cj && r.casa === casa);
+  const reg = {
+    id: existente >= 0 ? registros[existente].id : Date.now(),
+    quadra, cj, casa, obs,
+    foto: fotoBase64 || (existente >= 0 ? registros[existente].foto : null),
+    lat: gpsCoords?.lat || (existente >= 0 ? registros[existente].lat : null),
+    lng: gpsCoords?.lng || (existente >= 0 ? registros[existente].lng : null),
+    ts: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})
+  };
+
+  await dbPut(reg);
+  if (existente >= 0) registros[existente] = reg;
+  else registros.push(reg);
+  atualizarStats();
+  if (mapReady && reg.lat) adicionarPin(reg);
+
+  showMsg(existente >= 0 ? '✓ Registro atualizado!' : '✓ ' + quadra + ' · Cj. ' + cj + ' · Casa ' + casa + ' salvo!', 'ok');
+
+  document.getElementById('reg-quadra').value = '';
+  document.getElementById('reg-cj').innerHTML = '<option value="">...</option>';
+  document.getElementById('reg-casa').value = '';
+  document.getElementById('reg-obs').value = '';
+  removerFoto();
+  gpsCoords = null;
+  document.getElementById('gps-dot').className = 'gps-dot';
+  document.getElementById('gps-text').textContent = 'Toque em Capturar para obter localização';
+}
+
+function showMsg(text, type) {
+  const msg = document.getElementById('save-msg');
+  msg.textContent = text;
+  msg.className = 'msg ' + type;
+  msg.style.display = 'block';
+  setTimeout(() => { msg.style.display = 'none'; }, 3500);
+}
+
+// ─── Deletar ──────────────────────────────────────────────────────────────────
+async function deletar(id) {
+  if (!confirm('Excluir este registro?')) return;
+  await dbDelete(id);
+  registros = registros.filter(r => r.id !== id);
+  atualizarStats();
+  filtrarMapa();
+  renderLista();
+}
+
+// ─── Lista ────────────────────────────────────────────────────────────────────
+function renderLista() {
+  const div = document.getElementById('lista-content');
+  const busca = (document.getElementById('busca-lista')?.value || '').toLowerCase();
+  let filtrado = busca
+    ? registros.filter(r => (r.quadra||'').toLowerCase().includes(busca) || r.cj.toLowerCase().includes(busca) || r.casa.toString().includes(busca) || (r.obs||'').toLowerCase().includes(busca))
+    : [...registros];
+
+  if (!filtrado.length) {
+    div.innerHTML = '<div class="empty"><span class="icon">' + (busca ? '🔍' : '📭') + '</span>' + (busca ? 'Nenhum resultado para "' + busca + '"' : 'Nenhum registro ainda.<br>Use a aba Registrar durante as entregas.') + '</div>';
+    return;
+  }
+
+  filtrado.sort((a,b) => {
+    if (a.quadra !== b.quadra) return (a.quadra||'').localeCompare(b.quadra||'');
+    return a.cj.localeCompare(b.cj, undefined, {numeric:true}) || parseInt(a.casa) - parseInt(b.casa);
+  });
+
+  div.innerHTML = filtrado.map(r =>
+    '<div class="entry-card">' +
+    (r.foto ? '<img class="entry-thumb" src="'+r.foto+'" alt="Fachada">' : '<div class="entry-thumb-empty">📦</div>') +
+    '<div class="entry-info">' +
+    '<div class="entry-addr">' + (r.quadra ? r.quadra + ' · ' : '') + 'Cj. ' + r.cj + ' · Casa ' + r.casa + (r.lat ? '<span class="badge-gps">GPS</span>' : '') + '</div>' +
+    '<div class="entry-obs">' + (r.obs || 'Sem observação') + '</div>' +
+    '<div class="entry-ts">' + (r.ts || '') + '</div>' +
+    '</div>' +
+    '<button class="delete-btn" onclick="deletar(' + r.id + ')">🗑</button>' +
+    '</div>'
+  ).join('');
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+document.getElementById('filtro-quadra').addEventListener('change', atualizarFiltroConjunto);
+
+async function init() {
+  await initDB();
+  registros = await dbGetAll();
+  atualizarStats();
+  initMap();
+}
+
+init();
+</script>
+</body>
+</html>
