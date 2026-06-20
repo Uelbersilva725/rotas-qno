@@ -369,7 +369,7 @@ function showTab(t) {
   document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
   document.getElementById('screen-' + t).classList.add('active');
   event.target.classList.add('active');
-  if (t === 'mapa') { if (!mapReady) initMap(); else { setTimeout(() => map.invalidateSize(), 100); filtrarMapa(); } }
+  if (t === 'mapa') { if (!mapReady) esperarLeafletEIniciar(); else { setTimeout(() => map.invalidateSize(), 100); filtrarMapa(); } }
   if (t === 'lista') renderLista();
 }
 
@@ -607,7 +607,7 @@ function renderLista() {
     '<div class="entry-obs">' + (r.obs || 'Sem observação') + '</div>' +
     '<div class="entry-ts">' + (r.ts || '') + '</div>' +
     '</div>' +
-    (modoAdmin ? '<button class="delete-btn" onclick="deletar(\\''+r.id+'\\')">🗑</button>' : '') +
+    (modoAdmin ? '<button class="delete-btn" onclick="deletar(&quot;' + r.id + '&quot;)">🗑</button>' : '') +
     '</div>'
   ).join('');
 }
@@ -626,7 +626,14 @@ window.ativarTrackingReal = ativarTrackingReal;
 window.validarSenha = validarSenha;
 window.fecharLogin = fecharLogin;
 
-initMap();
+function esperarLeafletEIniciar() {
+  if (typeof L !== 'undefined') {
+    initMap();
+  } else {
+    setTimeout(esperarLeafletEIniciar, 100);
+  }
+}
+esperarLeafletEIniciar();
 </script>
 </body>
 </html>
