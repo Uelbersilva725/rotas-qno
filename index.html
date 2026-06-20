@@ -15,10 +15,20 @@
   #app { display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; background: #fff; box-shadow: 0 0 20px rgba(0,0,0,0.08); }
 
   /* Header */
-  .header { display: flex; align-items: center; gap: 10px; padding: 12px 14px 8px; background: #fff; border-bottom: 0.5px solid #e5e5e5; }
+  .header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #fff; border-bottom: 0.5px solid #e5e5e5; }
   .header-icon { width: 34px; height: 34px; background: #1D9E75; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
   .header-title { font-size: 15px; font-weight: 600; color: #111; }
   .header-sub { font-size: 11px; color: #888; }
+
+  /* GPS status bar */
+  .gps-status-bar { display: flex; align-items: center; gap: 8px; padding: 7px 14px; font-size: 11.5px; background: #f9f9f9; border-bottom: 0.5px solid #e5e5e5; cursor: pointer; }
+  .gps-status-bar .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: #ccc; }
+  .gps-status-bar .dot.ativo { background: #1D9E75; box-shadow: 0 0 0 3px rgba(29,158,117,0.2); }
+  .gps-status-bar .dot.buscando { background: #EF9F27; animation: pulse 1s infinite; }
+  .gps-status-bar .dot.erro { background: #E24B4A; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  .gps-status-bar .txt { color: #666; flex: 1; }
+  .gps-status-bar .link { color: #1D9E75; font-weight: 600; }
 
   /* Tabs */
   .tab-bar { display: flex; gap: 4px; padding: 8px; background: #fff; border-bottom: 0.5px solid #e5e5e5; }
@@ -39,7 +49,6 @@
   .map-toolbar select { flex: 1; font-size: 12px; padding: 7px 8px; border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; }
   .btn { padding: 7px 12px; font-size: 12px; font-weight: 500; border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; cursor: pointer; white-space: nowrap; }
   .btn-green { background: #1D9E75; color: #fff; border-color: #0F6E56; }
-  .btn-red { background: #E24B4A; color: #fff; border-color: #A32D2D; }
 
   /* Register */
   .reg-screen { padding: 12px; overflow-y: auto; flex: 1; }
@@ -55,11 +64,10 @@
   .form-row .form-group { flex: 1; }
   .photo-area { border: 1.5px dashed #ccc; border-radius: 10px; padding: 20px; text-align: center; font-size: 13px; color: #888; cursor: pointer; background: #fafafa; }
   .photo-area .icon { font-size: 28px; display: block; margin-bottom: 6px; }
-  .gps-box { background: #f5f5f5; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #666; display: flex; align-items: center; gap: 8px; margin-bottom: 14px; border: 0.5px solid #e5e5e5; }
-  .gps-dot { width: 9px; height: 9px; border-radius: 50%; background: #ccc; flex-shrink: 0; transition: background 0.3s; }
-  .gps-dot.ok { background: #1D9E75; }
-  .gps-dot.loading { background: #EF9F27; animation: pulse 1s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .gps-inline-box { background: #f5f5f5; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #666; display: flex; align-items: center; gap: 8px; margin-bottom: 14px; border: 0.5px solid #e5e5e5; }
+  .gps-inline-dot { width: 9px; height: 9px; border-radius: 50%; background: #ccc; flex-shrink: 0; transition: background 0.3s; }
+  .gps-inline-dot.ok { background: #1D9E75; }
+  .gps-inline-dot.loading { background: #EF9F27; animation: pulse 1s infinite; }
   .save-btn { width: 100%; padding: 13px; font-size: 15px; font-weight: 600; background: #1D9E75; color: #fff; border: none; border-radius: 10px; cursor: pointer; margin-top: 4px; }
   .save-btn:active { transform: scale(0.98); }
   .msg { margin-top: 10px; font-size: 13px; text-align: center; padding: 8px; border-radius: 8px; display: none; }
@@ -82,17 +90,18 @@
   .empty { text-align: center; padding: 50px 20px; color: #aaa; font-size: 13px; line-height: 1.8; }
   .empty .icon { font-size: 40px; display: block; margin-bottom: 10px; }
 
-  /* Foto preview */
   #foto-preview { margin-top: 8px; display: none; position: relative; }
   #foto-preview img { width: 100%; border-radius: 10px; border: 0.5px solid #eee; }
   #foto-remove { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 50%; width: 26px; height: 26px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-  /* Quadra selector */
-  .quadra-selector { display: flex; gap: 6px; padding: 8px; background: #f9f9f9; border-bottom: 0.5px solid #e5e5e5; overflow-x: auto; }
-  .quadra-btn { padding: 6px 12px; font-size: 12px; font-weight: 500; border: 0.5px solid #ddd; border-radius: 20px; background: #fff; cursor: pointer; white-space: nowrap; color: #666; flex-shrink: 0; }
-  .quadra-btn.active { background: #1D9E75; color: #fff; border-color: #0F6E56; }
-
   .loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; font-size: 13px; color: #666; gap: 8px; }
+
+  .perm-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .perm-modal { background: #fff; border-radius: 16px; padding: 22px; max-width: 360px; text-align: center; }
+  .perm-modal .icon { font-size: 36px; margin-bottom: 10px; }
+  .perm-modal h3 { font-size: 16px; margin-bottom: 8px; color: #111; }
+  .perm-modal p { font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 16px; }
+  .perm-modal button { width: 100%; padding: 12px; background: #1D9E75; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -101,8 +110,13 @@
     <div class="header-icon">📦</div>
     <div>
       <div class="header-title">Rotas QNO</div>
-      <div class="header-sub" id="header-sub">Ceilândia · Expansão Setor O</div>
+      <div class="header-sub">Ceilândia · Expansão Setor O</div>
     </div>
+  </div>
+
+  <div class="gps-status-bar" id="gps-status-bar" onclick="solicitarGPSContinuo()">
+    <div class="dot" id="gps-status-dot"></div>
+    <span class="txt" id="gps-status-text">GPS desligado — toque para ativar localização em tempo real</span>
   </div>
 
   <div class="tab-bar">
@@ -119,7 +133,7 @@
       <div class="stat"><div class="num" id="stat-foto">0</div><div class="lbl">com foto</div></div>
     </div>
     <div class="map-toolbar">
-      <select id="filtro-quadra" onchange="filtrarMapa()">
+      <select id="filtro-quadra" onchange="atualizarFiltroConjunto()">
         <option value="">Todas as quadras</option>
         <option>QNO 16</option>
         <option>QNO 17</option>
@@ -140,16 +154,15 @@
   <!-- REGISTRAR -->
   <div id="screen-registrar" class="screen">
     <div class="reg-screen">
-      <div class="gps-box">
-        <div class="gps-dot" id="gps-dot"></div>
-        <span id="gps-text">Toque em Capturar para obter localização</span>
-        <button class="btn" style="margin-left:auto;padding:5px 10px;font-size:11px;" onclick="capturarGPS()">Capturar</button>
+      <div class="gps-inline-box">
+        <div class="gps-inline-dot" id="gps-inline-dot"></div>
+        <span id="gps-inline-text">Aguardando localização...</span>
       </div>
 
       <div class="form-row">
         <div class="form-group">
           <label>Quadra</label>
-          <select id="reg-quadra" onchange="atualizarConjuntos()">
+          <select id="reg-quadra" onchange="atualizarConjuntos(null,'reg-cj')">
             <option value="">...</option>
             <option>QNO 16</option>
             <option>QNO 17</option>
@@ -203,24 +216,35 @@
   </div>
 </div>
 
+<!-- Modal de permissão -->
+<div class="perm-modal-bg" id="perm-modal-bg">
+  <div class="perm-modal">
+    <div class="icon">📍</div>
+    <h3>Ativar localização contínua</h3>
+    <p>Para o app sempre saber sua posição exata durante as entregas, permita o acesso à localização. No Android, escolha <b>"Permitir o tempo todo"</b> quando solicitado para funcionar mesmo com a tela bloqueada.</p>
+    <button onclick="ativarTrackingReal()">Ativar localização</button>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ─── Dados dos conjuntos por quadra ───────────────────────────────────────────
 const CONJUNTOS = {
-  'QNO 16': ['A','B','C','D','E','F','G','H','I','J','K','L','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63','64','65','66','67','68','69','70','71','72','73','74','75'],
-  'QNO 17': ['A','B','C','D','E','F','G','H','I','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63','64','65'],
-  'QNO 18': ['A','B','C','D','E','F','G','H','I','J','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63','64','65','66','67','68','69','70','71','72','73','74','75','76','77','78','79','80','81'],
-  'QNO 19': ['A','B','C','D','G','H','I','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57'],
-  'QNO 20': ['A','B','D','E','01','03','05','07','09','11','13','15','17','19','21','23','25','27','29','31','33','35','37','39','41','43','45','47','49','51','53','55'],
+  'QNO 16': ['02','04','06','08','10','12','14','16','18','20','22','24','26','28','30','32','34','36','38','40','42','44','46','48','50','52','54','56','58','60','62','64','01','03','05','07','09','11','13','15','17','19','21','23','25','27','29','31','33','35','37','39','41','43','45','47','49','51','53','55','57','59','61','63','65','67','69','71','73','75','A','B','C','D','E','F','G','H','I','J','K'],
+  'QNO 17': ['02','04','06','08','10','12','14','16','18','20','22','24','26','28','30','32','34','36','38','40','42','44','46','48','50','52','54','56','58','60','62','64','01','03','05','07','09','11','13','15','17','19','21','23','25','27','29','31','33','35','37','39','41','43','45','47','49','51','53','55','57','59','61','63','65','A','B','C','D','E'],
+  'QNO 18': ['02','04','06','08','10','12','14','16','18','20','22','24','26','28','30','32','34','36','38','40','42','44','46','48','50','52','54','56','58','60','62','64','66','68','70','72','01','03','05','07','09','11','13','15','17','19','21','23','25','27','29','31','33','35','37','39','41','43','45','47','49','51','53','55','57','59','61','63','65','67','69','71','73','75','77','79','81','A','B','C','D'],
+  'QNO 19': ['02','04','06','08','10','12','14','16','18','20','22','24','26','28','30','32','34','36','38','40','42','44','46','48','50','52','54','56','01','03','05','07','09','11','13','15','17','19','21','23','25','27','29','31','33','35','37','39','41','43','45','47','49','51','53','55','57','A','B','C','D','G','H'],
+  'QNO 20': ['03','05','07','09','11','13','17','19','21','23','25','27','29','31','33','35','37','39','40','41','43','45','47','51','53','63','65','A','B','D','E']
 };
 
 const CENTER = [-15.8485, -48.1080];
-let map, markersLayer;
+let map, markersLayer, meuMarcador, meuCirculo;
 let registros = [];
-let gpsCoords = null;
+let posicaoAtual = null;   // { lat, lng, accuracy }
+let watchId = null;
+let trackingAtivo = false;
 let mapReady = false;
 let fotoBase64 = null;
-let activeTab = 'mapa';
 
 // ─── IndexedDB ────────────────────────────────────────────────────────────────
 let db;
@@ -237,32 +261,26 @@ function initDB() {
     req.onerror = () => reject(req.error);
   });
 }
-
 function dbGetAll() {
   return new Promise((resolve, reject) => {
     const tx = db.transaction('registros', 'readonly');
-    const store = tx.objectStore('registros');
-    const req = store.getAll();
+    const req = tx.objectStore('registros').getAll();
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
-
 function dbPut(record) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction('registros', 'readwrite');
-    const store = tx.objectStore('registros');
-    const req = store.put(record);
+    const req = tx.objectStore('registros').put(record);
     req.onsuccess = () => resolve();
     req.onerror = () => reject(req.error);
   });
 }
-
 function dbDelete(id) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction('registros', 'readwrite');
-    const store = tx.objectStore('registros');
-    const req = store.delete(id);
+    const req = tx.objectStore('registros').delete(id);
     req.onsuccess = () => resolve();
     req.onerror = () => reject(req.error);
   });
@@ -277,7 +295,6 @@ function atualizarStats() {
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 function showTab(t) {
-  activeTab = t;
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
   document.getElementById('screen-' + t).classList.add('active');
@@ -289,8 +306,7 @@ function showTab(t) {
 // ─── Conjuntos dinâmicos ──────────────────────────────────────────────────────
 function atualizarConjuntos(quadra, selectId) {
   const q = quadra || document.getElementById('reg-quadra').value;
-  const sid = selectId || 'reg-cj';
-  const sel = document.getElementById(sid);
+  const sel = document.getElementById(selectId);
   sel.innerHTML = '<option value="">...</option>';
   if (q && CONJUNTOS[q]) {
     CONJUNTOS[q].forEach(c => {
@@ -300,24 +316,98 @@ function atualizarConjuntos(quadra, selectId) {
     });
   }
 }
-
 function atualizarFiltroConjunto() {
   const q = document.getElementById('filtro-quadra').value;
-  atualizarConjuntos(q, 'filtro-cj');
-  document.getElementById('filtro-cj').insertAdjacentHTML('afterbegin', '<option value="">Todos conjuntos</option>');
+  const sel = document.getElementById('filtro-cj');
+  sel.innerHTML = '<option value="">Todos conjuntos</option>';
+  if (q && CONJUNTOS[q]) {
+    CONJUNTOS[q].forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      sel.appendChild(opt);
+    });
+  }
   filtrarMapa();
+}
+
+// ─── GPS contínuo (watchPosition) ─────────────────────────────────────────────
+function solicitarGPSContinuo() {
+  if (trackingAtivo) return;
+  document.getElementById('perm-modal-bg').style.display = 'flex';
+}
+
+function ativarTrackingReal() {
+  document.getElementById('perm-modal-bg').style.display = 'none';
+  if (!navigator.geolocation) {
+    atualizarStatusGPS('erro', 'Este navegador não suporta geolocalização.');
+    return;
+  }
+  atualizarStatusGPS('buscando', 'Ativando localização em tempo real...');
+
+  watchId = navigator.geolocation.watchPosition(
+    pos => {
+      trackingAtivo = true;
+      posicaoAtual = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
+      atualizarStatusGPS('ativo', 'GPS ativo · precisão ' + Math.round(pos.coords.accuracy) + 'm');
+      atualizarPosicaoNoMapa();
+      atualizarStatusGPSRegistro();
+    },
+    err => {
+      trackingAtivo = false;
+      let txt = 'Erro ao obter localização.';
+      if (err.code === 1) txt = 'Permissão de localização negada. Ative nas configurações do navegador.';
+      if (err.code === 2) txt = 'Localização indisponível no momento.';
+      if (err.code === 3) txt = 'Tempo esgotado buscando localização.';
+      atualizarStatusGPS('erro', txt);
+    },
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+  );
+}
+
+function atualizarStatusGPS(estado, texto) {
+  const dot = document.getElementById('gps-status-dot');
+  const txt = document.getElementById('gps-status-text');
+  dot.className = 'dot ' + (estado === 'ativo' ? 'ativo' : estado === 'buscando' ? 'buscando' : estado === 'erro' ? 'erro' : '');
+  txt.textContent = texto;
+}
+
+function atualizarStatusGPSRegistro() {
+  const dot = document.getElementById('gps-inline-dot');
+  const txt = document.getElementById('gps-inline-text');
+  if (posicaoAtual) {
+    dot.className = 'gps-inline-dot ok';
+    txt.textContent = '✓ Localização atual: ' + posicaoAtual.lat.toFixed(5) + ', ' + posicaoAtual.lng.toFixed(5);
+  } else {
+    dot.className = 'gps-inline-dot';
+    txt.textContent = 'GPS desligado — ative no topo do app';
+  }
+}
+
+function atualizarPosicaoNoMapa() {
+  if (!map || !posicaoAtual) return;
+  const ll = [posicaoAtual.lat, posicaoAtual.lng];
+  if (!meuMarcador) {
+    const icon = L.divIcon({
+      html: '<div style="width:18px;height:18px;background:#378ADD;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px rgba(55,138,221,0.4);"></div>',
+      className: '', iconSize: [18,18], iconAnchor: [9,9]
+    });
+    meuMarcador = L.marker(ll, { icon, zIndexOffset: 1000 }).addTo(map).bindPopup('Você está aqui');
+    meuCirculo = L.circle(ll, { radius: posicaoAtual.accuracy, color: '#378ADD', fillColor: '#378ADD', fillOpacity: 0.1, weight: 1 }).addTo(map);
+  } else {
+    meuMarcador.setLatLng(ll);
+    meuCirculo.setLatLng(ll);
+    meuCirculo.setRadius(posicaoAtual.accuracy);
+  }
 }
 
 // ─── Mapa ─────────────────────────────────────────────────────────────────────
 function initMap() {
   map = L.map('map', { zoomControl: true }).setView(CENTER, 16);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
-    maxZoom: 19
+    attribution: '© OpenStreetMap', maxZoom: 19
   }).addTo(map);
   markersLayer = L.layerGroup().addTo(map);
 
-  // Escola
   const escolaIcon = L.divIcon({
     html: '<div style="background:#E1F5EE;border:2px solid #1D9E75;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 1px 4px rgba(0,0,0,0.2);">🏫</div>',
     className:'', iconSize:[30,30], iconAnchor:[15,15]
@@ -325,7 +415,6 @@ function initMap() {
   L.marker([-15.8490, -48.1068], { icon: escolaIcon }).addTo(map)
     .bindPopup('<b>Escola Classe 55</b><br>QNO 20 · Conjunto C');
 
-  // BR-070
   L.polyline([[-15.8440,-48.0950],[-15.8440,-48.1250]], {
     color:'#854F0B', weight:3, dashArray:'8,5', opacity:0.7
   }).addTo(map).bindPopup('BR-070');
@@ -333,10 +422,15 @@ function initMap() {
   document.getElementById('map-loading').style.display = 'none';
   mapReady = true;
   filtrarMapa();
+  if (posicaoAtual) atualizarPosicaoNoMapa();
   setTimeout(() => map.invalidateSize(), 200);
 }
 
-function centralizarMapa() { if (map) map.setView(CENTER, 16); }
+function centralizarMapa() {
+  if (!map) return;
+  if (posicaoAtual) map.setView([posicaoAtual.lat, posicaoAtual.lng], 17);
+  else map.setView(CENTER, 16);
+}
 
 function filtrarMapa() {
   if (!markersLayer) return;
@@ -367,24 +461,6 @@ function adicionarPin(r) {
   L.marker([r.lat, r.lng], { icon }).addTo(markersLayer).bindPopup(popup);
 }
 
-// ─── GPS ──────────────────────────────────────────────────────────────────────
-function capturarGPS() {
-  const dot = document.getElementById('gps-dot');
-  const txt = document.getElementById('gps-text');
-  dot.className = 'gps-dot loading';
-  txt.textContent = 'Buscando sinal GPS...';
-  if (!navigator.geolocation) { txt.textContent = 'GPS não disponível.'; dot.className = 'gps-dot'; return; }
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      gpsCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      dot.className = 'gps-dot ok';
-      txt.textContent = '✓ ' + gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5);
-    },
-    () => { txt.textContent = 'Erro ao capturar GPS. Tente novamente.'; dot.className = 'gps-dot'; },
-    { enableHighAccuracy: true, timeout: 10000 }
-  );
-}
-
 // ─── Foto ─────────────────────────────────────────────────────────────────────
 function previewFoto(e) {
   const file = e.target.files[0];
@@ -397,7 +473,6 @@ function previewFoto(e) {
   };
   reader.readAsDataURL(file);
 }
-
 function removerFoto() {
   fotoBase64 = null;
   document.getElementById('foto-preview').style.display = 'none';
@@ -410,10 +485,12 @@ async function salvar() {
   const cj = document.getElementById('reg-cj').value;
   const casa = document.getElementById('reg-casa').value;
   const obs = document.getElementById('reg-obs').value.trim();
-  const msg = document.getElementById('save-msg');
 
   if (!quadra || !cj || !casa) {
     showMsg('Preencha quadra, conjunto e número da casa.', 'err'); return;
+  }
+  if (!posicaoAtual) {
+    showMsg('Ative o GPS no topo do app antes de salvar.', 'err'); return;
   }
 
   const existente = registros.findIndex(r => r.quadra === quadra && r.cj === cj && r.casa === casa);
@@ -421,8 +498,8 @@ async function salvar() {
     id: existente >= 0 ? registros[existente].id : Date.now(),
     quadra, cj, casa, obs,
     foto: fotoBase64 || (existente >= 0 ? registros[existente].foto : null),
-    lat: gpsCoords?.lat || (existente >= 0 ? registros[existente].lat : null),
-    lng: gpsCoords?.lng || (existente >= 0 ? registros[existente].lng : null),
+    lat: posicaoAtual.lat,
+    lng: posicaoAtual.lng,
     ts: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})
   };
 
@@ -430,7 +507,7 @@ async function salvar() {
   if (existente >= 0) registros[existente] = reg;
   else registros.push(reg);
   atualizarStats();
-  if (mapReady && reg.lat) adicionarPin(reg);
+  if (mapReady) adicionarPin(reg);
 
   showMsg(existente >= 0 ? '✓ Registro atualizado!' : '✓ ' + quadra + ' · Cj. ' + cj + ' · Casa ' + casa + ' salvo!', 'ok');
 
@@ -439,9 +516,6 @@ async function salvar() {
   document.getElementById('reg-casa').value = '';
   document.getElementById('reg-obs').value = '';
   removerFoto();
-  gpsCoords = null;
-  document.getElementById('gps-dot').className = 'gps-dot';
-  document.getElementById('gps-text').textContent = 'Toque em Capturar para obter localização';
 }
 
 function showMsg(text, type) {
@@ -494,15 +568,21 @@ function renderLista() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-document.getElementById('filtro-quadra').addEventListener('change', atualizarFiltroConjunto);
-
 async function init() {
   await initDB();
   registros = await dbGetAll();
   atualizarStats();
   initMap();
-}
+  atualizarStatusGPS('', 'GPS desligado — toque para ativar localização em tempo real');
 
+  // Se o navegador já tem permissão concedida anteriormente, ativa automaticamente
+  if (navigator.permissions) {
+    try {
+      const perm = await navigator.permissions.query({ name: 'geolocation' });
+      if (perm.state === 'granted') ativarTrackingReal();
+    } catch(e) {}
+  }
+}
 init();
 </script>
 </body>
