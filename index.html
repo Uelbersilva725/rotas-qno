@@ -270,6 +270,25 @@ console.log('[Firebase] Inicializado com sucesso, projeto:', firebaseConfig.proj
 const SENHA_ADMIN = "qno2026";
 let modoAdmin = false;
 
+// ─── Cloudinary (armazenamento de fotos, gratuito, sem cartão) ───────────────
+const CLOUDINARY_CLOUD_NAME = "dxbxm3rpd";
+const CLOUDINARY_UPLOAD_PRESET = "h90fdbtd";
+
+async function uploadFotoCloudinary(base64Imagem) {
+  const url = "https://api.cloudinary.com/v1_1/" + CLOUDINARY_CLOUD_NAME + "/image/upload";
+  const formData = new FormData();
+  formData.append("file", base64Imagem);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+  const resp = await fetch(url, { method: "POST", body: formData });
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error("Cloudinary: " + resp.status + " — " + errText);
+  }
+  const data = await resp.json();
+  return data.secure_url;
+}
+
 // ─── Dados dos conjuntos por quadra ───────────────────────────────────────────
 const CONJUNTOS = {
   'QNO 16': ['02','04','06','08','10','12','14','16','18','20','22','24','26','28','30','32','34','36','38','40','42','44','46','48','50','52','54','56','58','60','62','64','01','03','05','07','09','11','13','15','17','19','21','23','25','27','29','31','33','35','37','39','41','43','45','47','49','51','53','55','57','59','61','63','65','67','69','71','73','75','A','B','C','D','E','F','G','H','I','J','K'],
@@ -507,17 +526,34 @@ function adicionarPin(r) {
   L.marker([r.lat, r.lng], { icon }).addTo(markersLayer).bindPopup(popup);
 }
 
-// ─── Foto ─────────────────────────────────────────────────────────────────────
+// ─── Foto (com compressão antes de enviar) ────────────────────────────────────
 function previewFoto(e) {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    fotoBase64 = ev.target.result;
-    document.getElementById('foto-img').src = fotoBase64;
-    document.getElementById('foto-preview').style.display = 'block';
+    comprimirImagem(ev.target.result, 1024, 0.7).then(comprimida => {
+      fotoBase64 = comprimida;
+      document.getElementById('foto-img').src = fotoBase64;
+      document.getElementById('foto-preview').style.display = 'block';
+    });
   };
   reader.readAsDataURL(file);
+}
+
+function comprimirImagem(base64Original, larguraMax, qualidade) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > larguraMax) { h = Math.round(h * (larguraMax / w)); w = larguraMax; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', qualidade));
+    };
+    img.src = base64Original;
+  });
 }
 function removerFoto() {
   fotoBase64 = null;
@@ -542,15 +578,23 @@ async function salvar() {
   btn.disabled = true; btn.textContent = 'Salvando...';
 
   const docId = (quadra + '_' + cj + '_' + casa).replace(/\s+/g, '');
-  const reg = {
-    quadra, cj, casa, obs,
-    foto: fotoBase64 || null,
-    lat: posicaoAtual.lat,
-    lng: posicaoAtual.lng,
-    ts: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})
-  };
 
   try {
+    let fotoUrl = null;
+    if (fotoBase64) {
+      btn.textContent = 'Enviando foto...';
+      fotoUrl = await uploadFotoCloudinary(fotoBase64);
+    }
+
+    btn.textContent = 'Salvando...';
+    const reg = {
+      quadra, cj, casa, obs,
+      foto: fotoUrl,
+      lat: posicaoAtual.lat,
+      lng: posicaoAtual.lng,
+      ts: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})
+    };
+
     await fb.setDoc(fb.doc(fb.dbFs, "registros", docId), reg);
     showMsg('✓ ' + quadra + ' · Cj. ' + cj + ' · Casa ' + casa + ' salvo na nuvem!', 'ok');
     document.getElementById('reg-quadra').value = '';
@@ -559,8 +603,8 @@ async function salvar() {
     document.getElementById('reg-obs').value = '';
     removerFoto();
   } catch (e) {
-    console.error(e);
-    showMsg('Erro ao salvar. Verifique sua internet.', 'err');
+    console.error('[Salvar] Erro:', e.code || e.message || e);
+    showMsg('Erro ao salvar: ' + (e.code || e.message || 'desconhecido'), 'err');
   }
   btn.disabled = false; btn.textContent = '💾 Salvar registro';
 }
@@ -607,9 +651,13 @@ function renderLista() {
     '<div class="entry-obs">' + (r.obs || 'Sem observação') + '</div>' +
     '<div class="entry-ts">' + (r.ts || '') + '</div>' +
     '</div>' +
-    (modoAdmin ? '<button class="delete-btn" onclick="deletar(&quot;' + r.id + '&quot;)">🗑</button>' : '') +
+    (modoAdmin ? '<button class="delete-btn" data-delid="' + r.id + '">🗑</button>' : '') +
     '</div>'
   ).join('');
+
+  div.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => deletar(btn.getAttribute('data-delid')));
+  });
 }
 
 // expõe pro escopo global (onclick inline)
