@@ -477,13 +477,6 @@ function initMap() {
   }).addTo(map);
   markersLayer = L.layerGroup().addTo(map);
 
-  const escolaIcon = L.divIcon({
-    html: '<div style="background:#E1F5EE;border:2px solid #1D9E75;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 1px 4px rgba(0,0,0,0.2);">🏫</div>',
-    className:'', iconSize:[30,30], iconAnchor:[15,15]
-  });
-  L.marker([-15.8490, -48.1068], { icon: escolaIcon }).addTo(map)
-    .bindPopup('<b>Escola Classe 55</b><br>QNO 20 · Conjunto C');
-
   L.polyline([[-15.8440,-48.0950],[-15.8440,-48.1250]], {
     color:'#854F0B', weight:3, dashArray:'8,5', opacity:0.7
   }).addTo(map).bindPopup('BR-070');
