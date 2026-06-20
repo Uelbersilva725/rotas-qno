@@ -14,32 +14,30 @@
 
   #app { display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; background: #fff; box-shadow: 0 0 20px rgba(0,0,0,0.08); }
 
-  /* Header */
   .header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #fff; border-bottom: 0.5px solid #e5e5e5; }
   .header-icon { width: 34px; height: 34px; background: #1D9E75; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
   .header-title { font-size: 15px; font-weight: 600; color: #111; }
   .header-sub { font-size: 11px; color: #888; }
+  .header-mode { margin-left: auto; font-size: 10px; padding: 4px 9px; border-radius: 20px; font-weight: 600; }
+  .header-mode.admin { background: #E1F5EE; color: #0F6E56; }
+  .header-mode.leitor { background: #EEEDFE; color: #3C3489; }
 
-  /* GPS status bar */
-  .gps-status-bar { display: flex; align-items: center; gap: 8px; padding: 7px 14px; font-size: 11.5px; background: #f9f9f9; border-bottom: 0.5px solid #e5e5e5; cursor: pointer; }
-  .gps-status-bar .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: #ccc; }
-  .gps-status-bar .dot.ativo { background: #1D9E75; box-shadow: 0 0 0 3px rgba(29,158,117,0.2); }
-  .gps-status-bar .dot.buscando { background: #EF9F27; animation: pulse 1s infinite; }
-  .gps-status-bar .dot.erro { background: #E24B4A; }
+  .sync-bar { display: flex; align-items: center; gap: 8px; padding: 7px 14px; font-size: 11.5px; background: #f9f9f9; border-bottom: 0.5px solid #e5e5e5; }
+  .sync-bar .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: #ccc; }
+  .sync-bar .dot.ok { background: #1D9E75; }
+  .sync-bar .dot.buscando { background: #EF9F27; animation: pulse 1s infinite; }
+  .sync-bar .dot.erro { background: #E24B4A; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
-  .gps-status-bar .txt { color: #666; flex: 1; }
-  .gps-status-bar .link { color: #1D9E75; font-weight: 600; }
+  .sync-bar .txt { color: #666; flex: 1; cursor: pointer; }
 
-  /* Tabs */
   .tab-bar { display: flex; gap: 4px; padding: 8px; background: #fff; border-bottom: 0.5px solid #e5e5e5; }
-  .tab { flex: 1; padding: 8px 4px; font-size: 12px; font-weight: 500; border: 0.5px solid #ddd; background: #f5f5f5; cursor: pointer; border-radius: 8px; color: #666; transition: all 0.15s; }
+  .tab { flex: 1; padding: 8px 4px; font-size: 12px; font-weight: 500; border: 0.5px solid #ddd; background: #f5f5f5; cursor: pointer; border-radius: 8px; color: #666; }
   .tab.active { background: #1D9E75; color: #fff; border-color: #0F6E56; }
+  .tab:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  /* Screens */
   .screen { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
   .screen.active { display: flex; }
 
-  /* Map */
   #map { flex: 1; z-index: 0; min-height: 0; }
   .stats-bar { display: flex; padding: 8px; background: #f9f9f9; border-bottom: 0.5px solid #e5e5e5; gap: 6px; }
   .stat { flex: 1; text-align: center; background: #fff; border-radius: 8px; padding: 6px 4px; border: 0.5px solid #eee; }
@@ -50,7 +48,6 @@
   .btn { padding: 7px 12px; font-size: 12px; font-weight: 500; border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; cursor: pointer; white-space: nowrap; }
   .btn-green { background: #1D9E75; color: #fff; border-color: #0F6E56; }
 
-  /* Register */
   .reg-screen { padding: 12px; overflow-y: auto; flex: 1; }
   .form-group { margin-bottom: 12px; }
   .form-group label { font-size: 12px; color: #666; display: block; margin-bottom: 4px; font-weight: 500; }
@@ -65,16 +62,16 @@
   .photo-area { border: 1.5px dashed #ccc; border-radius: 10px; padding: 20px; text-align: center; font-size: 13px; color: #888; cursor: pointer; background: #fafafa; }
   .photo-area .icon { font-size: 28px; display: block; margin-bottom: 6px; }
   .gps-inline-box { background: #f5f5f5; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #666; display: flex; align-items: center; gap: 8px; margin-bottom: 14px; border: 0.5px solid #e5e5e5; }
-  .gps-inline-dot { width: 9px; height: 9px; border-radius: 50%; background: #ccc; flex-shrink: 0; transition: background 0.3s; }
+  .gps-inline-dot { width: 9px; height: 9px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
   .gps-inline-dot.ok { background: #1D9E75; }
   .gps-inline-dot.loading { background: #EF9F27; animation: pulse 1s infinite; }
   .save-btn { width: 100%; padding: 13px; font-size: 15px; font-weight: 600; background: #1D9E75; color: #fff; border: none; border-radius: 10px; cursor: pointer; margin-top: 4px; }
   .save-btn:active { transform: scale(0.98); }
+  .save-btn:disabled { background: #ccc; cursor: not-allowed; }
   .msg { margin-top: 10px; font-size: 13px; text-align: center; padding: 8px; border-radius: 8px; display: none; }
   .msg.ok { background: #E1F5EE; color: #0F6E56; }
   .msg.err { background: #FCEBEB; color: #A32D2D; }
 
-  /* List */
   .list-toolbar { padding: 8px; border-bottom: 0.5px solid #e5e5e5; background: #fff; }
   .list-toolbar input { width: 100%; font-size: 13px; padding: 8px 12px; border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; }
   .list-screen { padding: 8px; overflow-y: auto; flex: 1; }
@@ -96,12 +93,14 @@
 
   .loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; font-size: 13px; color: #666; gap: 8px; }
 
-  .perm-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
-  .perm-modal { background: #fff; border-radius: 16px; padding: 22px; max-width: 360px; text-align: center; }
-  .perm-modal .icon { font-size: 36px; margin-bottom: 10px; }
-  .perm-modal h3 { font-size: 16px; margin-bottom: 8px; color: #111; }
-  .perm-modal p { font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 16px; }
-  .perm-modal button { width: 100%; padding: 12px; background: #1D9E75; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .modal { background: #fff; border-radius: 16px; padding: 22px; max-width: 360px; text-align: center; }
+  .modal .icon { font-size: 36px; margin-bottom: 10px; }
+  .modal h3 { font-size: 16px; margin-bottom: 8px; color: #111; }
+  .modal p { font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 16px; }
+  .modal input { width: 100%; padding: 11px; border: 0.5px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 10px; }
+  .modal button { width: 100%; padding: 12px; background: #1D9E75; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .modal .link-btn { background: none; color: #888; font-weight: 400; font-size: 12px; margin-top: 8px; padding: 6px; }
 </style>
 </head>
 <body>
@@ -112,16 +111,17 @@
       <div class="header-title">Rotas QNO</div>
       <div class="header-sub">Ceilândia · Expansão Setor O</div>
     </div>
+    <div class="header-mode leitor" id="header-mode">Visualização</div>
   </div>
 
-  <div class="gps-status-bar" id="gps-status-bar" onclick="solicitarGPSContinuo()">
-    <div class="dot" id="gps-status-dot"></div>
-    <span class="txt" id="gps-status-text">GPS desligado — toque para ativar localização em tempo real</span>
+  <div class="sync-bar">
+    <div class="dot" id="sync-dot"></div>
+    <span class="txt" id="sync-text" onclick="solicitarGPSContinuo()">Conectando à nuvem...</span>
   </div>
 
   <div class="tab-bar">
     <button class="tab active" onclick="showTab('mapa')">🗺 Mapa</button>
-    <button class="tab" onclick="showTab('registrar')">📍 Registrar</button>
+    <button class="tab" id="tab-registrar" onclick="showTab('registrar')">📍 Registrar</button>
     <button class="tab" onclick="showTab('lista')">📋 Registros</button>
   </div>
 
@@ -200,7 +200,7 @@
         <input type="file" id="foto-input" accept="image/*" capture="environment" style="display:none;" onchange="previewFoto(event)" />
       </div>
 
-      <button class="save-btn" onclick="salvar()">💾 Salvar registro</button>
+      <button class="save-btn" id="btn-salvar" onclick="salvar()">💾 Salvar registro</button>
       <div class="msg" id="save-msg"></div>
     </div>
   </div>
@@ -211,23 +211,63 @@
       <input type="text" id="busca-lista" placeholder="🔍  Buscar por conjunto, casa ou observação..." oninput="renderLista()" />
     </div>
     <div class="list-screen" id="lista-content">
-      <div class="empty"><span class="icon">📭</span>Nenhum registro ainda.<br>Use a aba Registrar durante as entregas.</div>
+      <div class="empty"><span class="icon">📭</span>Carregando registros...</div>
     </div>
   </div>
 </div>
 
-<!-- Modal de permissão -->
-<div class="perm-modal-bg" id="perm-modal-bg">
-  <div class="perm-modal">
+<!-- Modal de permissão GPS -->
+<div class="modal-bg" id="perm-modal-bg">
+  <div class="modal">
     <div class="icon">📍</div>
     <h3>Ativar localização contínua</h3>
-    <p>Para o app sempre saber sua posição exata durante as entregas, permita o acesso à localização. No Android, escolha <b>"Permitir o tempo todo"</b> quando solicitado para funcionar mesmo com a tela bloqueada.</p>
+    <p>Para o app sempre saber sua posição exata durante as entregas, permita o acesso à localização. No Android, escolha <b>"Permitir o tempo todo"</b> para funcionar mesmo com a tela bloqueada.</p>
     <button onclick="ativarTrackingReal()">Ativar localização</button>
   </div>
 </div>
 
+<!-- Modal de login do administrador -->
+<div class="modal-bg" id="login-modal-bg">
+  <div class="modal">
+    <div class="icon">🔑</div>
+    <h3>Modo administrador</h3>
+    <p>Digite a senha para habilitar o cadastro de novos endereços. Sem a senha, o app funciona normalmente em modo consulta.</p>
+    <input type="password" id="admin-pass" placeholder="Senha" />
+    <button onclick="validarSenha()">Entrar</button>
+    <button class="link-btn" onclick="fecharLogin()">Continuar apenas consultando</button>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, collection, doc, setDoc, deleteDoc,
+  onSnapshot, query
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",
+  authDomain: "app-rotas-68cf4.firebaseapp.com",
+  projectId: "app-rotas-68cf4",
+  storageBucket: "app-rotas-68cf4.firebasestorage.app",
+  messagingSenderId: "400409767391",
+  appId: "1:400409767391:web:0bcebe50738d6d3450a86a"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const dbFs = getFirestore(firebaseApp);
+const registrosCol = collection(dbFs, "registros");
+
+// Expõe para o restante do script (não-módulo) usar
+window.__firebase = { dbFs, registrosCol, doc, setDoc, deleteDoc, onSnapshot, query };
+window.dispatchEvent(new Event('firebase-ready'));
+</script>
 <script>
+// ─── Senha simples de administrador (apenas trava de UI, não é segurança real) ─
+const SENHA_ADMIN = "qno2026";
+let modoAdmin = false;
+
 // ─── Dados dos conjuntos por quadra ───────────────────────────────────────────
 const CONJUNTOS = {
   'QNO 16': ['02','04','06','08','10','12','14','16','18','20','22','24','26','28','30','32','34','36','38','40','42','44','46','48','50','52','54','56','58','60','62','64','01','03','05','07','09','11','13','15','17','19','21','23','25','27','29','31','33','35','37','39','41','43','45','47','49','51','53','55','57','59','61','63','65','67','69','71','73','75','A','B','C','D','E','F','G','H','I','J','K'],
@@ -240,50 +280,46 @@ const CONJUNTOS = {
 const CENTER = [-15.8485, -48.1080];
 let map, markersLayer, meuMarcador, meuCirculo;
 let registros = [];
-let posicaoAtual = null;   // { lat, lng, accuracy }
-let watchId = null;
+let posicaoAtual = null;
 let trackingAtivo = false;
 let mapReady = false;
 let fotoBase64 = null;
+let fb = null;
+let unsubscribe = null;
 
-// ─── IndexedDB ────────────────────────────────────────────────────────────────
-let db;
-function initDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('rotasqno', 2);
-    req.onupgradeneeded = e => {
-      const d = e.target.result;
-      if (!d.objectStoreNames.contains('registros')) {
-        d.createObjectStore('registros', { keyPath: 'id' });
-      }
-    };
-    req.onsuccess = e => { db = e.target.result; resolve(); };
-    req.onerror = () => reject(req.error);
-  });
+// ─── Espera o Firebase carregar (módulo ES) ───────────────────────────────────
+window.addEventListener('firebase-ready', () => {
+  fb = window.__firebase;
+  conectarFirestore();
+});
+
+function conectarFirestore() {
+  atualizarStatusSync('buscando', 'Conectando à nuvem...');
+  try {
+    unsubscribe = fb.onSnapshot(fb.query(fb.registrosCol), (snapshot) => {
+      registros = [];
+      snapshot.forEach(docSnap => {
+        registros.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      atualizarStats();
+      if (mapReady) filtrarMapa();
+      renderLista();
+      atualizarStatusSync('ok', registros.length + ' endereços sincronizados · toque para reativar GPS');
+    }, (err) => {
+      console.error(err);
+      atualizarStatusSync('erro', 'Erro ao conectar à nuvem. Verifique sua internet.');
+    });
+  } catch (e) {
+    console.error(e);
+    atualizarStatusSync('erro', 'Erro ao conectar ao banco de dados.');
+  }
 }
-function dbGetAll() {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('registros', 'readonly');
-    const req = tx.objectStore('registros').getAll();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-function dbPut(record) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('registros', 'readwrite');
-    const req = tx.objectStore('registros').put(record);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
-}
-function dbDelete(id) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('registros', 'readwrite');
-    const req = tx.objectStore('registros').delete(id);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
+
+function atualizarStatusSync(estado, texto) {
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-text');
+  dot.className = 'dot ' + (estado === 'ok' ? 'ok' : estado === 'buscando' ? 'buscando' : estado === 'erro' ? 'erro' : '');
+  txt.textContent = texto;
 }
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
@@ -293,8 +329,26 @@ function atualizarStats() {
   document.getElementById('stat-foto').textContent = registros.filter(r => r.foto).length;
 }
 
+// ─── Modo admin ───────────────────────────────────────────────────────────────
+function abrirLogin() { document.getElementById('login-modal-bg').style.display = 'flex'; }
+function fecharLogin() { document.getElementById('login-modal-bg').style.display = 'none'; }
+function validarSenha() {
+  const val = document.getElementById('admin-pass').value;
+  if (val === SENHA_ADMIN) {
+    modoAdmin = true;
+    document.getElementById('header-mode').textContent = 'Administrador';
+    document.getElementById('header-mode').className = 'header-mode admin';
+    fecharLogin();
+    solicitarGPSContinuo();
+  } else {
+    alert('Senha incorreta. Continuando em modo consulta.');
+    fecharLogin();
+  }
+}
+
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 function showTab(t) {
+  if (t === 'registrar' && !modoAdmin) { abrirLogin(); return; }
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
   document.getElementById('screen-' + t).classList.add('active');
@@ -330,59 +384,39 @@ function atualizarFiltroConjunto() {
   filtrarMapa();
 }
 
-// ─── GPS contínuo (watchPosition) ─────────────────────────────────────────────
+// ─── GPS contínuo ─────────────────────────────────────────────────────────────
 function solicitarGPSContinuo() {
-  if (trackingAtivo) return;
+  if (trackingAtivo || !modoAdmin) return;
   document.getElementById('perm-modal-bg').style.display = 'flex';
 }
-
 function ativarTrackingReal() {
   document.getElementById('perm-modal-bg').style.display = 'none';
-  if (!navigator.geolocation) {
-    atualizarStatusGPS('erro', 'Este navegador não suporta geolocalização.');
-    return;
-  }
-  atualizarStatusGPS('buscando', 'Ativando localização em tempo real...');
-
-  watchId = navigator.geolocation.watchPosition(
+  if (!navigator.geolocation) { atualizarStatusGPSRegistro('Geolocalização não suportada.'); return; }
+  navigator.geolocation.watchPosition(
     pos => {
       trackingAtivo = true;
       posicaoAtual = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
-      atualizarStatusGPS('ativo', 'GPS ativo · precisão ' + Math.round(pos.coords.accuracy) + 'm');
-      atualizarPosicaoNoMapa();
       atualizarStatusGPSRegistro();
+      atualizarPosicaoNoMapa();
     },
     err => {
       trackingAtivo = false;
       let txt = 'Erro ao obter localização.';
-      if (err.code === 1) txt = 'Permissão de localização negada. Ative nas configurações do navegador.';
-      if (err.code === 2) txt = 'Localização indisponível no momento.';
-      if (err.code === 3) txt = 'Tempo esgotado buscando localização.';
-      atualizarStatusGPS('erro', txt);
+      if (err.code === 1) txt = 'Permissão negada. Ative localização nas configurações.';
+      atualizarStatusGPSRegistro(txt);
     },
     { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
   );
 }
-
-function atualizarStatusGPS(estado, texto) {
-  const dot = document.getElementById('gps-status-dot');
-  const txt = document.getElementById('gps-status-text');
-  dot.className = 'dot ' + (estado === 'ativo' ? 'ativo' : estado === 'buscando' ? 'buscando' : estado === 'erro' ? 'erro' : '');
-  txt.textContent = texto;
-}
-
-function atualizarStatusGPSRegistro() {
+function atualizarStatusGPSRegistro(erro) {
   const dot = document.getElementById('gps-inline-dot');
   const txt = document.getElementById('gps-inline-text');
+  if (erro) { dot.className = 'gps-inline-dot'; txt.textContent = erro; return; }
   if (posicaoAtual) {
     dot.className = 'gps-inline-dot ok';
     txt.textContent = '✓ Localização atual: ' + posicaoAtual.lat.toFixed(5) + ', ' + posicaoAtual.lng.toFixed(5);
-  } else {
-    dot.className = 'gps-inline-dot';
-    txt.textContent = 'GPS desligado — ative no topo do app';
   }
 }
-
 function atualizarPosicaoNoMapa() {
   if (!map || !posicaoAtual) return;
   const ll = [posicaoAtual.lat, posicaoAtual.lng];
@@ -425,13 +459,11 @@ function initMap() {
   if (posicaoAtual) atualizarPosicaoNoMapa();
   setTimeout(() => map.invalidateSize(), 200);
 }
-
 function centralizarMapa() {
   if (!map) return;
   if (posicaoAtual) map.setView([posicaoAtual.lat, posicaoAtual.lng], 17);
   else map.setView(CENTER, 16);
 }
-
 function filtrarMapa() {
   if (!markersLayer) return;
   markersLayer.clearLayers();
@@ -442,12 +474,10 @@ function filtrarMapa() {
   if (cj) filtrado = filtrado.filter(r => r.cj === cj);
   filtrado.forEach(r => adicionarPin(r));
 }
-
 function corPorQuadra(q) {
   const cores = { 'QNO 16':'#1D9E75','QNO 17':'#378ADD','QNO 18':'#D85A30','QNO 19':'#BA7517','QNO 20':'#D4537E' };
   return cores[q] || '#1D9E75';
 }
-
 function adicionarPin(r) {
   if (!r.lat || !map) return;
   const cor = corPorQuadra(r.quadra);
@@ -479,43 +509,44 @@ function removerFoto() {
   document.getElementById('foto-input').value = '';
 }
 
-// ─── Salvar ───────────────────────────────────────────────────────────────────
+// ─── Salvar (escreve no Firestore) ────────────────────────────────────────────
 async function salvar() {
+  if (!modoAdmin) { showMsg('Modo administrador necessário.', 'err'); return; }
+  if (!fb) { showMsg('Ainda conectando à nuvem, aguarde...', 'err'); return; }
+
   const quadra = document.getElementById('reg-quadra').value;
   const cj = document.getElementById('reg-cj').value;
   const casa = document.getElementById('reg-casa').value;
   const obs = document.getElementById('reg-obs').value.trim();
 
-  if (!quadra || !cj || !casa) {
-    showMsg('Preencha quadra, conjunto e número da casa.', 'err'); return;
-  }
-  if (!posicaoAtual) {
-    showMsg('Ative o GPS no topo do app antes de salvar.', 'err'); return;
-  }
+  if (!quadra || !cj || !casa) { showMsg('Preencha quadra, conjunto e número da casa.', 'err'); return; }
+  if (!posicaoAtual) { showMsg('Ative o GPS antes de salvar.', 'err'); return; }
 
-  const existente = registros.findIndex(r => r.quadra === quadra && r.cj === cj && r.casa === casa);
+  const btn = document.getElementById('btn-salvar');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+
+  const docId = (quadra + '_' + cj + '_' + casa).replace(/\s+/g, '');
   const reg = {
-    id: existente >= 0 ? registros[existente].id : Date.now(),
     quadra, cj, casa, obs,
-    foto: fotoBase64 || (existente >= 0 ? registros[existente].foto : null),
+    foto: fotoBase64 || null,
     lat: posicaoAtual.lat,
     lng: posicaoAtual.lng,
     ts: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})
   };
 
-  await dbPut(reg);
-  if (existente >= 0) registros[existente] = reg;
-  else registros.push(reg);
-  atualizarStats();
-  if (mapReady) adicionarPin(reg);
-
-  showMsg(existente >= 0 ? '✓ Registro atualizado!' : '✓ ' + quadra + ' · Cj. ' + cj + ' · Casa ' + casa + ' salvo!', 'ok');
-
-  document.getElementById('reg-quadra').value = '';
-  document.getElementById('reg-cj').innerHTML = '<option value="">...</option>';
-  document.getElementById('reg-casa').value = '';
-  document.getElementById('reg-obs').value = '';
-  removerFoto();
+  try {
+    await fb.setDoc(fb.doc(fb.dbFs, "registros", docId), reg);
+    showMsg('✓ ' + quadra + ' · Cj. ' + cj + ' · Casa ' + casa + ' salvo na nuvem!', 'ok');
+    document.getElementById('reg-quadra').value = '';
+    document.getElementById('reg-cj').innerHTML = '<option value="">...</option>';
+    document.getElementById('reg-casa').value = '';
+    document.getElementById('reg-obs').value = '';
+    removerFoto();
+  } catch (e) {
+    console.error(e);
+    showMsg('Erro ao salvar. Verifique sua internet.', 'err');
+  }
+  btn.disabled = false; btn.textContent = '💾 Salvar registro';
 }
 
 function showMsg(text, type) {
@@ -528,12 +559,10 @@ function showMsg(text, type) {
 
 // ─── Deletar ──────────────────────────────────────────────────────────────────
 async function deletar(id) {
-  if (!confirm('Excluir este registro?')) return;
-  await dbDelete(id);
-  registros = registros.filter(r => r.id !== id);
-  atualizarStats();
-  filtrarMapa();
-  renderLista();
+  if (!modoAdmin) { abrirLogin(); return; }
+  if (!confirm('Excluir este registro da nuvem?')) return;
+  try { await fb.deleteDoc(fb.doc(fb.dbFs, "registros", id)); }
+  catch (e) { alert('Erro ao excluir. Tente novamente.'); }
 }
 
 // ─── Lista ────────────────────────────────────────────────────────────────────
@@ -545,7 +574,7 @@ function renderLista() {
     : [...registros];
 
   if (!filtrado.length) {
-    div.innerHTML = '<div class="empty"><span class="icon">' + (busca ? '🔍' : '📭') + '</span>' + (busca ? 'Nenhum resultado para "' + busca + '"' : 'Nenhum registro ainda.<br>Use a aba Registrar durante as entregas.') + '</div>';
+    div.innerHTML = '<div class="empty"><span class="icon">' + (busca ? '🔍' : '📭') + '</span>' + (busca ? 'Nenhum resultado para "' + busca + '"' : 'Nenhum registro ainda na nuvem.') + '</div>';
     return;
   }
 
@@ -562,28 +591,26 @@ function renderLista() {
     '<div class="entry-obs">' + (r.obs || 'Sem observação') + '</div>' +
     '<div class="entry-ts">' + (r.ts || '') + '</div>' +
     '</div>' +
-    '<button class="delete-btn" onclick="deletar(' + r.id + ')">🗑</button>' +
+    (modoAdmin ? '<button class="delete-btn" onclick="deletar(\\''+r.id+'\\')">🗑</button>' : '') +
     '</div>'
   ).join('');
 }
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
-async function init() {
-  await initDB();
-  registros = await dbGetAll();
-  atualizarStats();
-  initMap();
-  atualizarStatusGPS('', 'GPS desligado — toque para ativar localização em tempo real');
+// expõe pro escopo global (onclick inline)
+window.showTab = showTab;
+window.atualizarConjuntos = atualizarConjuntos;
+window.atualizarFiltroConjunto = atualizarFiltroConjunto;
+window.centralizarMapa = centralizarMapa;
+window.previewFoto = previewFoto;
+window.removerFoto = removerFoto;
+window.salvar = salvar;
+window.deletar = deletar;
+window.solicitarGPSContinuo = solicitarGPSContinuo;
+window.ativarTrackingReal = ativarTrackingReal;
+window.validarSenha = validarSenha;
+window.fecharLogin = fecharLogin;
 
-  // Se o navegador já tem permissão concedida anteriormente, ativa automaticamente
-  if (navigator.permissions) {
-    try {
-      const perm = await navigator.permissions.query({ name: 'geolocation' });
-      if (perm.state === 'granted') ativarTrackingReal();
-    } catch(e) {}
-  }
-}
-init();
+initMap();
 </script>
 </body>
 </html>
