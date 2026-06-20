@@ -261,7 +261,9 @@ const registrosCol = collection(dbFs, "registros");
 
 // Expõe para o restante do script (não-módulo) usar
 window.__firebase = { dbFs, registrosCol, doc, setDoc, deleteDoc, onSnapshot, query };
+window.__firebaseReady = true;
 window.dispatchEvent(new Event('firebase-ready'));
+console.log('[Firebase] Inicializado com sucesso, projeto:', firebaseConfig.projectId);
 </script>
 <script>
 // ─── Senha simples de administrador (apenas trava de UI, não é segurança real) ─
@@ -288,15 +290,27 @@ let fb = null;
 let unsubscribe = null;
 
 // ─── Espera o Firebase carregar (módulo ES) ───────────────────────────────────
-window.addEventListener('firebase-ready', () => {
+function iniciarConexaoFirebase() {
   fb = window.__firebase;
   conectarFirestore();
-});
+}
+if (window.__firebaseReady) {
+  // O módulo já terminou de carregar antes deste script rodar
+  iniciarConexaoFirebase();
+} else {
+  window.addEventListener('firebase-ready', iniciarConexaoFirebase);
+}
 
 function conectarFirestore() {
   atualizarStatusSync('buscando', 'Conectando à nuvem...');
+
+  const timeoutAviso = setTimeout(() => {
+    atualizarStatusSync('erro', 'Demorando para conectar — verifique as regras do Firestore ou sua internet.');
+  }, 8000);
+
   try {
     unsubscribe = fb.onSnapshot(fb.query(fb.registrosCol), (snapshot) => {
+      clearTimeout(timeoutAviso);
       registros = [];
       snapshot.forEach(docSnap => {
         registros.push({ id: docSnap.id, ...docSnap.data() });
@@ -306,11 +320,13 @@ function conectarFirestore() {
       renderLista();
       atualizarStatusSync('ok', registros.length + ' endereços sincronizados · toque para reativar GPS');
     }, (err) => {
-      console.error(err);
-      atualizarStatusSync('erro', 'Erro ao conectar à nuvem. Verifique sua internet.');
+      clearTimeout(timeoutAviso);
+      console.error('[Firestore] Erro de leitura:', err.code, err.message);
+      atualizarStatusSync('erro', 'Erro: ' + err.code + ' — toque para detalhes');
     });
   } catch (e) {
-    console.error(e);
+    clearTimeout(timeoutAviso);
+    console.error('[Firestore] Erro ao iniciar listener:', e);
     atualizarStatusSync('erro', 'Erro ao conectar ao banco de dados.');
   }
 }
