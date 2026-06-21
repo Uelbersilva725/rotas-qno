@@ -619,9 +619,15 @@ function showMsg(text, type) {
 // ─── Deletar ──────────────────────────────────────────────────────────────────
 async function deletar(id) {
   if (!modoAdmin) { abrirLogin(); return; }
+  if (!fb) { alert('Ainda conectando à nuvem, aguarde um instante e tente de novo.'); return; }
+  if (!id) { console.error('[Deletar] id vazio/indefinido'); alert('Erro: registro sem identificador.'); return; }
   if (!confirm('Excluir este registro da nuvem?')) return;
-  try { await fb.deleteDoc(fb.doc(fb.dbFs, "registros", id)); }
-  catch (e) { alert('Erro ao excluir. Tente novamente.'); }
+  try {
+    await fb.deleteDoc(fb.doc(fb.dbFs, "registros", id));
+  } catch (e) {
+    console.error('[Deletar] Erro:', e.code || e.message || e);
+    alert('Erro ao excluir: ' + (e.code || e.message || 'desconhecido'));
+  }
 }
 
 // ─── Lista ────────────────────────────────────────────────────────────────────
