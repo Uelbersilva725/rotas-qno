@@ -420,8 +420,10 @@ function atualizarFiltroConjunto() {
 }
 
 // ─── GPS contínuo ─────────────────────────────────────────────────────────────
+let primeiraLocalizacao = true;
+
 function solicitarGPSContinuo() {
-  if (trackingAtivo || !modoAdmin) return;
+  if (trackingAtivo) return;
   document.getElementById('perm-modal-bg').style.display = 'flex';
 }
 function ativarTrackingReal() {
@@ -433,6 +435,10 @@ function ativarTrackingReal() {
       posicaoAtual = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
       atualizarStatusGPSRegistro();
       atualizarPosicaoNoMapa();
+      if (primeiraLocalizacao && map) {
+        map.setView([posicaoAtual.lat, posicaoAtual.lng], 17);
+        primeiraLocalizacao = false;
+      }
     },
     err => {
       trackingAtivo = false;
@@ -670,6 +676,7 @@ window.fecharLogin = fecharLogin;
 function esperarLeafletEIniciar() {
   if (typeof L !== 'undefined') {
     initMap();
+    solicitarGPSContinuo();
   } else {
     setTimeout(esperarLeafletEIniciar, 100);
   }
