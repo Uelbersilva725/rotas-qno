@@ -121,6 +121,7 @@
 
   <div class="tab-bar">
     <button class="tab active" onclick="showTab('mapa')">🗺 Mapa</button>
+    <button class="tab" onclick="showTab('busca')">🔍 Buscar</button>
     <button class="tab" id="tab-registrar" onclick="showTab('registrar')">📍 Registrar</button>
     <button class="tab" onclick="showTab('lista')">📋 Registros</button>
   </div>
@@ -151,6 +152,61 @@
     </div>
   </div>
 
+  <!-- BUSCA -->
+  <div id="screen-busca" class="screen">
+    <div class="reg-screen">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Quadra</label>
+          <select id="busca-quadra" onchange="atualizarConjuntos('busca-quadra','busca-cj'); buscarEndereco()">
+            <option value="">...</option>
+            <option>QNO 16</option>
+            <option>QNO 17</option>
+            <option>QNO 18</option>
+            <option>QNO 19</option>
+            <option>QNO 20</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Conjunto</label>
+          <select id="busca-cj" onchange="buscarEndereco()">
+            <option value="">...</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Número da casa</label>
+        <input type="number" id="busca-casa" placeholder="Ex: 15" min="1" max="200" oninput="buscarEndereco()" />
+      </div>
+
+      <div id="busca-resultado" style="display:none;">
+        <div style="border-top: 0.5px solid #eee; margin: 4px 0 14px;"></div>
+
+        <div id="busca-sem-resultado" style="display:none; text-align:center; padding:20px; color:#aaa; font-size:13px;">
+          <div style="font-size:32px; margin-bottom:8px;">📭</div>
+          Endereço ainda não cadastrado.<br>Registre durante a próxima entrega.
+        </div>
+
+        <div id="busca-com-resultado" style="display:none;">
+          <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:12px;">
+            <div id="busca-foto-container" style="flex-shrink:0; display:none;">
+              <img id="busca-foto" style="width:90px; height:90px; object-fit:cover; border-radius:10px; border:0.5px solid #eee;" />
+            </div>
+            <div style="flex:1;">
+              <div id="busca-addr" style="font-size:14px; font-weight:600; color:#111; margin-bottom:4px;"></div>
+              <div id="busca-obs" style="font-size:12px; color:#666; line-height:1.5;"></div>
+              <div id="busca-gps-info" style="font-size:11px; color:#1D9E75; margin-top:6px;"></div>
+              <div id="busca-ts" style="font-size:10px; color:#bbb; margin-top:4px;"></div>
+            </div>
+          </div>
+          <button class="save-btn" id="busca-ver-mapa-btn" onclick="verNoMapa()" style="font-size:13px; padding:10px;">
+            🗺 Ver no mapa
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- REGISTRAR -->
   <div id="screen-registrar" class="screen">
     <div class="reg-screen">
@@ -162,7 +218,7 @@
       <div class="form-row">
         <div class="form-group">
           <label>Quadra</label>
-          <select id="reg-quadra" onchange="atualizarConjuntos(null,'reg-cj')">
+          <select id="reg-quadra" onchange="atualizarConjuntos('reg-quadra','reg-cj')">
             <option value="">...</option>
             <option>QNO 16</option>
             <option>QNO 17</option>
@@ -382,20 +438,23 @@ function validarSenha() {
 }
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
-function showTab(t) {
+function showTab(t, programatico) {
   if (t === 'registrar' && !modoAdmin) { abrirLogin(); return; }
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
   document.getElementById('screen-' + t).classList.add('active');
-  event.target.classList.add('active');
+  if (!programatico && event && event.target) event.target.classList.add('active');
+  else document.querySelectorAll('.tab').forEach(b => { if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + t + "'")) b.classList.add('active'); });
   if (t === 'mapa') { if (!mapReady) esperarLeafletEIniciar(); else { setTimeout(() => map.invalidateSize(), 100); filtrarMapa(); } }
   if (t === 'lista') renderLista();
+  if (t === 'busca') buscarEndereco();
 }
 
 // ─── Conjuntos dinâmicos ──────────────────────────────────────────────────────
-function atualizarConjuntos(quadra, selectId) {
-  const q = quadra || document.getElementById('reg-quadra').value;
-  const sel = document.getElementById(selectId);
+function atualizarConjuntos(quadraSelectId, conjuntoSelectId) {
+  const quadraId = quadraSelectId || 'reg-quadra';
+  const q = document.getElementById(quadraId).value;
+  const sel = document.getElementById(conjuntoSelectId);
   sel.innerHTML = '<option value="">...</option>';
   if (q && CONJUNTOS[q]) {
     CONJUNTOS[q].forEach(c => {
@@ -404,6 +463,72 @@ function atualizarConjuntos(quadra, selectId) {
       sel.appendChild(opt);
     });
   }
+}
+
+// ─── Busca de endereço ────────────────────────────────────────────────────────
+let resultadoBusca = null;
+
+function buscarEndereco() {
+  const quadra = document.getElementById('busca-quadra').value;
+  const cj = document.getElementById('busca-cj').value;
+  const casa = document.getElementById('busca-casa').value;
+  const divResultado = document.getElementById('busca-resultado');
+  const divSem = document.getElementById('busca-sem-resultado');
+  const divCom = document.getElementById('busca-com-resultado');
+
+  if (!quadra || !cj || !casa) { divResultado.style.display = 'none'; return; }
+
+  const docId = (quadra + '_' + cj + '_' + casa).replace(/\s+/g, '');
+  const reg = registros.find(r => r.id === docId);
+  divResultado.style.display = 'block';
+  resultadoBusca = reg || null;
+
+  if (!reg) {
+    divSem.style.display = 'block';
+    divCom.style.display = 'none';
+    return;
+  }
+
+  divSem.style.display = 'none';
+  divCom.style.display = 'block';
+  document.getElementById('busca-addr').textContent = quadra + ' · Cj. ' + cj + ' · Casa ' + casa;
+  document.getElementById('busca-obs').textContent = reg.obs || 'Sem observação';
+  document.getElementById('busca-ts').textContent = reg.ts ? 'Registrado em ' + reg.ts : '';
+
+  const fotoEl = document.getElementById('busca-foto');
+  const fotoContainer = document.getElementById('busca-foto-container');
+  if (reg.foto) {
+    fotoEl.src = reg.foto;
+    fotoContainer.style.display = 'block';
+  } else {
+    fotoContainer.style.display = 'none';
+  }
+
+  const gpsEl = document.getElementById('busca-gps-info');
+  if (reg.lat) {
+    gpsEl.textContent = '📍 GPS disponível — toque em "Ver no mapa"';
+    document.getElementById('busca-ver-mapa-btn').style.display = 'block';
+  } else {
+    gpsEl.textContent = '⚠️ Sem localização GPS registrada';
+    document.getElementById('busca-ver-mapa-btn').style.display = 'none';
+  }
+}
+
+function verNoMapa() {
+  if (!resultadoBusca || !resultadoBusca.lat) return;
+  showTab('mapa', true);
+  setTimeout(() => {
+    if (map) {
+      map.setView([resultadoBusca.lat, resultadoBusca.lng], 19);
+      markersLayer.eachLayer(layer => {
+        if (layer.getLatLng && 
+            Math.abs(layer.getLatLng().lat - resultadoBusca.lat) < 0.00001 &&
+            Math.abs(layer.getLatLng().lng - resultadoBusca.lng) < 0.00001) {
+          layer.openPopup();
+        }
+      });
+    }
+  }, 300);
 }
 function atualizarFiltroConjunto() {
   const q = document.getElementById('filtro-quadra').value;
@@ -674,6 +799,8 @@ window.previewFoto = previewFoto;
 window.removerFoto = removerFoto;
 window.salvar = salvar;
 window.deletar = deletar;
+window.buscarEndereco = buscarEndereco;
+window.verNoMapa = verNoMapa;
 window.solicitarGPSContinuo = solicitarGPSContinuo;
 window.ativarTrackingReal = ativarTrackingReal;
 window.validarSenha = validarSenha;
