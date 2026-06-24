@@ -1,117 +1,149 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="mobile-web-app-capable" content="yes" />
-<meta name="theme-color" content="#1D9E75" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#1D9E75"/>
 <title>Rotas QNO</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+#app { display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; background: #fff; }
 
-  #app { display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; background: #fff; box-shadow: 0 0 20px rgba(0,0,0,0.08); }
+/* Header */
+.header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #fff; border-bottom: 0.5px solid #e5e5e5; }
+.header-icon { width: 34px; height: 34px; background: #1D9E75; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.header-title { font-size: 15px; font-weight: 600; color: #111; }
+.header-sub { font-size: 11px; color: #888; }
+.header-mode { margin-left: auto; font-size: 10px; padding: 4px 9px; border-radius: 20px; font-weight: 600; }
+.header-mode.admin { background: #E1F5EE; color: #0F6E56; }
+.header-mode.leitor { background: #EEEDFE; color: #3C3489; }
 
-  .header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #fff; border-bottom: 0.5px solid #e5e5e5; }
-  .header-icon { width: 34px; height: 34px; background: #1D9E75; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
-  .header-title { font-size: 15px; font-weight: 600; color: #111; }
-  .header-sub { font-size: 11px; color: #888; }
-  .header-mode { margin-left: auto; font-size: 10px; padding: 4px 9px; border-radius: 20px; font-weight: 600; }
-  .header-mode.admin { background: #E1F5EE; color: #0F6E56; }
-  .header-mode.leitor { background: #EEEDFE; color: #3C3489; }
+/* Sync bar */
+.sync-bar { display: flex; align-items: center; gap: 8px; padding: 7px 14px; font-size: 11.5px; background: #f9f9f9; border-bottom: 0.5px solid #e5e5e5; }
+.sync-bar .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: #ccc; }
+.sync-bar .dot.ok { background: #1D9E75; }
+.sync-bar .dot.buscando { background: #EF9F27; animation: pulse 1s infinite; }
+.sync-bar .dot.erro { background: #E24B4A; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+.sync-bar .txt { color: #666; flex: 1; cursor: pointer; }
 
-  .sync-bar { display: flex; align-items: center; gap: 8px; padding: 7px 14px; font-size: 11.5px; background: #f9f9f9; border-bottom: 0.5px solid #e5e5e5; }
-  .sync-bar .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: #ccc; }
-  .sync-bar .dot.ok { background: #1D9E75; }
-  .sync-bar .dot.buscando { background: #EF9F27; animation: pulse 1s infinite; }
-  .sync-bar .dot.erro { background: #E24B4A; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
-  .sync-bar .txt { color: #666; flex: 1; cursor: pointer; }
+/* Tabs */
+.tab-bar { display: flex; gap: 4px; padding: 8px; background: #fff; border-bottom: 0.5px solid #e5e5e5; }
+.tab { flex: 1; padding: 8px 4px; font-size: 11px; font-weight: 500; border: 0.5px solid #ddd; background: #f5f5f5; cursor: pointer; border-radius: 8px; color: #666; }
+.tab.active { background: #1D9E75; color: #fff; border-color: #0F6E56; }
 
-  .tab-bar { display: flex; gap: 4px; padding: 8px; background: #fff; border-bottom: 0.5px solid #e5e5e5; }
-  .tab { flex: 1; padding: 8px 4px; font-size: 12px; font-weight: 500; border: 0.5px solid #ddd; background: #f5f5f5; cursor: pointer; border-radius: 8px; color: #666; }
-  .tab.active { background: #1D9E75; color: #fff; border-color: #0F6E56; }
-  .tab:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Screens */
+.screen { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
+.screen.active { display: flex; }
 
-  .screen { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
-  .screen.active { display: flex; }
+/* Mapa principal */
+#map { flex: 1; z-index: 0; min-height: 0; }
+.stats-bar { display: flex; padding: 8px; background: #f9f9f9; border-bottom: 0.5px solid #e5e5e5; gap: 6px; }
+.stat { flex: 1; text-align: center; background: #fff; border-radius: 8px; padding: 6px 4px; border: 0.5px solid #eee; }
+.stat .num { font-size: 20px; font-weight: 600; color: #1D9E75; }
+.stat .lbl { font-size: 10px; color: #888; margin-top: 1px; }
+.map-toolbar { display: flex; gap: 6px; padding: 8px; background: #fff; border-bottom: 0.5px solid #e5e5e5; }
+.map-toolbar select { flex: 1; font-size: 12px; padding: 7px 8px; border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; }
 
-  #map { flex: 1; z-index: 0; min-height: 0; }
-  .stats-bar { display: flex; padding: 8px; background: #f9f9f9; border-bottom: 0.5px solid #e5e5e5; gap: 6px; }
-  .stat { flex: 1; text-align: center; background: #fff; border-radius: 8px; padding: 6px 4px; border: 0.5px solid #eee; }
-  .stat .num { font-size: 20px; font-weight: 600; color: #1D9E75; }
-  .stat .lbl { font-size: 10px; color: #888; margin-top: 1px; }
-  .map-toolbar { display: flex; gap: 6px; padding: 8px; background: #fff; border-bottom: 0.5px solid #e5e5e5; }
-  .map-toolbar select { flex: 1; font-size: 12px; padding: 7px 8px; border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; }
-  .btn { padding: 7px 12px; font-size: 12px; font-weight: 500; border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; cursor: pointer; white-space: nowrap; }
-  .btn-green { background: #1D9E75; color: #fff; border-color: #0F6E56; }
+/* Botões */
+.btn { padding: 7px 12px; font-size: 12px; font-weight: 500; border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; cursor: pointer; white-space: nowrap; }
+.btn-green { background: #1D9E75; color: #fff; border-color: #0F6E56; }
+.btn-red { background: #E24B4A; color: #fff; border-color: #A32D2D; }
+.save-btn { width: 100%; padding: 13px; font-size: 15px; font-weight: 600; background: #1D9E75; color: #fff; border: none; border-radius: 10px; cursor: pointer; margin-top: 4px; }
+.save-btn:active { transform: scale(0.98); }
+.save-btn:disabled { background: #ccc; cursor: not-allowed; }
 
-  .reg-screen { padding: 12px; overflow-y: auto; flex: 1; }
-  .form-group { margin-bottom: 12px; }
-  .form-group label { font-size: 12px; color: #666; display: block; margin-bottom: 4px; font-weight: 500; }
-  .form-group input, .form-group select, .form-group textarea {
-    width: 100%; font-size: 14px; padding: 10px 12px;
-    border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111;
-    -webkit-appearance: none; appearance: none;
-  }
-  .form-group textarea { height: 70px; resize: none; }
-  .form-row { display: flex; gap: 10px; }
-  .form-row .form-group { flex: 1; }
-  .photo-area { border: 1.5px dashed #ccc; border-radius: 10px; padding: 20px; text-align: center; font-size: 13px; color: #888; cursor: pointer; background: #fafafa; }
-  .photo-area .icon { font-size: 28px; display: block; margin-bottom: 6px; }
-  .gps-inline-box { background: #f5f5f5; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #666; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; border: 0.5px solid #e5e5e5; }
-  .gps-inline-dot { width: 9px; height: 9px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
-  .gps-inline-dot.ok { background: #1D9E75; }
-  .gps-inline-dot.loading { background: #EF9F27; animation: pulse 1s infinite; }
+/* Formulários */
+.reg-screen { padding: 12px; overflow-y: auto; flex: 1; }
+.form-group { margin-bottom: 12px; }
+.form-group label { font-size: 12px; color: #666; display: block; margin-bottom: 4px; font-weight: 500; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; font-size: 14px; padding: 10px 12px;
+  border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111;
+  -webkit-appearance: none; appearance: none;
+}
+.form-group textarea { height: 70px; resize: none; }
+.form-row { display: flex; gap: 10px; }
+.form-row .form-group { flex: 1; }
 
-  .mini-mapa-hint { font-size: 11px; color: #888; margin-bottom: 5px; text-align: center; }
-  #mini-mapa { width: 100%; height: 180px; border-radius: 10px; border: 0.5px solid #ddd; overflow: hidden; margin-bottom: 6px; background: #f0f0f0; }
-  #mini-mapa-container { margin-bottom: 12px; display: none; }
-  .mini-mapa-reset { width: 100%; padding: 7px; font-size: 12px; background: #f5f5f5; border: 0.5px solid #ddd; border-radius: 8px; cursor: pointer; color: #555; margin-bottom: 4px; }
-  .pin-coords { font-size: 10px; color: #aaa; text-align: center; margin-bottom: 8px; }
+/* Foto */
+.photo-area { border: 1.5px dashed #ccc; border-radius: 10px; padding: 18px; text-align: center; font-size: 13px; color: #888; cursor: pointer; background: #fafafa; }
+.photo-area .icon { font-size: 26px; display: block; margin-bottom: 5px; }
+#foto-preview { margin-top: 8px; display: none; position: relative; }
+#foto-preview img { width: 100%; border-radius: 10px; border: 0.5px solid #eee; }
+#foto-remove { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 50%; width: 26px; height: 26px; font-size: 14px; cursor: pointer; }
 
-  #mini-mapa-container { display: none; margin-bottom: 14px; border-radius: 10px; overflow: hidden; border: 1.5px solid #1D9E75; position: relative; }
-  #mini-mapa { height: 180px; }
-  .mini-mapa-hint { background: rgba(29,158,117,0.9); color: white; font-size: 11px; text-align: center; padding: 5px; }
-  .mini-mapa-reset { position: absolute; top: 8px; right: 8px; z-index: 999; background: white; border: 0.5px solid #ddd; border-radius: 6px; padding: 4px 8px; font-size: 11px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
-  .save-btn { width: 100%; padding: 13px; font-size: 15px; font-weight: 600; background: #1D9E75; color: #fff; border: none; border-radius: 10px; cursor: pointer; margin-top: 4px; }
-  .save-btn:active { transform: scale(0.98); }
-  .save-btn:disabled { background: #ccc; cursor: not-allowed; }
-  .msg { margin-top: 10px; font-size: 13px; text-align: center; padding: 8px; border-radius: 8px; display: none; }
-  .msg.ok { background: #E1F5EE; color: #0F6E56; }
-  .msg.err { background: #FCEBEB; color: #A32D2D; }
+/* GPS status */
+.gps-inline-box { background: #f5f5f5; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #666; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; border: 0.5px solid #e5e5e5; }
+.gps-dot-sm { width: 9px; height: 9px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+.gps-dot-sm.ok { background: #1D9E75; }
 
-  .list-toolbar { padding: 8px; border-bottom: 0.5px solid #e5e5e5; background: #fff; }
-  .list-toolbar input { width: 100%; font-size: 13px; padding: 8px 12px; border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; }
-  .list-screen { padding: 8px; overflow-y: auto; flex: 1; }
-  .entry-card { background: #fff; border: 0.5px solid #eee; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; display: flex; gap: 10px; align-items: center; }
-  .entry-thumb { width: 54px; height: 54px; border-radius: 8px; object-fit: cover; border: 0.5px solid #eee; flex-shrink: 0; }
-  .entry-thumb-empty { width: 54px; height: 54px; border-radius: 8px; background: #f5f5f5; border: 0.5px solid #eee; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
-  .entry-info { flex: 1; min-width: 0; }
-  .entry-addr { font-size: 13px; font-weight: 600; color: #111; }
-  .entry-obs { font-size: 11px; color: #888; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .entry-ts { font-size: 10px; color: #bbb; margin-top: 3px; }
-  .badge-gps { font-size: 10px; padding: 1px 6px; border-radius: 20px; background: #E1F5EE; color: #0F6E56; margin-left: 4px; font-weight: 500; }
-  .delete-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #ccc; padding: 6px; flex-shrink: 0; }
-  .empty { text-align: center; padding: 50px 20px; color: #aaa; font-size: 13px; line-height: 1.8; }
-  .empty .icon { font-size: 40px; display: block; margin-bottom: 10px; }
+/* Mensagens */
+.msg { margin-top: 10px; font-size: 13px; text-align: center; padding: 8px; border-radius: 8px; display: none; }
+.msg.ok { background: #E1F5EE; color: #0F6E56; }
+.msg.err { background: #FCEBEB; color: #A32D2D; }
 
-  #foto-preview { margin-top: 8px; display: none; position: relative; }
-  #foto-preview img { width: 100%; border-radius: 10px; border: 0.5px solid #eee; }
-  #foto-remove { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 50%; width: 26px; height: 26px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+/* Lista */
+.list-toolbar { padding: 8px; border-bottom: 0.5px solid #e5e5e5; background: #fff; }
+.list-toolbar input { width: 100%; font-size: 13px; padding: 8px 12px; border: 0.5px solid #ddd; border-radius: 8px; background: #fff; color: #111; }
+.list-screen { padding: 8px; overflow-y: auto; flex: 1; }
+.entry-card { background: #fff; border: 0.5px solid #eee; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; display: flex; gap: 10px; align-items: center; }
+.entry-thumb { width: 54px; height: 54px; border-radius: 8px; object-fit: cover; border: 0.5px solid #eee; flex-shrink: 0; }
+.entry-thumb-empty { width: 54px; height: 54px; border-radius: 8px; background: #f5f5f5; border: 0.5px solid #eee; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.entry-info { flex: 1; min-width: 0; }
+.entry-addr { font-size: 13px; font-weight: 600; color: #111; }
+.entry-obs { font-size: 11px; color: #888; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entry-ts { font-size: 10px; color: #bbb; margin-top: 3px; }
+.badge-gps { font-size: 10px; padding: 1px 6px; border-radius: 20px; background: #E1F5EE; color: #0F6E56; margin-left: 4px; font-weight: 500; }
+.delete-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #ccc; padding: 6px; flex-shrink: 0; }
+.empty { text-align: center; padding: 40px 20px; color: #aaa; font-size: 13px; line-height: 1.8; }
+.empty .icon { font-size: 36px; display: block; margin-bottom: 10px; }
 
-  .loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; font-size: 13px; color: #666; gap: 8px; }
+/* Loading */
+.loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; font-size: 13px; color: #666; gap: 8px; }
 
-  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
-  .modal { background: #fff; border-radius: 16px; padding: 22px; max-width: 360px; text-align: center; }
-  .modal .icon { font-size: 36px; margin-bottom: 10px; }
-  .modal h3 { font-size: 16px; margin-bottom: 8px; color: #111; }
-  .modal p { font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 16px; }
-  .modal input { width: 100%; padding: 11px; border: 0.5px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 10px; }
-  .modal button { width: 100%; padding: 12px; background: #1D9E75; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
-  .modal .link-btn { background: none; color: #888; font-weight: 400; font-size: 12px; margin-top: 8px; padding: 6px; }
+/* Modais */
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
+.modal { background: #fff; border-radius: 16px; padding: 22px; max-width: 360px; width: 100%; text-align: center; }
+.modal .icon { font-size: 32px; margin-bottom: 10px; }
+.modal h3 { font-size: 16px; margin-bottom: 8px; color: #111; }
+.modal p { font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 16px; }
+.modal input { width: 100%; padding: 11px; border: 0.5px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 10px; }
+.modal button { width: 100%; padding: 12px; background: #1D9E75; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.modal .link-btn { background: none; color: #888; font-weight: 400; font-size: 12px; margin-top: 8px; padding: 6px; }
+
+/* Modal de confirmação de pin */
+#pin-modal-bg { z-index: 3000; }
+#pin-modal-bg .modal { max-width: 420px; padding: 16px; text-align: left; }
+.pin-modal-title { font-size: 14px; font-weight: 600; color: #111; margin-bottom: 4px; }
+.pin-modal-sub { font-size: 12px; color: #888; margin-bottom: 10px; }
+#pin-mapa { width: 100%; height: 220px; border-radius: 10px; border: 0.5px solid #ddd; overflow: hidden; margin-bottom: 10px; }
+/* D-Pad */
+.dpad { display: grid; grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(3, 44px); gap: 4px; justify-content: center; margin: 10px auto; }
+.dpad-btn { width: 44px; height: 44px; background: #f5f5f5; border: 0.5px solid #ddd; border-radius: 8px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; }
+.dpad-btn:active { background: #1D9E75; color: #fff; border-color: #0F6E56; transform: scale(0.93); }
+.dpad-btn.vazio { background: transparent; border: none; cursor: default; }
+.dpad-step { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; }
+.dpad-step label { font-size: 11px; color: #888; }
+.dpad-step select { font-size: 12px; padding: 5px 8px; border: 0.5px solid #ddd; border-radius: 6px; background: #fff; }
+.pin-coords-display { font-size: 10px; color: #aaa; text-align: center; margin-bottom: 10px; }
+.pin-modal-btns { display: flex; gap: 8px; }
+.pin-modal-btns button { flex: 1; padding: 11px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; border: 0.5px solid #ddd; }
+.pin-confirm-btn { background: #1D9E75; color: #fff; border-color: #0F6E56; }
+.pin-reset-btn { background: #f5f5f5; color: #555; }
+
+/* Seção de editar endereço */
+.edit-section { background: #f9f9f9; border-radius: 10px; padding: 12px; margin-bottom: 14px; border: 0.5px solid #e5e5e5; }
+.edit-section-title { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 8px; }
+.edit-result { margin-top: 8px; font-size: 12px; color: #1D9E75; display: none; }
+.edit-result.erro { color: #E24B4A; }
+
+/* Busca */
+.busca-result-card { background: #fff; border: 0.5px solid #eee; border-radius: 10px; padding: 12px; margin-top: 12px; }
 </style>
 </head>
 <body>
@@ -133,8 +165,8 @@
   <div class="tab-bar">
     <button class="tab active" onclick="showTab('mapa')">🗺 Mapa</button>
     <button class="tab" onclick="showTab('busca')">🔍 Buscar</button>
-    <button class="tab" id="tab-registrar" onclick="showTab('registrar')">📍 Registrar</button>
-    <button class="tab" onclick="showTab('lista')">📋 Registros</button>
+    <button class="tab" onclick="showTab('registrar')">📍 Registrar</button>
+    <button class="tab" onclick="showTab('lista')">📋 Lista</button>
   </div>
 
   <!-- MAPA -->
@@ -147,11 +179,7 @@
     <div class="map-toolbar">
       <select id="filtro-quadra" onchange="atualizarFiltroConjunto()">
         <option value="">Todas as quadras</option>
-        <option>QNO 16</option>
-        <option>QNO 17</option>
-        <option>QNO 18</option>
-        <option>QNO 19</option>
-        <option>QNO 20</option>
+        <option>QNO 16</option><option>QNO 17</option><option>QNO 18</option><option>QNO 19</option><option>QNO 20</option>
       </select>
       <select id="filtro-cj" onchange="filtrarMapa()">
         <option value="">Todos conjuntos</option>
@@ -169,50 +197,40 @@
       <div class="form-row">
         <div class="form-group">
           <label>Quadra</label>
-          <select id="busca-quadra" onchange="atualizarConjuntos('busca-quadra','busca-cj'); buscarEndereco()">
+          <select id="busca-quadra" onchange="atualizarSelCj('busca-quadra','busca-cj'); buscarEndereco()">
             <option value="">...</option>
-            <option>QNO 16</option>
-            <option>QNO 17</option>
-            <option>QNO 18</option>
-            <option>QNO 19</option>
-            <option>QNO 20</option>
+            <option>QNO 16</option><option>QNO 17</option><option>QNO 18</option><option>QNO 19</option><option>QNO 20</option>
           </select>
         </div>
         <div class="form-group">
           <label>Conjunto</label>
-          <select id="busca-cj" onchange="buscarEndereco()">
-            <option value="">...</option>
-          </select>
+          <select id="busca-cj" onchange="buscarEndereco()"><option value="">...</option></select>
         </div>
       </div>
       <div class="form-group">
         <label>Número da casa</label>
-        <input type="number" id="busca-casa" placeholder="Ex: 15" min="1" max="200" oninput="buscarEndereco()" />
+        <input type="number" id="busca-casa" placeholder="Ex: 15" min="1" max="200" oninput="buscarEndereco()"/>
       </div>
-
       <div id="busca-resultado" style="display:none;">
-        <div style="border-top: 0.5px solid #eee; margin: 4px 0 14px;"></div>
-
-        <div id="busca-sem-resultado" style="display:none; text-align:center; padding:20px; color:#aaa; font-size:13px;">
-          <div style="font-size:32px; margin-bottom:8px;">📭</div>
-          Endereço ainda não cadastrado.<br>Registre durante a próxima entrega.
+        <div id="busca-sem-resultado" style="display:none;" class="empty">
+          <span class="icon">📭</span>Endereço ainda não cadastrado.<br>Registre durante a próxima entrega.
         </div>
-
-        <div id="busca-com-resultado" style="display:none;">
-          <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:12px;">
+        <div id="busca-com-resultado" style="display:none;" class="busca-result-card">
+          <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:10px;">
             <div id="busca-foto-container" style="flex-shrink:0; display:none;">
-              <img id="busca-foto" style="width:90px; height:90px; object-fit:cover; border-radius:10px; border:0.5px solid #eee;" />
+              <img id="busca-foto" style="width:80px; height:80px; object-fit:cover; border-radius:8px; border:0.5px solid #eee;"/>
             </div>
             <div style="flex:1;">
               <div id="busca-addr" style="font-size:14px; font-weight:600; color:#111; margin-bottom:4px;"></div>
               <div id="busca-obs" style="font-size:12px; color:#666; line-height:1.5;"></div>
-              <div id="busca-gps-info" style="font-size:11px; color:#1D9E75; margin-top:6px;"></div>
-              <div id="busca-ts" style="font-size:10px; color:#bbb; margin-top:4px;"></div>
+              <div id="busca-gps-info" style="font-size:11px; color:#1D9E75; margin-top:5px;"></div>
+              <div id="busca-ts" style="font-size:10px; color:#bbb; margin-top:3px;"></div>
             </div>
           </div>
-          <button class="save-btn" id="busca-ver-mapa-btn" onclick="verNoMapa()" style="font-size:13px; padding:10px;">
-            🗺 Ver no mapa
-          </button>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-green" style="flex:1;" onclick="verNoMapa()">🗺 Ver no mapa</button>
+            <button class="btn" style="flex:1;" onclick="editarPinEncontrado()">📍 Editar pin</button>
+          </div>
         </div>
       </div>
     </div>
@@ -222,27 +240,46 @@
   <div id="screen-registrar" class="screen">
     <div class="reg-screen">
       <div class="gps-inline-box">
-        <div class="gps-inline-dot" id="gps-inline-dot"></div>
+        <div class="gps-dot-sm" id="gps-inline-dot"></div>
         <span id="gps-inline-text">Aguardando localização...</span>
       </div>
 
-      <div id="mini-mapa-container">
-        <div class="mini-mapa-hint">📍 Arraste o pin para ajustar a posição exata da casa</div>
-        <div id="mini-mapa"></div>
-        <div class="pin-coords" id="pin-coords">—</div>
-        <button class="mini-mapa-reset" onclick="resetarPinMiniMapa()">↺ Voltar para minha posição</button>
+      <!-- Editar endereço existente -->
+      <div class="edit-section">
+        <div class="edit-section-title">✏️ Editar endereço já cadastrado</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Quadra</label>
+            <select id="edit-quadra" onchange="atualizarSelCj('edit-quadra','edit-cj'); buscarParaEditar()">
+              <option value="">...</option>
+              <option>QNO 16</option><option>QNO 17</option><option>QNO 18</option><option>QNO 19</option><option>QNO 20</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Conjunto</label>
+            <select id="edit-cj" onchange="buscarParaEditar()"><option value="">...</option></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Casa nº</label>
+          <input type="number" id="edit-casa" placeholder="Ex: 15" min="1" max="200" oninput="buscarParaEditar()"/>
+        </div>
+        <div class="edit-result" id="edit-result"></div>
+        <button class="btn btn-green" id="btn-editar-pin" style="width:100%; display:none; margin-top:4px;" onclick="abrirEdicaoPin()">
+          📍 Reposicionar pin no mapa
+        </button>
       </div>
 
+      <div style="border-top: 0.5px solid #eee; margin: 4px 0 14px;"></div>
+
+      <!-- Formulário de novo registro -->
+      <div style="font-size:12px; font-weight:600; color:#555; margin-bottom:10px;">➕ Novo registro</div>
       <div class="form-row">
         <div class="form-group">
           <label>Quadra</label>
-          <select id="reg-quadra" onchange="atualizarConjuntos('reg-quadra','reg-cj')">
+          <select id="reg-quadra" onchange="atualizarSelCj('reg-quadra','reg-cj')">
             <option value="">...</option>
-            <option>QNO 16</option>
-            <option>QNO 17</option>
-            <option>QNO 18</option>
-            <option>QNO 19</option>
-            <option>QNO 20</option>
+            <option>QNO 16</option><option>QNO 17</option><option>QNO 18</option><option>QNO 19</option><option>QNO 20</option>
           </select>
         </div>
         <div class="form-group">
@@ -250,31 +287,26 @@
           <select id="reg-cj"><option value="">...</option></select>
         </div>
       </div>
-
       <div class="form-group">
         <label>Número da casa</label>
         <input type="number" id="reg-casa" placeholder="Ex: 15" min="1" max="200"/>
       </div>
-
       <div class="form-group">
         <label>Observação</label>
-        <textarea id="reg-obs" placeholder="Casa azul, portão preto, sem placa, referência..."></textarea>
+        <textarea id="reg-obs" placeholder="Casa azul, portão preto, sem placa..."></textarea>
       </div>
-
       <div class="form-group">
         <label>Foto da fachada</label>
         <div class="photo-area" onclick="document.getElementById('foto-input').click()">
-          <span class="icon">📷</span>
-          Tirar foto da fachada
+          <span class="icon">📷</span>Tirar foto da fachada
         </div>
         <div id="foto-preview">
-          <img id="foto-img" src="" alt="Fachada" />
+          <img id="foto-img" src="" alt="Fachada"/>
           <button id="foto-remove" onclick="removerFoto()">✕</button>
         </div>
-        <input type="file" id="foto-input" accept="image/*" capture="environment" style="display:none;" onchange="previewFoto(event)" />
+        <input type="file" id="foto-input" accept="image/*" capture="environment" style="display:none;" onchange="previewFoto(event)"/>
       </div>
-
-      <button class="save-btn" id="btn-salvar" onclick="salvar()">💾 Salvar registro</button>
+      <button class="save-btn" id="btn-salvar" onclick="iniciarSalvar()">💾 Salvar e confirmar posição</button>
       <div class="msg" id="save-msg"></div>
     </div>
   </div>
@@ -282,7 +314,7 @@
   <!-- LISTA -->
   <div id="screen-lista" class="screen">
     <div class="list-toolbar">
-      <input type="text" id="busca-lista" placeholder="🔍  Buscar por conjunto, casa ou observação..." oninput="renderLista()" />
+      <input type="text" id="busca-lista" placeholder="🔍  Buscar por conjunto, casa ou observação..." oninput="renderLista()"/>
     </div>
     <div class="list-screen" id="lista-content">
       <div class="empty"><span class="icon">📭</span>Carregando registros...</div>
@@ -290,35 +322,66 @@
   </div>
 </div>
 
-<!-- Modal de permissão GPS -->
+<!-- Modal GPS -->
 <div class="modal-bg" id="perm-modal-bg">
   <div class="modal">
     <div class="icon">📍</div>
     <h3>Ativar localização contínua</h3>
-    <p>Para o app sempre saber sua posição exata durante as entregas, permita o acesso à localização. No Android, escolha <b>"Permitir o tempo todo"</b> para funcionar mesmo com a tela bloqueada.</p>
+    <p>Para o app sempre saber sua posição exata durante as entregas, permita o acesso à localização. No Android, escolha <b>"Permitir o tempo todo"</b>.</p>
     <button onclick="ativarTrackingReal()">Ativar localização</button>
   </div>
 </div>
 
-<!-- Modal de login do administrador -->
+<!-- Modal Login -->
 <div class="modal-bg" id="login-modal-bg">
   <div class="modal">
     <div class="icon">🔑</div>
     <h3>Modo administrador</h3>
-    <p>Digite a senha para habilitar o cadastro de novos endereços. Sem a senha, o app funciona normalmente em modo consulta.</p>
-    <input type="password" id="admin-pass" placeholder="Senha" />
+    <p>Digite a senha para habilitar o cadastro e edição de endereços.</p>
+    <input type="password" id="admin-pass" placeholder="Senha"/>
     <button onclick="validarSenha()">Entrar</button>
     <button class="link-btn" onclick="fecharLogin()">Continuar apenas consultando</button>
+  </div>
+</div>
+
+<!-- Modal Confirmação de Pin -->
+<div class="modal-bg" id="pin-modal-bg">
+  <div class="modal">
+    <div class="pin-modal-title" id="pin-modal-title">Confirmar posição</div>
+    <div class="pin-modal-sub" id="pin-modal-sub">O GPS marcou este local. Ajuste o pin se necessário.</div>
+    <div id="pin-mapa"></div>
+    <div class="pin-coords-display" id="pin-coords-display">—</div>
+    <div class="dpad-step">
+      <label>Passo do D-Pad:</label>
+      <select id="dpad-step-sel">
+        <option value="0.000050">Muito fino (~5m)</option>
+        <option value="0.000150" selected>Fino (~15m)</option>
+        <option value="0.000400">Médio (~40m)</option>
+        <option value="0.001000">Largo (~100m)</option>
+      </select>
+    </div>
+    <div class="dpad">
+      <div class="dpad-btn vazio"></div>
+      <div class="dpad-btn" onclick="moverPin(0,1)">▲</div>
+      <div class="dpad-btn vazio"></div>
+      <div class="dpad-btn" onclick="moverPin(-1,0)">◀</div>
+      <div class="dpad-btn vazio" style="font-size:10px; color:#aaa; display:flex; align-items:center; justify-content:center;">pin</div>
+      <div class="dpad-btn" onclick="moverPin(1,0)">▶</div>
+      <div class="dpad-btn vazio"></div>
+      <div class="dpad-btn" onclick="moverPin(0,-1)">▼</div>
+      <div class="dpad-btn vazio"></div>
+    </div>
+    <div class="pin-modal-btns">
+      <button class="pin-reset-btn" onclick="resetarPinModal()">↺ GPS</button>
+      <button class="pin-confirm-btn" onclick="confirmarPin()">✓ Confirmar posição</button>
+    </div>
   </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getFirestore, collection, doc, setDoc, deleteDoc,
-  onSnapshot, query
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",
@@ -332,38 +395,17 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const dbFs = getFirestore(firebaseApp);
 const registrosCol = collection(dbFs, "registros");
-
-// Expõe para o restante do script (não-módulo) usar
 window.__firebase = { dbFs, registrosCol, doc, setDoc, deleteDoc, onSnapshot, query };
 window.__firebaseReady = true;
 window.dispatchEvent(new Event('firebase-ready'));
-console.log('[Firebase] Inicializado com sucesso, projeto:', firebaseConfig.projectId);
+console.log('[Firebase] OK:', firebaseConfig.projectId);
 </script>
 <script>
-// ─── Senha simples de administrador (apenas trava de UI, não é segurança real) ─
 const SENHA_ADMIN = "qno2026";
-let modoAdmin = false;
-
-// ─── Cloudinary (armazenamento de fotos, gratuito, sem cartão) ───────────────
 const CLOUDINARY_CLOUD_NAME = "dxbxm3rpd";
 const CLOUDINARY_UPLOAD_PRESET = "h90fdbtd";
+const CENTER = [-15.8485, -48.1080];
 
-async function uploadFotoCloudinary(base64Imagem) {
-  const url = "https://api.cloudinary.com/v1_1/" + CLOUDINARY_CLOUD_NAME + "/image/upload";
-  const formData = new FormData();
-  formData.append("file", base64Imagem);
-  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-
-  const resp = await fetch(url, { method: "POST", body: formData });
-  if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error("Cloudinary: " + resp.status + " — " + errText);
-  }
-  const data = await resp.json();
-  return data.secure_url;
-}
-
-// ─── Dados dos conjuntos por quadra ───────────────────────────────────────────
 const CONJUNTOS = {
   'QNO 16': ['A','B','C','D','E','F','G','H','I','J','K','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63','64','65','67','69','71','73','75'],
   'QNO 17': ['A','B','C','D','E','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63','64','65'],
@@ -372,57 +414,48 @@ const CONJUNTOS = {
   'QNO 20': ['A','B','D','E','03','05','07','09','11','13','17','19','21','23','25','27','29','31','33','35','37','39','40','41','43','45','47','51','53','63','65']
 };
 
-const CENTER = [-15.8485, -48.1080];
-let map, markersLayer, meuMarcador, meuCirculo;
+let modoAdmin = false;
 let registros = [];
 let posicaoAtual = null;
 let trackingAtivo = false;
+let map, markersLayer, meuMarcador, meuCirculo;
 let mapReady = false;
-let fotoBase64 = null;
 let fb = null;
-let unsubscribe = null;
+let fotoBase64 = null;
+let primeiraLocalizacao = true;
 
-// ─── Espera o Firebase carregar (módulo ES) ───────────────────────────────────
+// Estado do modal de pin
+let pinMapa = null;
+let pinMarcador = null;
+let posicaoPin = null;
+let pinModalCallback = null;
+let pendenteSalvar = null;
+let registroParaEditar = null;
+
+// ─── Firebase ──────────────────────────────────────────────────────────────────
 function iniciarConexaoFirebase() {
   fb = window.__firebase;
-  conectarFirestore();
-}
-if (window.__firebaseReady) {
-  // O módulo já terminou de carregar antes deste script rodar
-  iniciarConexaoFirebase();
-} else {
-  window.addEventListener('firebase-ready', iniciarConexaoFirebase);
-}
-
-function conectarFirestore() {
   atualizarStatusSync('buscando', 'Conectando à nuvem...');
-
-  const timeoutAviso = setTimeout(() => {
-    atualizarStatusSync('erro', 'Demorando para conectar — verifique as regras do Firestore ou sua internet.');
-  }, 8000);
-
+  const timeout = setTimeout(() => atualizarStatusSync('erro', 'Demorando para conectar. Verifique sua internet.'), 8000);
   try {
-    unsubscribe = fb.onSnapshot(fb.query(fb.registrosCol), (snapshot) => {
-      clearTimeout(timeoutAviso);
-      registros = [];
-      snapshot.forEach(docSnap => {
-        registros.push({ id: docSnap.id, ...docSnap.data() });
-      });
+    fb.onSnapshot(fb.query(fb.registrosCol), snap => {
+      clearTimeout(timeout);
+      registros = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       atualizarStats();
       if (mapReady) filtrarMapa();
-      renderLista();
-      atualizarStatusSync('ok', registros.length + ' endereços sincronizados · toque para reativar GPS');
-    }, (err) => {
-      clearTimeout(timeoutAviso);
-      console.error('[Firestore] Erro de leitura:', err.code, err.message);
-      atualizarStatusSync('erro', 'Erro: ' + err.code + ' — toque para detalhes');
+      if (document.getElementById('screen-lista').classList.contains('active')) renderLista();
+      atualizarStatusSync('ok', registros.length + ' endereços · toque para GPS');
+    }, err => {
+      clearTimeout(timeout);
+      atualizarStatusSync('erro', 'Erro: ' + (err.code || err.message));
     });
-  } catch (e) {
-    clearTimeout(timeoutAviso);
-    console.error('[Firestore] Erro ao iniciar listener:', e);
-    atualizarStatusSync('erro', 'Erro ao conectar ao banco de dados.');
+  } catch(e) {
+    clearTimeout(timeout);
+    atualizarStatusSync('erro', 'Erro ao conectar.');
   }
 }
+if (window.__firebaseReady) iniciarConexaoFirebase();
+else window.addEventListener('firebase-ready', iniciarConexaoFirebase);
 
 function atualizarStatusSync(estado, texto) {
   const dot = document.getElementById('sync-dot');
@@ -431,48 +464,49 @@ function atualizarStatusSync(estado, texto) {
   txt.textContent = texto;
 }
 
-// ─── Stats ────────────────────────────────────────────────────────────────────
+// ─── Stats ─────────────────────────────────────────────────────────────────────
 function atualizarStats() {
   document.getElementById('stat-total').textContent = registros.length;
   document.getElementById('stat-gps').textContent = registros.filter(r => r.lat).length;
   document.getElementById('stat-foto').textContent = registros.filter(r => r.foto).length;
 }
 
-// ─── Modo admin ───────────────────────────────────────────────────────────────
+// ─── Admin ─────────────────────────────────────────────────────────────────────
 function abrirLogin() { document.getElementById('login-modal-bg').style.display = 'flex'; }
 function fecharLogin() { document.getElementById('login-modal-bg').style.display = 'none'; }
 function validarSenha() {
-  const val = document.getElementById('admin-pass').value;
-  if (val === SENHA_ADMIN) {
+  if (document.getElementById('admin-pass').value === SENHA_ADMIN) {
     modoAdmin = true;
     document.getElementById('header-mode').textContent = 'Administrador';
     document.getElementById('header-mode').className = 'header-mode admin';
     fecharLogin();
     solicitarGPSContinuo();
   } else {
-    alert('Senha incorreta. Continuando em modo consulta.');
+    alert('Senha incorreta.');
     fecharLogin();
   }
 }
 
-// ─── Tabs ─────────────────────────────────────────────────────────────────────
-function showTab(t, programatico) {
+// ─── Tabs ──────────────────────────────────────────────────────────────────────
+function showTab(t, prog) {
   if (t === 'registrar' && !modoAdmin) { abrirLogin(); return; }
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
   document.getElementById('screen-' + t).classList.add('active');
-  if (!programatico && event && event.target) event.target.classList.add('active');
-  else document.querySelectorAll('.tab').forEach(b => { if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + t + "'")) b.classList.add('active'); });
+  if (!prog && event && event.target) event.target.classList.add('active');
+  else {
+    document.querySelectorAll('.tab').forEach(b => {
+      if ((b.getAttribute('onclick') || '').includes("'" + t + "'")) b.classList.add('active');
+    });
+  }
   if (t === 'mapa') { if (!mapReady) esperarLeafletEIniciar(); else { setTimeout(() => map.invalidateSize(), 100); filtrarMapa(); } }
   if (t === 'lista') renderLista();
-  if (t === 'busca') buscarEndereco();
 }
 
-// ─── Conjuntos dinâmicos ──────────────────────────────────────────────────────
-function atualizarConjuntos(quadraSelectId, conjuntoSelectId) {
-  const quadraId = quadraSelectId || 'reg-quadra';
+// ─── Conjuntos ─────────────────────────────────────────────────────────────────
+function atualizarSelCj(quadraId, cjId) {
   const q = document.getElementById(quadraId).value;
-  const sel = document.getElementById(conjuntoSelectId);
+  const sel = document.getElementById(cjId);
   sel.innerHTML = '<option value="">...</option>';
   if (q && CONJUNTOS[q]) {
     CONJUNTOS[q].forEach(c => {
@@ -482,184 +516,41 @@ function atualizarConjuntos(quadraSelectId, conjuntoSelectId) {
     });
   }
 }
-
-// ─── Busca de endereço ────────────────────────────────────────────────────────
-let resultadoBusca = null;
-
-function buscarEndereco() {
-  const quadra = document.getElementById('busca-quadra').value;
-  const cj = document.getElementById('busca-cj').value;
-  const casa = document.getElementById('busca-casa').value;
-  const divResultado = document.getElementById('busca-resultado');
-  const divSem = document.getElementById('busca-sem-resultado');
-  const divCom = document.getElementById('busca-com-resultado');
-
-  if (!quadra || !cj || !casa) { divResultado.style.display = 'none'; return; }
-
-  const docId = (quadra + '_' + cj + '_' + casa).replace(/\s+/g, '');
-  const reg = registros.find(r => r.id === docId);
-  divResultado.style.display = 'block';
-  resultadoBusca = reg || null;
-
-  if (!reg) {
-    divSem.style.display = 'block';
-    divCom.style.display = 'none';
-    return;
-  }
-
-  divSem.style.display = 'none';
-  divCom.style.display = 'block';
-  document.getElementById('busca-addr').textContent = quadra + ' · Cj. ' + cj + ' · Casa ' + casa;
-  document.getElementById('busca-obs').textContent = reg.obs || 'Sem observação';
-  document.getElementById('busca-ts').textContent = reg.ts ? 'Registrado em ' + reg.ts : '';
-
-  const fotoEl = document.getElementById('busca-foto');
-  const fotoContainer = document.getElementById('busca-foto-container');
-  if (reg.foto) {
-    fotoEl.src = reg.foto;
-    fotoContainer.style.display = 'block';
-  } else {
-    fotoContainer.style.display = 'none';
-  }
-
-  const gpsEl = document.getElementById('busca-gps-info');
-  if (reg.lat) {
-    gpsEl.textContent = '📍 GPS disponível — toque em "Ver no mapa"';
-    document.getElementById('busca-ver-mapa-btn').style.display = 'block';
-  } else {
-    gpsEl.textContent = '⚠️ Sem localização GPS registrada';
-    document.getElementById('busca-ver-mapa-btn').style.display = 'none';
-  }
-}
-
-function verNoMapa() {
-  if (!resultadoBusca || !resultadoBusca.lat) return;
-  showTab('mapa', true);
-  setTimeout(() => {
-    if (map) {
-      map.setView([resultadoBusca.lat, resultadoBusca.lng], 19);
-      markersLayer.eachLayer(layer => {
-        if (layer.getLatLng && 
-            Math.abs(layer.getLatLng().lat - resultadoBusca.lat) < 0.00001 &&
-            Math.abs(layer.getLatLng().lng - resultadoBusca.lng) < 0.00001) {
-          layer.openPopup();
-        }
-      });
-    }
-  }, 300);
-}
 function atualizarFiltroConjunto() {
   const q = document.getElementById('filtro-quadra').value;
   const sel = document.getElementById('filtro-cj');
   sel.innerHTML = '<option value="">Todos conjuntos</option>';
-  if (q && CONJUNTOS[q]) {
-    CONJUNTOS[q].forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c; opt.textContent = c;
-      sel.appendChild(opt);
-    });
-  }
+  if (q && CONJUNTOS[q]) CONJUNTOS[q].forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
   filtrarMapa();
 }
 
-// ─── GPS contínuo ─────────────────────────────────────────────────────────────
-let primeiraLocalizacao = true;
-let miniMapa = null;
-let miniMapaPin = null;
-let posicaoPin = null; // coordenada ajustada pelo usuário no mini mapa
-
+// ─── GPS ───────────────────────────────────────────────────────────────────────
 function solicitarGPSContinuo() {
   if (trackingAtivo) return;
   document.getElementById('perm-modal-bg').style.display = 'flex';
 }
 function ativarTrackingReal() {
   document.getElementById('perm-modal-bg').style.display = 'none';
-  if (!navigator.geolocation) { atualizarStatusGPSRegistro('Geolocalização não suportada.'); return; }
-  navigator.geolocation.watchPosition(
-    pos => {
-      trackingAtivo = true;
-      posicaoAtual = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
-      atualizarStatusGPSRegistro();
-      atualizarPosicaoNoMapa();
-      if (primeiraLocalizacao && map) {
-        map.setView([posicaoAtual.lat, posicaoAtual.lng], 17);
-        primeiraLocalizacao = false;
-      }
-    },
-    err => {
-      trackingAtivo = false;
-      let txt = 'Erro ao obter localização.';
-      if (err.code === 1) txt = 'Permissão negada. Ative localização nas configurações.';
-      atualizarStatusGPSRegistro(txt);
-    },
-    { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
-  );
-}
-function atualizarStatusGPSRegistro(erro) {
-  const dot = document.getElementById('gps-inline-dot');
-  const txt = document.getElementById('gps-inline-text');
-  if (erro) { dot.className = 'gps-inline-dot'; txt.textContent = erro; return; }
-  if (posicaoAtual) {
-    dot.className = 'gps-inline-dot ok';
-    txt.textContent = '✓ GPS ativo — ajuste o pin se necessário';
-    iniciarMiniMapa();
-  }
-}
-
-function iniciarMiniMapa() {
-  const container = document.getElementById('mini-mapa-container');
-  container.style.display = 'block';
-  const ll = [posicaoAtual.lat, posicaoAtual.lng];
-
-  if (!miniMapa) {
-    miniMapa = L.map('mini-mapa', { zoomControl: true, attributionControl: false }).setView(ll, 19);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 21 }).addTo(miniMapa);
-
-    const pinIcon = L.divIcon({
-      html: '<div style="width:24px;height:24px;background:#1D9E75;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:grab;"></div>',
-      className: '', iconSize: [24,24], iconAnchor: [12,12]
-    });
-
-    miniMapaPin = L.marker(ll, { icon: pinIcon, draggable: true }).addTo(miniMapa);
-    posicaoPin = { lat: ll[0], lng: ll[1] };
-
-    miniMapaPin.on('drag', () => {
-      const pos = miniMapaPin.getLatLng();
-      document.getElementById('pin-coords').textContent = pos.lat.toFixed(6) + ', ' + pos.lng.toFixed(6);
-    });
-
-    miniMapaPin.on('dragend', () => {
-      const pos = miniMapaPin.getLatLng();
-      posicaoPin = { lat: pos.lat, lng: pos.lng };
-      document.getElementById('pin-coords').textContent = pos.lat.toFixed(6) + ', ' + pos.lng.toFixed(6);
-    });
-
-    setTimeout(() => miniMapa.invalidateSize(), 150);
-  } else {
-    // Atualiza para nova posição GPS
-    miniMapa.setView(ll, 19);
-    miniMapaPin.setLatLng(ll);
-    posicaoPin = { lat: ll[0], lng: ll[1] };
-    setTimeout(() => miniMapa.invalidateSize(), 150);
-  }
-}
-
-function resetarPinMiniMapa() {
-  if (!posicaoAtual || !miniMapaPin) return;
-  const ll = [posicaoAtual.lat, posicaoAtual.lng];
-  miniMapaPin.setLatLng(ll);
-  miniMapa.setView(ll, 19);
-  posicaoPin = { lat: ll[0], lng: ll[1] };
-  document.getElementById('pin-coords').textContent = ll[0].toFixed(6) + ', ' + ll[1].toFixed(6);
+  if (!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(pos => {
+    trackingAtivo = true;
+    posicaoAtual = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
+    const dot = document.getElementById('gps-inline-dot');
+    const txt = document.getElementById('gps-inline-text');
+    dot.className = 'gps-dot-sm ok';
+    txt.textContent = '✓ GPS ativo · precisão ~' + Math.round(pos.coords.accuracy) + 'm';
+    atualizarPosicaoNoMapa();
+    if (primeiraLocalizacao && map) { map.setView([posicaoAtual.lat, posicaoAtual.lng], 17); primeiraLocalizacao = false; }
+  }, err => {
+    const txt = document.getElementById('gps-inline-text');
+    txt.textContent = err.code === 1 ? 'Permissão negada. Ative nas configurações.' : 'Erro ao obter localização.';
+  }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
 }
 function atualizarPosicaoNoMapa() {
   if (!map || !posicaoAtual) return;
   const ll = [posicaoAtual.lat, posicaoAtual.lng];
   if (!meuMarcador) {
-    const icon = L.divIcon({
-      html: '<div style="width:18px;height:18px;background:#378ADD;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px rgba(55,138,221,0.4);"></div>',
-      className: '', iconSize: [18,18], iconAnchor: [9,9]
-    });
+    const icon = L.divIcon({ html: '<div style="width:16px;height:16px;background:#378ADD;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px rgba(55,138,221,0.4);"></div>', className: '', iconSize: [16,16], iconAnchor: [8,8] });
     meuMarcador = L.marker(ll, { icon, zIndexOffset: 1000 }).addTo(map).bindPopup('Você está aqui');
     meuCirculo = L.circle(ll, { radius: posicaoAtual.accuracy, color: '#378ADD', fillColor: '#378ADD', fillOpacity: 0.1, weight: 1 }).addTo(map);
   } else {
@@ -669,18 +560,12 @@ function atualizarPosicaoNoMapa() {
   }
 }
 
-// ─── Mapa ─────────────────────────────────────────────────────────────────────
+// ─── Mapa principal ────────────────────────────────────────────────────────────
 function initMap() {
   map = L.map('map', { zoomControl: true }).setView(CENTER, 16);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap', maxZoom: 19
-  }).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
   markersLayer = L.layerGroup().addTo(map);
-
-  L.polyline([[-15.8440,-48.0950],[-15.8440,-48.1250]], {
-    color:'#854F0B', weight:3, dashArray:'8,5', opacity:0.7
-  }).addTo(map).bindPopup('BR-070');
-
+  L.polyline([[-15.8440,-48.0950],[-15.8440,-48.1250]], { color:'#854F0B', weight:3, dashArray:'8,5', opacity:0.7 }).addTo(map).bindPopup('BR-070');
   document.getElementById('map-loading').style.display = 'none';
   mapReady = true;
   filtrarMapa();
@@ -697,55 +582,118 @@ function filtrarMapa() {
   markersLayer.clearLayers();
   const q = document.getElementById('filtro-quadra').value;
   const cj = document.getElementById('filtro-cj').value;
-  let filtrado = registros;
-  if (q) filtrado = filtrado.filter(r => r.quadra === q);
-  if (cj) filtrado = filtrado.filter(r => r.cj === cj);
-  filtrado.forEach(r => adicionarPin(r));
+  let f = registros;
+  if (q) f = f.filter(r => r.quadra === q);
+  if (cj) f = f.filter(r => r.cj === cj);
+  f.forEach(adicionarPin);
 }
-function corPorQuadra(q) {
-  const cores = { 'QNO 16':'#1D9E75','QNO 17':'#378ADD','QNO 18':'#D85A30','QNO 19':'#BA7517','QNO 20':'#D4537E' };
-  return cores[q] || '#1D9E75';
+function corQuadra(q) {
+  return ({ 'QNO 16':'#1D9E75','QNO 17':'#378ADD','QNO 18':'#D85A30','QNO 19':'#BA7517','QNO 20':'#D4537E' })[q] || '#1D9E75';
 }
 function adicionarPin(r) {
   if (!r.lat || !map) return;
-  const cor = corPorQuadra(r.quadra);
-  const icon = L.divIcon({
-    html: '<div style="background:'+cor+';border:2px solid white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;box-shadow:0 2px 5px rgba(0,0,0,0.25);">'+r.cj+'</div>',
-    className:'', iconSize:[28,28], iconAnchor:[14,14]
-  });
+  const cor = corQuadra(r.quadra);
+  const icon = L.divIcon({ html: '<div style="background:'+cor+';border:2px solid white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;box-shadow:0 2px 5px rgba(0,0,0,0.25);">'+r.cj+'</div>', className:'', iconSize:[26,26], iconAnchor:[13,13] });
   let popup = '<b>'+(r.quadra||'')+'</b><br>Cj. '+r.cj+' · Casa '+r.casa;
   if (r.obs) popup += '<br><span style="font-size:12px;color:#666;">'+r.obs+'</span>';
-  if (r.foto) popup += '<br><img src="'+r.foto+'" style="width:140px;margin-top:6px;border-radius:6px;">';
+  if (r.foto) popup += '<br><img src="'+r.foto+'" style="width:130px;margin-top:5px;border-radius:6px;">';
   L.marker([r.lat, r.lng], { icon }).addTo(markersLayer).bindPopup(popup);
 }
 
-// ─── Foto (com compressão antes de enviar) ────────────────────────────────────
+// ─── Modal de Pin (D-Pad + arrastar) ──────────────────────────────────────────
+function abrirModalPin(lat, lng, titulo, subtitulo, callback) {
+  posicaoPin = { lat, lng };
+  pinModalCallback = callback;
+  document.getElementById('pin-modal-title').textContent = titulo;
+  document.getElementById('pin-modal-sub').textContent = subtitulo;
+  document.getElementById('pin-modal-bg').style.display = 'flex';
+  atualizarCoordsDisplay();
+
+  setTimeout(() => {
+    if (!pinMapa) {
+      pinMapa = L.map('pin-mapa', { zoomControl: true, attributionControl: false }).setView([lat, lng], 19);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 21 }).addTo(pinMapa);
+      const pinIcon = L.divIcon({ html: '<div style="width:28px;height:28px;background:#E24B4A;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.35);cursor:grab;"></div>', className:'', iconSize:[28,28], iconAnchor:[14,14] });
+      pinMarcador = L.marker([lat, lng], { icon: pinIcon, draggable: true }).addTo(pinMapa);
+      pinMarcador.on('drag', () => {
+        const p = pinMarcador.getLatLng();
+        posicaoPin = { lat: p.lat, lng: p.lng };
+        atualizarCoordsDisplay();
+      });
+      pinMarcador.on('dragend', () => {
+        const p = pinMarcador.getLatLng();
+        posicaoPin = { lat: p.lat, lng: p.lng };
+        atualizarCoordsDisplay();
+      });
+    } else {
+      pinMapa.setView([lat, lng], 19);
+      pinMarcador.setLatLng([lat, lng]);
+    }
+    setTimeout(() => pinMapa.invalidateSize(), 100);
+  }, 100);
+}
+
+function fecharModalPin() {
+  document.getElementById('pin-modal-bg').style.display = 'none';
+  pendenteSalvar = null;
+  registroParaEditar = null;
+  pinModalCallback = null;
+}
+
+function atualizarCoordsDisplay() {
+  if (!posicaoPin) return;
+  document.getElementById('pin-coords-display').textContent = posicaoPin.lat.toFixed(6) + ', ' + posicaoPin.lng.toFixed(6);
+}
+
+function moverPin(dLng, dLat) {
+  if (!pinMarcador || !posicaoPin) return;
+  const step = parseFloat(document.getElementById('dpad-step-sel').value);
+  posicaoPin = { lat: posicaoPin.lat + dLat * step, lng: posicaoPin.lng + dLng * step };
+  pinMarcador.setLatLng([posicaoPin.lat, posicaoPin.lng]);
+  pinMapa.panTo([posicaoPin.lat, posicaoPin.lng]);
+  atualizarCoordsDisplay();
+}
+
+function resetarPinModal() {
+  if (!posicaoAtual) return;
+  posicaoPin = { lat: posicaoAtual.lat, lng: posicaoAtual.lng };
+  pinMarcador.setLatLng([posicaoPin.lat, posicaoPin.lng]);
+  pinMapa.setView([posicaoPin.lat, posicaoPin.lng], 19);
+  atualizarCoordsDisplay();
+}
+
+async function confirmarPin() {
+  if (!posicaoPin || !pinModalCallback) return;
+  document.getElementById('pin-modal-bg').style.display = 'none';
+  await pinModalCallback(posicaoPin);
+}
+
+// ─── Foto ──────────────────────────────────────────────────────────────────────
 function previewFoto(e) {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    comprimirImagem(ev.target.result, 1024, 0.7).then(comprimida => {
-      fotoBase64 = comprimida;
-      document.getElementById('foto-img').src = fotoBase64;
+    comprimirImagem(ev.target.result, 1024, 0.7).then(c => {
+      fotoBase64 = c;
+      document.getElementById('foto-img').src = c;
       document.getElementById('foto-preview').style.display = 'block';
     });
   };
   reader.readAsDataURL(file);
 }
-
-function comprimirImagem(base64Original, larguraMax, qualidade) {
-  return new Promise((resolve) => {
+function comprimirImagem(src, maxW, q) {
+  return new Promise(res => {
     const img = new Image();
     img.onload = () => {
       let w = img.width, h = img.height;
-      if (w > larguraMax) { h = Math.round(h * (larguraMax / w)); w = larguraMax; }
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', qualidade));
+      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      res(c.toDataURL('image/jpeg', q));
     };
-    img.src = base64Original;
+    img.src = src;
   });
 }
 function removerFoto() {
@@ -754,144 +702,229 @@ function removerFoto() {
   document.getElementById('foto-input').value = '';
 }
 
-// ─── Salvar (escreve no Firestore) ────────────────────────────────────────────
-async function salvar() {
-  if (!modoAdmin) { showMsg('Modo administrador necessário.', 'err'); return; }
-  if (!fb) { showMsg('Ainda conectando à nuvem, aguarde...', 'err'); return; }
+// ─── Upload Cloudinary ─────────────────────────────────────────────────────────
+async function uploadFoto(base64) {
+  const url = 'https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/image/upload';
+  const fd = new FormData();
+  fd.append('file', base64);
+  fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  const resp = await fetch(url, { method: 'POST', body: fd });
+  if (!resp.ok) throw new Error('Cloudinary ' + resp.status);
+  return (await resp.json()).secure_url;
+}
 
+// ─── Salvar novo registro ──────────────────────────────────────────────────────
+function iniciarSalvar() {
+  if (!modoAdmin) { showMsg('Modo administrador necessário.', 'err'); return; }
+  if (!fb) { showMsg('Aguarde a conexão com a nuvem.', 'err'); return; }
   const quadra = document.getElementById('reg-quadra').value;
   const cj = document.getElementById('reg-cj').value;
   const casa = document.getElementById('reg-casa').value;
+  if (!quadra || !cj || !casa) { showMsg('Preencha quadra, conjunto e casa.', 'err'); return; }
+
+  const lat = posicaoAtual ? posicaoAtual.lat : CENTER[0];
+  const lng = posicaoAtual ? posicaoAtual.lng : CENTER[1];
+  pendenteSalvar = { quadra, cj, casa };
+
+  abrirModalPin(lat, lng,
+    'Confirmar posição — ' + quadra + ' Cj.' + cj + ' Casa ' + casa,
+    posicaoAtual ? 'GPS marcou este local. Arraste ou use o D-Pad para ajustar.' : 'GPS indisponível. Posicione o pin manualmente.',
+    async (pinPos) => { await executarSalvar(pinPos); }
+  );
+}
+
+async function executarSalvar(pinPos) {
+  const { quadra, cj, casa } = pendenteSalvar;
   const obs = document.getElementById('reg-obs').value.trim();
-
-  if (!quadra || !cj || !casa) { showMsg('Preencha quadra, conjunto e número da casa.', 'err'); return; }
-  if (!posicaoAtual) { showMsg('Ative o GPS antes de salvar.', 'err'); return; }
-
   const btn = document.getElementById('btn-salvar');
   btn.disabled = true; btn.textContent = 'Salvando...';
-
-  const docId = (quadra + '_' + cj + '_' + casa).replace(/\s+/g, '');
-
   try {
     let fotoUrl = null;
-    if (fotoBase64) {
-      btn.textContent = 'Enviando foto...';
-      fotoUrl = await uploadFotoCloudinary(fotoBase64);
-    }
-
+    if (fotoBase64) { btn.textContent = 'Enviando foto...'; fotoUrl = await uploadFoto(fotoBase64); }
     btn.textContent = 'Salvando...';
-    const coordSalva = posicaoPin || posicaoAtual;
-    const reg = {
-      quadra, cj, casa, obs,
-      foto: fotoUrl,
-      lat: coordSalva.lat,
-      lng: coordSalva.lng,
+    const docId = (quadra + '_' + cj + '_' + casa).replace(/\s+/g, '');
+    await fb.setDoc(fb.doc(fb.dbFs, 'registros', docId), {
+      quadra, cj, casa, obs, foto: fotoUrl,
+      lat: pinPos.lat, lng: pinPos.lng,
       ts: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})
-    };
-
-    await fb.setDoc(fb.doc(fb.dbFs, "registros", docId), reg);
-    showMsg('✓ ' + quadra + ' · Cj. ' + cj + ' · Casa ' + casa + ' salvo na nuvem!', 'ok');
+    });
+    showMsg('✓ ' + quadra + ' · Cj. ' + cj + ' · Casa ' + casa + ' salvo!', 'ok');
     document.getElementById('reg-quadra').value = '';
     document.getElementById('reg-cj').innerHTML = '<option value="">...</option>';
     document.getElementById('reg-casa').value = '';
     document.getElementById('reg-obs').value = '';
     removerFoto();
-    posicaoPin = null;
-    if (miniMapaPin && posicaoAtual) {
-      const ll = [posicaoAtual.lat, posicaoAtual.lng];
-      miniMapaPin.setLatLng(ll);
-      miniMapa.setView(ll, 19);
-      posicaoPin = { lat: ll[0], lng: ll[1] };
-      document.getElementById('pin-coords').textContent = ll[0].toFixed(6) + ', ' + ll[1].toFixed(6);
-    }
-  } catch (e) {
-    console.error('[Salvar] Erro:', e.code || e.message || e);
-    showMsg('Erro ao salvar: ' + (e.code || e.message || 'desconhecido'), 'err');
+    pendenteSalvar = null;
+  } catch(e) {
+    console.error('[Salvar]', e);
+    showMsg('Erro: ' + (e.code || e.message || 'desconhecido'), 'err');
   }
-  btn.disabled = false; btn.textContent = '💾 Salvar registro';
+  btn.disabled = false; btn.textContent = '💾 Salvar e confirmar posição';
 }
 
-function showMsg(text, type) {
-  const msg = document.getElementById('save-msg');
-  msg.textContent = text;
-  msg.className = 'msg ' + type;
-  msg.style.display = 'block';
-  setTimeout(() => { msg.style.display = 'none'; }, 3500);
+// ─── Editar pin de endereço existente ─────────────────────────────────────────
+function buscarParaEditar() {
+  const q = document.getElementById('edit-quadra').value;
+  const cj = document.getElementById('edit-cj').value;
+  const casa = document.getElementById('edit-casa').value;
+  const res = document.getElementById('edit-result');
+  const btn = document.getElementById('btn-editar-pin');
+  if (!q || !cj || !casa) { res.style.display = 'none'; btn.style.display = 'none'; registroParaEditar = null; return; }
+  const docId = (q + '_' + cj + '_' + casa).replace(/\s+/g, '');
+  const reg = registros.find(r => r.id === docId);
+  if (!reg) {
+    res.className = 'edit-result erro'; res.textContent = 'Endereço não encontrado no banco.'; res.style.display = 'block'; btn.style.display = 'none'; registroParaEditar = null;
+  } else {
+    res.className = 'edit-result'; res.textContent = '✓ Encontrado' + (reg.lat ? ' · tem GPS' : ' · sem GPS ainda'); res.style.display = 'block'; btn.style.display = 'block'; registroParaEditar = reg;
+  }
 }
 
-// ─── Deletar ──────────────────────────────────────────────────────────────────
+function abrirEdicaoPin() {
+  if (!registroParaEditar) return;
+  const lat = registroParaEditar.lat || (posicaoAtual ? posicaoAtual.lat : CENTER[0]);
+  const lng = registroParaEditar.lng || (posicaoAtual ? posicaoAtual.lng : CENTER[1]);
+  const r = registroParaEditar;
+  abrirModalPin(lat, lng,
+    'Editar pin — ' + r.quadra + ' Cj.' + r.cj + ' Casa ' + r.casa,
+    'Reposicione o pin e confirme para salvar a nova localização.',
+    async (pinPos) => {
+      try {
+        const docId = r.id;
+        await fb.setDoc(fb.doc(fb.dbFs, 'registros', docId), { ...r, lat: pinPos.lat, lng: pinPos.lng });
+        document.getElementById('edit-result').textContent = '✓ Posição atualizada com sucesso!';
+        registroParaEditar = null;
+        document.getElementById('btn-editar-pin').style.display = 'none';
+      } catch(e) {
+        alert('Erro ao atualizar: ' + (e.code || e.message));
+      }
+    }
+  );
+}
+
+// Editar pin a partir da aba Buscar
+let resultadoBusca = null;
+function editarPinEncontrado() {
+  if (!resultadoBusca) return;
+  const r = resultadoBusca;
+  const lat = r.lat || (posicaoAtual ? posicaoAtual.lat : CENTER[0]);
+  const lng = r.lng || (posicaoAtual ? posicaoAtual.lng : CENTER[1]);
+  abrirModalPin(lat, lng,
+    'Editar pin — ' + r.quadra + ' Cj.' + r.cj + ' Casa ' + r.casa,
+    'Reposicione o pin e confirme para salvar.',
+    async (pinPos) => {
+      if (!modoAdmin) { abrirLogin(); return; }
+      try {
+        await fb.setDoc(fb.doc(fb.dbFs, 'registros', r.id), { ...r, lat: pinPos.lat, lng: pinPos.lng });
+        document.getElementById('busca-gps-info').textContent = '✓ Posição atualizada!';
+      } catch(e) {
+        alert('Erro: ' + (e.code || e.message));
+      }
+    }
+  );
+}
+
+// ─── Busca ─────────────────────────────────────────────────────────────────────
+function buscarEndereco() {
+  const q = document.getElementById('busca-quadra').value;
+  const cj = document.getElementById('busca-cj').value;
+  const casa = document.getElementById('busca-casa').value;
+  const divRes = document.getElementById('busca-resultado');
+  const divSem = document.getElementById('busca-sem-resultado');
+  const divCom = document.getElementById('busca-com-resultado');
+  if (!q || !cj || !casa) { divRes.style.display = 'none'; return; }
+  const docId = (q + '_' + cj + '_' + casa).replace(/\s+/g, '');
+  const reg = registros.find(r => r.id === docId);
+  divRes.style.display = 'block';
+  resultadoBusca = reg || null;
+  if (!reg) { divSem.style.display = 'block'; divCom.style.display = 'none'; return; }
+  divSem.style.display = 'none'; divCom.style.display = 'block';
+  document.getElementById('busca-addr').textContent = q + ' · Cj. ' + cj + ' · Casa ' + casa;
+  document.getElementById('busca-obs').textContent = reg.obs || 'Sem observação';
+  document.getElementById('busca-ts').textContent = reg.ts ? 'Registrado em ' + reg.ts : '';
+  const fc = document.getElementById('busca-foto-container');
+  if (reg.foto) { document.getElementById('busca-foto').src = reg.foto; fc.style.display = 'block'; } else { fc.style.display = 'none'; }
+  const gi = document.getElementById('busca-gps-info');
+  gi.textContent = reg.lat ? '📍 GPS disponível' : '⚠️ Sem GPS registrado';
+  document.getElementById('busca-ver-mapa-btn') && (document.getElementById('busca-ver-mapa-btn').style.display = reg.lat ? '' : 'none');
+}
+
+function verNoMapa() {
+  if (!resultadoBusca || !resultadoBusca.lat) return;
+  showTab('mapa', true);
+  setTimeout(() => {
+    if (map) {
+      map.setView([resultadoBusca.lat, resultadoBusca.lng], 19);
+      markersLayer.eachLayer(l => {
+        if (l.getLatLng && Math.abs(l.getLatLng().lat - resultadoBusca.lat) < 0.00001) l.openPopup();
+      });
+    }
+  }, 300);
+}
+
+// ─── Deletar ───────────────────────────────────────────────────────────────────
 async function deletar(id) {
   if (!modoAdmin) { abrirLogin(); return; }
-  if (!fb) { alert('Ainda conectando à nuvem, aguarde um instante e tente de novo.'); return; }
-  if (!id) { console.error('[Deletar] id vazio/indefinido'); alert('Erro: registro sem identificador.'); return; }
+  if (!fb || !id) return;
   if (!confirm('Excluir este registro da nuvem?')) return;
-  try {
-    await fb.deleteDoc(fb.doc(fb.dbFs, "registros", id));
-  } catch (e) {
-    console.error('[Deletar] Erro:', e.code || e.message || e);
-    alert('Erro ao excluir: ' + (e.code || e.message || 'desconhecido'));
-  }
+  try { await fb.deleteDoc(fb.doc(fb.dbFs, 'registros', id)); }
+  catch(e) { alert('Erro ao excluir: ' + (e.code || e.message)); }
 }
 
-// ─── Lista ────────────────────────────────────────────────────────────────────
+// ─── Lista ─────────────────────────────────────────────────────────────────────
 function renderLista() {
   const div = document.getElementById('lista-content');
   const busca = (document.getElementById('busca-lista')?.value || '').toLowerCase();
-  let filtrado = busca
-    ? registros.filter(r => (r.quadra||'').toLowerCase().includes(busca) || r.cj.toLowerCase().includes(busca) || r.casa.toString().includes(busca) || (r.obs||'').toLowerCase().includes(busca))
-    : [...registros];
-
-  if (!filtrado.length) {
-    div.innerHTML = '<div class="empty"><span class="icon">' + (busca ? '🔍' : '📭') + '</span>' + (busca ? 'Nenhum resultado para "' + busca + '"' : 'Nenhum registro ainda na nuvem.') + '</div>';
-    return;
-  }
-
-  filtrado.sort((a,b) => {
-    if (a.quadra !== b.quadra) return (a.quadra||'').localeCompare(b.quadra||'');
-    return a.cj.localeCompare(b.cj, undefined, {numeric:true}) || parseInt(a.casa) - parseInt(b.casa);
-  });
-
-  div.innerHTML = filtrado.map(r =>
+  let f = busca ? registros.filter(r => (r.quadra||'').toLowerCase().includes(busca) || r.cj.toLowerCase().includes(busca) || r.casa.toString().includes(busca) || (r.obs||'').toLowerCase().includes(busca)) : [...registros];
+  if (!f.length) { div.innerHTML = '<div class="empty"><span class="icon">'+(busca?'🔍':'📭')+'</span>'+(busca?'Nenhum resultado.':'Nenhum registro ainda.')+'</div>'; return; }
+  f.sort((a,b) => (a.quadra||'').localeCompare(b.quadra||'') || a.cj.localeCompare(b.cj,undefined,{numeric:true}) || parseInt(a.casa)-parseInt(b.casa));
+  div.innerHTML = f.map(r =>
     '<div class="entry-card">' +
-    (r.foto ? '<img class="entry-thumb" src="'+r.foto+'" alt="Fachada">' : '<div class="entry-thumb-empty">📦</div>') +
+    (r.foto ? '<img class="entry-thumb" src="'+r.foto+'">' : '<div class="entry-thumb-empty">📦</div>') +
     '<div class="entry-info">' +
-    '<div class="entry-addr">' + (r.quadra ? r.quadra + ' · ' : '') + 'Cj. ' + r.cj + ' · Casa ' + r.casa + (r.lat ? '<span class="badge-gps">GPS</span>' : '') + '</div>' +
-    '<div class="entry-obs">' + (r.obs || 'Sem observação') + '</div>' +
-    '<div class="entry-ts">' + (r.ts || '') + '</div>' +
-    '</div>' +
-    (modoAdmin ? '<button class="delete-btn" data-delid="' + r.id + '">🗑</button>' : '') +
+    '<div class="entry-addr">'+(r.quadra?r.quadra+' · ':'')+' Cj. '+r.cj+' · Casa '+r.casa+(r.lat?'<span class="badge-gps">GPS</span>':'')+' </div>' +
+    '<div class="entry-obs">'+(r.obs||'Sem observação')+'</div>' +
+    '<div class="entry-ts">'+(r.ts||'')+'</div></div>' +
+    (modoAdmin ? '<button class="delete-btn" data-delid="'+r.id+'">🗑</button>' : '') +
     '</div>'
   ).join('');
-
-  div.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', () => deletar(btn.getAttribute('data-delid')));
-  });
+  div.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', () => deletar(btn.getAttribute('data-delid'))));
 }
 
-// expõe pro escopo global (onclick inline)
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+function showMsg(text, type) {
+  const msg = document.getElementById('save-msg');
+  msg.textContent = text; msg.className = 'msg ' + type; msg.style.display = 'block';
+  setTimeout(() => { msg.style.display = 'none'; }, 3500);
+}
+
+function esperarLeafletEIniciar() {
+  if (typeof L !== 'undefined') { initMap(); solicitarGPSContinuo(); }
+  else setTimeout(esperarLeafletEIniciar, 100);
+}
+
+// Expõe globais
 window.showTab = showTab;
-window.atualizarConjuntos = atualizarConjuntos;
+window.atualizarSelCj = atualizarSelCj;
 window.atualizarFiltroConjunto = atualizarFiltroConjunto;
 window.centralizarMapa = centralizarMapa;
+window.filtrarMapa = filtrarMapa;
 window.previewFoto = previewFoto;
 window.removerFoto = removerFoto;
-window.salvar = salvar;
+window.iniciarSalvar = iniciarSalvar;
 window.deletar = deletar;
 window.buscarEndereco = buscarEndereco;
+window.buscarParaEditar = buscarParaEditar;
+window.abrirEdicaoPin = abrirEdicaoPin;
+window.editarPinEncontrado = editarPinEncontrado;
 window.verNoMapa = verNoMapa;
+window.moverPin = moverPin;
+window.resetarPinModal = resetarPinModal;
+window.confirmarPin = confirmarPin;
 window.solicitarGPSContinuo = solicitarGPSContinuo;
 window.ativarTrackingReal = ativarTrackingReal;
 window.validarSenha = validarSenha;
 window.fecharLogin = fecharLogin;
 
-function esperarLeafletEIniciar() {
-  if (typeof L !== 'undefined') {
-    initMap();
-    solicitarGPSContinuo();
-  } else {
-    setTimeout(esperarLeafletEIniciar, 100);
-  }
-}
 esperarLeafletEIniciar();
 </script>
 </body>
