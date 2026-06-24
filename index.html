@@ -100,6 +100,7 @@ html, body { height: 100%; background: #f5f5f5; font-family: -apple-system, Blin
 .entry-ts { font-size: 10px; color: #bbb; margin-top: 3px; }
 .badge-gps { font-size: 10px; padding: 1px 6px; border-radius: 20px; background: #E1F5EE; color: #0F6E56; margin-left: 4px; font-weight: 500; }
 .delete-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #ccc; padding: 6px; flex-shrink: 0; }
+.edit-pin-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #ccc; padding: 6px; flex-shrink: 0; }
 .empty { text-align: center; padding: 40px 20px; color: #aaa; font-size: 13px; line-height: 1.8; }
 .empty .icon { font-size: 36px; display: block; margin-bottom: 10px; }
 
@@ -244,36 +245,7 @@ html, body { height: 100%; background: #f5f5f5; font-family: -apple-system, Blin
         <span id="gps-inline-text">Aguardando localização...</span>
       </div>
 
-      <!-- Editar endereço existente -->
-      <div class="edit-section">
-        <div class="edit-section-title">✏️ Editar endereço já cadastrado</div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Quadra</label>
-            <select id="edit-quadra" onchange="atualizarSelCj('edit-quadra','edit-cj'); buscarParaEditar()">
-              <option value="">...</option>
-              <option>QNO 16</option><option>QNO 17</option><option>QNO 18</option><option>QNO 19</option><option>QNO 20</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Conjunto</label>
-            <select id="edit-cj" onchange="buscarParaEditar()"><option value="">...</option></select>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Casa nº</label>
-          <input type="number" id="edit-casa" placeholder="Ex: 15" min="1" max="200" oninput="buscarParaEditar()"/>
-        </div>
-        <div class="edit-result" id="edit-result"></div>
-        <button class="btn btn-green" id="btn-editar-pin" style="width:100%; display:none; margin-top:4px;" onclick="abrirEdicaoPin()">
-          📍 Reposicionar pin no mapa
-        </button>
-      </div>
-
-      <div style="border-top: 0.5px solid #eee; margin: 4px 0 14px;"></div>
-
       <!-- Formulário de novo registro -->
-      <div style="font-size:12px; font-weight:600; color:#555; margin-bottom:10px;">➕ Novo registro</div>
       <div class="form-row">
         <div class="form-group">
           <label>Quadra</label>
@@ -763,37 +735,20 @@ async function executarSalvar(pinPos) {
 }
 
 // ─── Editar pin de endereço existente ─────────────────────────────────────────
-function buscarParaEditar() {
-  const q = document.getElementById('edit-quadra').value;
-  const cj = document.getElementById('edit-cj').value;
-  const casa = document.getElementById('edit-casa').value;
-  const res = document.getElementById('edit-result');
-  const btn = document.getElementById('btn-editar-pin');
-  if (!q || !cj || !casa) { res.style.display = 'none'; btn.style.display = 'none'; registroParaEditar = null; return; }
-  const docId = (q + '_' + cj + '_' + casa).replace(/\s+/g, '');
-  const reg = registros.find(r => r.id === docId);
-  if (!reg) {
-    res.className = 'edit-result erro'; res.textContent = 'Endereço não encontrado no banco.'; res.style.display = 'block'; btn.style.display = 'none'; registroParaEditar = null;
-  } else {
-    res.className = 'edit-result'; res.textContent = '✓ Encontrado' + (reg.lat ? ' · tem GPS' : ' · sem GPS ainda'); res.style.display = 'block'; btn.style.display = 'block'; registroParaEditar = reg;
-  }
-}
-
-function abrirEdicaoPin() {
-  if (!registroParaEditar) return;
-  const lat = registroParaEditar.lat || (posicaoAtual ? posicaoAtual.lat : CENTER[0]);
-  const lng = registroParaEditar.lng || (posicaoAtual ? posicaoAtual.lng : CENTER[1]);
-  const r = registroParaEditar;
+// ─── Editar pin a partir da Lista (lápis) ─────────────────────────────────────
+function abrirEdicaoPinPorId(id) {
+  if (!modoAdmin) { abrirLogin(); return; }
+  const r = registros.find(reg => reg.id === id);
+  if (!r) { alert('Registro não encontrado.'); return; }
+  const lat = r.lat || (posicaoAtual ? posicaoAtual.lat : CENTER[0]);
+  const lng = r.lng || (posicaoAtual ? posicaoAtual.lng : CENTER[1]);
   abrirModalPin(lat, lng,
     'Editar pin — ' + r.quadra + ' Cj.' + r.cj + ' Casa ' + r.casa,
-    'Reposicione o pin e confirme para salvar a nova localização.',
+    r.lat ? 'Posição atual salva. Ajuste com o D-Pad ou arrastando o pin.' : 'Sem GPS ainda. Posicione o pin manualmente.',
     async (pinPos) => {
       try {
-        const docId = r.id;
-        await fb.setDoc(fb.doc(fb.dbFs, 'registros', docId), { ...r, lat: pinPos.lat, lng: pinPos.lng });
-        document.getElementById('edit-result').textContent = '✓ Posição atualizada com sucesso!';
-        registroParaEditar = null;
-        document.getElementById('btn-editar-pin').style.display = 'none';
+        await fb.setDoc(fb.doc(fb.dbFs, 'registros', r.id), { ...r, lat: pinPos.lat, lng: pinPos.lng });
+        renderLista();
       } catch(e) {
         alert('Erro ao atualizar: ' + (e.code || e.message));
       }
@@ -884,10 +839,12 @@ function renderLista() {
     '<div class="entry-addr">'+(r.quadra?r.quadra+' · ':'')+' Cj. '+r.cj+' · Casa '+r.casa+(r.lat?'<span class="badge-gps">GPS</span>':'')+' </div>' +
     '<div class="entry-obs">'+(r.obs||'Sem observação')+'</div>' +
     '<div class="entry-ts">'+(r.ts||'')+'</div></div>' +
-    (modoAdmin ? '<button class="delete-btn" data-delid="'+r.id+'">🗑</button>' : '') +
+    (modoAdmin ? '<button class="edit-pin-btn" data-editid="'+r.id+'" title="Editar pin">✏️</button>' : '') +
+    (modoAdmin ? '<button class="delete-btn" data-delid="'+r.id+'" title="Excluir">🗑</button>' : '') +
     '</div>'
   ).join('');
   div.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', () => deletar(btn.getAttribute('data-delid'))));
+  div.querySelectorAll('.edit-pin-btn').forEach(btn => btn.addEventListener('click', () => abrirEdicaoPinPorId(btn.getAttribute('data-editid'))));
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -912,9 +869,8 @@ window.previewFoto = previewFoto;
 window.removerFoto = removerFoto;
 window.iniciarSalvar = iniciarSalvar;
 window.deletar = deletar;
+window.abrirEdicaoPinPorId = abrirEdicaoPinPorId;
 window.buscarEndereco = buscarEndereco;
-window.buscarParaEditar = buscarParaEditar;
-window.abrirEdicaoPin = abrirEdicaoPin;
 window.editarPinEncontrado = editarPinEncontrado;
 window.verNoMapa = verNoMapa;
 window.moverPin = moverPin;
