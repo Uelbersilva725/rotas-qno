@@ -418,6 +418,7 @@ function onRegiaoChange(regiaoId, quadraId, cjId){
   const selCj = document.getElementById(cjId);
   selQ.innerHTML = '<option value="">...</option>';
   selCj.innerHTML = '<option value="">...</option>';
+  selCj.disabled = false;
   if(regiao && REGIOES[regiao]){
     Object.keys(REGIOES[regiao]).forEach(q=>{
       const o = document.createElement('option');
@@ -435,10 +436,12 @@ function onQuadraChange(quadraId, cjId){
     if(quadras[quadra]){
       const cjs = quadras[quadra];
       if(cjs.length>0){
+        selCj.disabled = false;
         cjs.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; selCj.appendChild(o); });
       } else {
-        // Sem conjuntos (ex: Cond. Privê): desabilita o select
-        selCj.innerHTML='<option value="">N/A</option>';
+        // Sem conjuntos (ex: Cond. Privê): deixa vazio e desabilita
+        selCj.innerHTML='<option value="">—</option>';
+        selCj.disabled = true;
       }
       break;
     }
@@ -590,7 +593,8 @@ function iniciarSalvar(){
   if(!fb){ showMsg('Aguarde a conexão com a nuvem.','err'); return; }
   const regiao=document.getElementById('reg-regiao').value;
   const quadra=document.getElementById('reg-quadra').value;
-  const cj=document.getElementById('reg-cj').value;
+  const cjRaw=document.getElementById('reg-cj').value;
+  const cj = (cjRaw === '—' || cjRaw === 'N/A') ? '' : cjRaw;
   const casa=document.getElementById('reg-casa').value;
   if(!regiao||!quadra||!casa){ showMsg('Preencha região, quadra/rua e casa.','err'); return; }
   const lat=posicaoAtual?posicaoAtual.lat:CENTER[0];
@@ -632,7 +636,8 @@ async function executarSalvar(pinPos){
 function buscarEndereco(){
   const regiao=document.getElementById('busca-regiao').value;
   const quadra=document.getElementById('busca-quadra').value;
-  const cj=document.getElementById('busca-cj').value;
+  const cjRaw=document.getElementById('busca-cj').value;
+  const cj=(cjRaw==='—'||cjRaw==='N/A')?'':cjRaw;
   const casa=document.getElementById('busca-casa').value;
   const divRes=document.getElementById('busca-resultado');
   const divSem=document.getElementById('busca-sem-resultado');
