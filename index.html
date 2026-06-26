@@ -364,7 +364,21 @@ function iniciarConexaoFirebase() {
   try {
     fb.onSnapshot(fb.query(fb.registrosCol), snap=>{
       clearTimeout(timeout);
-      registros = snap.docs.map(d=>({id:d.id,...d.data()}));
+      // Normaliza registros antigos: se não tem campo 'regiao', infere pela quadra
+      registros = snap.docs.map(d=>{
+        const data = {id:d.id,...d.data()};
+        if(!data.regiao){
+          // Verifica se a quadra é uma região conhecida (registro antigo do Privê)
+          if(data.quadra === 'Cond. Agrícola Privê'){
+            data.regiao = 'Cond. Agrícola Privê';
+            data.quadra = data.quadra; // mantém para compatibilidade
+          } else {
+            // É uma QNO — região é Expansão Setor O
+            data.regiao = 'Expansão Setor O';
+          }
+        }
+        return data;
+      });
       atualizarStats();
       if(mapReady) filtrarMapa();
       if(document.getElementById('screen-lista').classList.contains('active')) renderLista();
@@ -508,7 +522,7 @@ function filtrarMapa(){
   const regiao=document.getElementById('filtro-regiao').value;
   const quadra=document.getElementById('filtro-quadra').value;
   let f=registros;
-  if(regiao){ const qs=Object.keys(REGIOES[regiao]||{}); f=f.filter(r=>qs.includes(r.quadra)); }
+  if(regiao) f=f.filter(r=>r.regiao===regiao);
   if(quadra) f=f.filter(r=>r.quadra===quadra);
   f.forEach(adicionarPin);
 }
