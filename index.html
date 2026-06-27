@@ -318,9 +318,11 @@ const firebaseConfig = {
 const fapp = initializeApp(firebaseConfig);
 const dbFs = getFirestore(fapp);
 const registrosCol = collection(dbFs, "registros");
-window.__firebase = { dbFs, registrosCol, doc, setDoc, deleteDoc, onSnapshot, query };
+const regioesCol = collection(dbFs, "regioes");
+window.__firebase = { dbFs, collection, registrosCol, regioesCol, doc, setDoc, deleteDoc, onSnapshot, query };
 window.__firebaseReady = true;
 window.dispatchEvent(new Event('firebase-ready'));
+console.log('[Firebase] OK');
 </script>
 <script>
 const SENHA_ADMIN = "qno2026";
@@ -328,27 +330,17 @@ const CLOUDINARY_CLOUD_NAME = "dxbxm3rpd";
 const CLOUDINARY_UPLOAD_PRESET = "h90fdbtd";
 const CENTER = [-15.8485, -48.1080];
 
-const REGIOES = {
-  'Expansão Setor O': {
-    'QNO 16': ['A','B','C','D','E','F','G','H','I','J','K','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63','64','65','67','69','71','73','75'],
-    'QNO 17': ['A','B','C','D','E','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63','64','65'],
-    'QNO 18': ['A','B','C','D','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63','64','65','66','67','68','69','70','71','72','73','75','77','79','81'],
-    'QNO 19': ['A','B','C','D','G','H','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57'],
-    'QNO 20': ['A','B','D','E','03','05','07','09','11','13','17','19','21','23','25','27','29','31','33','35','37','39','40','41','43','45','47','51','53','63','65']
-  },
-  'Cond. Agrícola Privê': {
-    'Rua 1':[],'Rua 2':[],'Rua 3':[],'Rua 4':[],'Rua 5':[],'Rua 6':[],'Rua 7':[],
-    'Rua 8':[],'Rua 9':[],'Rua 10':[],'Rua 11':[],'Rua 12':[],'Rua 13':[]
-  }
-};
+// Regiões carregadas dinamicamente do Firebase
+let REGIOES = {}; // { nomeRegiao: { nomeQuadra: [conjuntos] } }
+let CORES_REGIAO = {}; // { nomeRegiao: cor }
 
-const CORES = {
-  'QNO 16':'#1D9E75','QNO 17':'#378ADD','QNO 18':'#D85A30',
-  'QNO 19':'#BA7517','QNO 20':'#D4537E',
-  'Rua 1':'#7B5EA7','Rua 2':'#7B5EA7','Rua 3':'#7B5EA7','Rua 4':'#7B5EA7',
-  'Rua 5':'#7B5EA7','Rua 6':'#7B5EA7','Rua 7':'#7B5EA7','Rua 8':'#7B5EA7',
-  'Rua 9':'#7B5EA7','Rua 10':'#7B5EA7','Rua 11':'#7B5EA7','Rua 12':'#7B5EA7','Rua 13':'#7B5EA7'
-};
+function corDaQuadra(quadra){
+  // Encontra a região que contém essa quadra e retorna sua cor
+  for(const [nomeReg, quadras] of Object.entries(REGIOES)){
+    if(Object.keys(quadras).includes(quadra)) return CORES_REGIAO[nomeReg]||'#888';
+  }
+  return '#888';
+}
 
 let modoAdmin=false, registros=[], posicaoAtual=null, trackingAtivo=false;
 let map, markersLayer, meuMarcador, meuCirculo, mapReady=false;
@@ -359,23 +351,31 @@ let pendenteSalvar=null, resultadoBusca=null;
 // ─── Firebase ──────────────────────────────────────────────────────────────────
 function iniciarConexaoFirebase() {
   fb = window.__firebase;
+  fb.colRegioes = fb.regioesCol;
   atualizarStatusSync('buscando','Conectando à nuvem...');
   const timeout = setTimeout(()=>atualizarStatusSync('erro','Demorando. Verifique sua internet.'),8000);
+
+  // Escuta coleção de regiões
+  fb.onSnapshot(fb.query(fb.colRegioes), snap=>{
+    REGIOES = {};
+    CORES_REGIAO = {};
+    snap.docs.forEach(d=>{
+      const reg = {id:d.id,...d.data()};
+      REGIOES[reg.nome] = reg.quadras||{};
+      CORES_REGIAO[reg.nome] = reg.cor||'#888';
+    });
+    renderSelectsRegioes();
+  }, err=>console.error('[Regioes]', err));
+
+  // Escuta registros
   try {
     fb.onSnapshot(fb.query(fb.registrosCol), snap=>{
       clearTimeout(timeout);
-      // Normaliza registros antigos: se não tem campo 'regiao', infere pela quadra
       registros = snap.docs.map(d=>{
         const data = {id:d.id,...d.data()};
         if(!data.regiao){
-          // Verifica se a quadra é uma região conhecida (registro antigo do Privê)
-          if(data.quadra === 'Cond. Agrícola Privê'){
-            data.regiao = 'Cond. Agrícola Privê';
-            data.quadra = data.quadra; // mantém para compatibilidade
-          } else {
-            // É uma QNO — região é Expansão Setor O
-            data.regiao = 'Expansão Setor O';
-          }
+          const matchRegiao = Object.keys(REGIOES).find(n => data.quadra === n);
+          data.regiao = matchRegiao || 'Expansão Setor O';
         }
         return data;
       });
@@ -426,6 +426,26 @@ function showTab(t, prog){
 }
 
 // ─── Seletores hierárquicos ────────────────────────────────────────────────────
+
+// Popula todos os selects de região com dados do Firebase
+function renderSelectsRegioes(){
+  const selIds = ['filtro-regiao','busca-regiao','reg-regiao','edit-regiao'];
+  selIds.forEach(id=>{
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    const val = sel.value;
+    const isFilter = id.startsWith('filtro');
+    sel.innerHTML = isFilter
+      ? '<option value="">Todas as regiões</option>'
+      : '<option value="">...</option>';
+    Object.keys(REGIOES).forEach(nome=>{
+      const o=document.createElement('option');
+      o.value=nome; o.textContent=nome; sel.appendChild(o);
+    });
+    if(val) sel.value=val;
+  });
+}
+
 function onRegiaoChange(regiaoId, quadraId, cjId){
   const regiao = document.getElementById(regiaoId).value;
   const selQ = document.getElementById(quadraId);
@@ -526,7 +546,7 @@ function filtrarMapa(){
   if(quadra) f=f.filter(r=>r.quadra===quadra);
   f.forEach(adicionarPin);
 }
-function corPin(quadra){ return CORES[quadra]||'#888'; }
+function corPin(quadra){ return corDaQuadra(quadra); }
 function adicionarPin(r){
   if(!r.lat||!map) return;
   const cor=corPin(r.quadra);
@@ -721,6 +741,7 @@ function esperarLeafletEIniciar(){ if(typeof L!=='undefined'){ initMap(); solici
 
 window.showTab=showTab; window.onRegiaoChange=onRegiaoChange; window.onQuadraChange=onQuadraChange;
 window.onFiltroRegiaoChange=onFiltroRegiaoChange; window.filtrarMapa=filtrarMapa; window.centralizarMapa=centralizarMapa;
+window.renderSelectsRegioes=renderSelectsRegioes;
 window.previewFoto=previewFoto; window.removerFoto=removerFoto; window.iniciarSalvar=iniciarSalvar;
 window.deletar=deletar; window.abrirEdicaoPinPorId=abrirEdicaoPinPorId;
 window.buscarEndereco=buscarEndereco; window.editarPinEncontrado=editarPinEncontrado; window.verNoMapa=verNoMapa;
