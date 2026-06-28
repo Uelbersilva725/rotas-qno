@@ -9,7 +9,7 @@
 <title>Rotas QNO</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 #app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto;background:#fff}
 .header{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff;border-bottom:.5px solid #e5e5e5}
@@ -36,19 +36,16 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 .stat{flex:1;text-align:center;background:#fff;border-radius:8px;padding:6px 4px;border:.5px solid #eee}
 .stat .num{font-size:20px;font-weight:600;color:#1D9E75}
 .stat .lbl{font-size:10px;color:#888;margin-top:1px}
-.map-toolbar{display:flex;gap:6px;padding:8px;background:#fff;border-bottom:.5px solid #e5e5e5}
-.map-toolbar select{flex:1;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:8px;background:#fff;color:#111}
+.map-toolbar{display:flex;gap:6px;padding:8px;background:#fff;border-bottom:.5px solid #e5e5e5;flex-wrap:wrap}
+.map-toolbar select{flex:1;min-width:80px;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:8px;background:#fff;color:#111}
 .btn{padding:7px 12px;font-size:12px;font-weight:500;border:.5px solid #ddd;border-radius:8px;background:#fff;color:#111;cursor:pointer;white-space:nowrap}
 .btn-green{background:#1D9E75;color:#fff;border-color:#0F6E56}
-.save-btn{width:100%;padding:13px;font-size:15px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:4px}
-.save-btn:active{transform:scale(.98)}
-.save-btn:disabled{background:#ccc;cursor:not-allowed}
 .reg-screen{padding:12px;overflow-y:auto;flex:1}
 .form-group{margin-bottom:12px}
 .form-group label{font-size:12px;color:#666;display:block;margin-bottom:4px;font-weight:500}
 .form-group input,.form-group select,.form-group textarea{width:100%;font-size:14px;padding:10px 12px;border:.5px solid #ddd;border-radius:8px;background:#fff;color:#111;-webkit-appearance:none;appearance:none}
 .form-group textarea{height:70px;resize:none}
-.form-row{display:flex;gap:10px}
+.form-row{display:flex;gap:8px}
 .form-row .form-group{flex:1}
 .photo-area{border:1.5px dashed #ccc;border-radius:10px;padding:18px;text-align:center;font-size:13px;color:#888;cursor:pointer;background:#fafafa}
 .photo-area .icon{font-size:26px;display:block;margin-bottom:5px}
@@ -58,6 +55,9 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 .gps-inline-box{background:#f5f5f5;border-radius:8px;padding:10px 12px;font-size:12px;color:#666;display:flex;align-items:center;gap:8px;margin-bottom:12px;border:.5px solid #e5e5e5}
 .gps-dot-sm{width:9px;height:9px;border-radius:50%;background:#ccc;flex-shrink:0}
 .gps-dot-sm.ok{background:#1D9E75}
+.save-btn{width:100%;padding:13px;font-size:15px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:4px}
+.save-btn:active{transform:scale(.98)}
+.save-btn:disabled{background:#ccc;cursor:not-allowed}
 .msg{margin-top:10px;font-size:13px;text-align:center;padding:8px;border-radius:8px;display:none}
 .msg.ok{background:#E1F5EE;color:#0F6E56}
 .msg.err{background:#FCEBEB;color:#A32D2D}
@@ -72,12 +72,14 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 .entry-obs{font-size:11px;color:#888;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .entry-ts{font-size:10px;color:#bbb;margin-top:3px}
 .badge-gps{font-size:10px;padding:1px 6px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:4px;font-weight:500}
-.delete-btn,.edit-pin-btn{background:none;border:none;cursor:pointer;font-size:18px;color:#ccc;padding:6px;flex-shrink:0}
+.delete-btn{background:none;border:none;cursor:pointer;font-size:18px;color:#ccc;padding:6px;flex-shrink:0}
+.edit-pin-btn{background:none;border:none;cursor:pointer;font-size:18px;color:#ccc;padding:6px;flex-shrink:0}
+.loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;z-index:1000;font-size:13px;color:#666}
 .empty{text-align:center;padding:40px 20px;color:#aaa;font-size:13px;line-height:1.8}
 .empty .icon{font-size:36px;display:block;margin-bottom:10px}
-.loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;z-index:1000;font-size:13px;color:#666;gap:8px}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px}
-.modal{background:#fff;border-radius:16px;padding:22px;max-width:360px;width:100%;text-align:center}
+.modal-bg.open,.modal-bg[style*="flex"]{display:flex}
+.modal{background:#fff;border-radius:16px;padding:22px;max-width:380px;width:100%;text-align:center}
 .modal .icon{font-size:32px;margin-bottom:10px}
 .modal h3{font-size:16px;margin-bottom:8px;color:#111}
 .modal p{font-size:13px;color:#666;line-height:1.5;margin-bottom:16px}
@@ -90,7 +92,7 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 .pin-modal-sub{font-size:12px;color:#888;margin-bottom:10px}
 #pin-mapa{width:100%;height:220px;border-radius:10px;border:.5px solid #ddd;overflow:hidden;margin-bottom:10px}
 .dpad{display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:4px;justify-content:center;margin:10px auto}
-.dpad-btn{width:44px;height:44px;background:#f5f5f5;border:.5px solid #ddd;border-radius:8px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none}
+.dpad-btn{width:44px;height:44px;background:#f5f5f5;border:.5px solid #ddd;border-radius:8px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none}
 .dpad-btn:active{background:#1D9E75;color:#fff;border-color:#0F6E56;transform:scale(.93)}
 .dpad-btn.vazio{background:transparent;border:none;cursor:default}
 .dpad-step{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px}
@@ -102,15 +104,14 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 .pin-confirm-btn{background:#1D9E75;color:#fff;border-color:#0F6E56}
 .pin-reset-btn{background:#f5f5f5;color:#555}
 .busca-result-card{background:#fff;border:.5px solid #eee;border-radius:10px;padding:12px;margin-top:12px}
-/* Seletor hierárquico */
-.sel-regiao-label{font-size:11px;color:#aaa;font-weight:500;margin-bottom:2px;display:block}
+.section-label{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
 </style>
 </head>
 <body>
 <div id="app">
   <div class="header">
     <div class="header-icon">📦</div>
-    <div><div class="header-title">Rotas QNO</div><div class="header-sub">Ceilândia · Expansão Setor O</div></div>
+    <div><div class="header-title">Rotas QNO</div><div class="header-sub">Ceilândia · DF</div></div>
     <div class="header-mode leitor" id="header-mode">Visualização</div>
   </div>
   <div class="sync-bar">
@@ -132,46 +133,39 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
       <div class="stat"><div class="num" id="stat-foto">0</div><div class="lbl">com foto</div></div>
     </div>
     <div class="map-toolbar">
-      <select id="filtro-regiao" onchange="onFiltroRegiaoChange()">
-        <option value="">Todas as regiões</option>
-        <option>Expansão Setor O</option>
-        <option>Cond. Agrícola Privê</option>
-      </select>
-      <select id="filtro-quadra" onchange="filtrarMapa()"><option value="">Todas as quadras</option></select>
+      <select id="filtro-cidade" onchange="onFiltroCidadeChange()"><option value="">Todas cidades</option></select>
+      <select id="filtro-bairro" onchange="onFiltroBairroChange()"><option value="">Todos bairros</option></select>
+      <select id="filtro-quadra" onchange="filtrarMapa()"><option value="">Todas quadras</option></select>
       <button class="btn btn-green" onclick="centralizarMapa()">📍</button>
     </div>
-    <div id="map" style="position:relative;">
-      <div class="loading-overlay" id="map-loading">⏳ Carregando mapa...</div>
-    </div>
+    <div id="map" style="position:relative;"><div class="loading-overlay" id="map-loading">⏳ Carregando mapa...</div></div>
   </div>
 
   <!-- BUSCA -->
   <div id="screen-busca" class="screen">
     <div class="reg-screen">
-      <div class="form-group">
-        <label>Região</label>
-        <select id="busca-regiao" onchange="onRegiaoChange('busca-regiao','busca-quadra','busca-cj'); buscarEndereco()">
-          <option value="">...</option>
-          <option>Expansão Setor O</option>
-          <option>Cond. Agrícola Privê</option>
-        </select>
+      <div class="section-label">Localizar endereço</div>
+      <div class="form-row">
+        <div class="form-group"><label>Cidade</label>
+          <select id="busca-cidade" onchange="onCidadeChange('busca-cidade','busca-bairro','busca-quadra','busca-cj'); buscarEndereco()"><option value="">...</option></select>
+        </div>
+        <div class="form-group"><label>Bairro</label>
+          <select id="busca-bairro" onchange="onBairroChange('busca-bairro','busca-quadra','busca-cj'); buscarEndereco()"><option value="">...</option></select>
+        </div>
       </div>
       <div class="form-row">
-        <div class="form-group">
-          <label>Quadra / Rua</label>
+        <div class="form-group"><label>Quadra/Rua</label>
           <select id="busca-quadra" onchange="onQuadraChange('busca-quadra','busca-cj'); buscarEndereco()"><option value="">...</option></select>
         </div>
-        <div class="form-group" id="busca-cj-group">
-          <label>Conjunto</label>
+        <div class="form-group"><label>Conjunto</label>
           <select id="busca-cj" onchange="buscarEndereco()"><option value="">...</option></select>
         </div>
       </div>
-      <div class="form-group">
-        <label>Número da casa</label>
-        <input type="number" id="busca-casa" placeholder="Ex: 15" min="1" max="200" oninput="buscarEndereco()"/>
+      <div class="form-group"><label>Casa nº</label>
+        <input type="number" id="busca-casa" placeholder="Ex: 15" min="1" max="500" oninput="buscarEndereco()"/>
       </div>
       <div id="busca-resultado" style="display:none;">
-        <div id="busca-sem-resultado" style="display:none;" class="empty"><span class="icon">📭</span>Endereço ainda não cadastrado.</div>
+        <div id="busca-sem-resultado" style="display:none;" class="empty"><span class="icon">📭</span>Não cadastrado ainda.</div>
         <div id="busca-com-resultado" style="display:none;" class="busca-result-card">
           <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;">
             <div id="busca-foto-container" style="flex-shrink:0;display:none;">
@@ -185,7 +179,7 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
             </div>
           </div>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-green" style="flex:1;" id="busca-ver-mapa-btn" onclick="verNoMapa()">🗺 Ver no mapa</button>
+            <button class="btn btn-green" style="flex:1;" onclick="verNoMapa()">🗺 Ver no mapa</button>
             <button class="btn" style="flex:1;" onclick="editarPinEncontrado()">📍 Editar pin</button>
           </div>
         </div>
@@ -200,41 +194,34 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
         <div class="gps-dot-sm" id="gps-inline-dot"></div>
         <span id="gps-inline-text">Aguardando localização...</span>
       </div>
-      <div class="form-group">
-        <label>Região</label>
-        <select id="reg-regiao" onchange="onRegiaoChange('reg-regiao','reg-quadra','reg-cj')">
-          <option value="">...</option>
-          <option>Expansão Setor O</option>
-          <option>Cond. Agrícola Privê</option>
-        </select>
+      <div class="section-label">Novo registro</div>
+      <div class="form-row">
+        <div class="form-group"><label>Cidade</label>
+          <select id="reg-cidade" onchange="onCidadeChange('reg-cidade','reg-bairro','reg-quadra','reg-cj')"><option value="">...</option></select>
+        </div>
+        <div class="form-group"><label>Bairro</label>
+          <select id="reg-bairro" onchange="onBairroChange('reg-bairro','reg-quadra','reg-cj')"><option value="">...</option></select>
+        </div>
       </div>
       <div class="form-row">
-        <div class="form-group">
-          <label>Quadra / Rua</label>
+        <div class="form-group"><label>Quadra/Rua</label>
           <select id="reg-quadra" onchange="onQuadraChange('reg-quadra','reg-cj')"><option value="">...</option></select>
         </div>
-        <div class="form-group">
-          <label>Conjunto</label>
+        <div class="form-group"><label>Conjunto</label>
           <select id="reg-cj"><option value="">...</option></select>
         </div>
       </div>
-      <div class="form-group">
-        <label>Número da casa</label>
-        <input type="number" id="reg-casa" placeholder="Ex: 15" min="1" max="200"/>
+      <div class="form-group"><label>Casa nº</label>
+        <input type="number" id="reg-casa" placeholder="Ex: 15" min="1" max="500"/>
       </div>
-      <div class="form-group">
-        <label>Observação</label>
+      <div class="form-group"><label>Observação</label>
         <textarea id="reg-obs" placeholder="Casa azul, portão preto, sem placa..."></textarea>
       </div>
-      <div class="form-group">
-        <label>Foto da fachada</label>
+      <div class="form-group"><label>Foto da fachada</label>
         <div class="photo-area" onclick="document.getElementById('foto-input').click()">
           <span class="icon">📷</span>Tirar foto da fachada
         </div>
-        <div id="foto-preview">
-          <img id="foto-img" src="" alt="Fachada"/>
-          <button id="foto-remove" onclick="removerFoto()">✕</button>
-        </div>
+        <div id="foto-preview"><img id="foto-img" src="" alt="Fachada"/><button id="foto-remove" onclick="removerFoto()">✕</button></div>
         <input type="file" id="foto-input" accept="image/*" capture="environment" style="display:none;" onchange="previewFoto(event)"/>
       </div>
       <button class="save-btn" id="btn-salvar" onclick="iniciarSalvar()">💾 Salvar e confirmar posição</button>
@@ -245,31 +232,37 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
   <!-- LISTA -->
   <div id="screen-lista" class="screen">
     <div class="list-toolbar">
-      <input type="text" id="busca-lista" placeholder="🔍  Buscar endereço..." oninput="renderLista()"/>
+      <input type="text" id="busca-lista" placeholder="🔍  Buscar..." oninput="renderLista()"/>
     </div>
-    <div class="list-screen" id="lista-content"></div>
+    <div class="list-screen" id="lista-content">
+      <div class="empty"><span class="icon">📭</span>Carregando...</div>
+    </div>
   </div>
 </div>
 
-<!-- Modais -->
+<!-- Modal GPS -->
 <div class="modal-bg" id="perm-modal-bg">
   <div class="modal">
     <div class="icon">📍</div>
-    <h3>Ativar localização contínua</h3>
-    <p>Para o app sempre saber sua posição exata, permita o acesso à localização. No Android, escolha <b>"Permitir o tempo todo"</b>.</p>
+    <h3>Ativar localização</h3>
+    <p>Para o app saber sua posição durante as entregas, permita o acesso à localização. No Android, escolha <b>"Permitir o tempo todo"</b>.</p>
     <button onclick="ativarTrackingReal()">Ativar localização</button>
   </div>
 </div>
+
+<!-- Modal Login -->
 <div class="modal-bg" id="login-modal-bg">
   <div class="modal">
     <div class="icon">🔑</div>
     <h3>Modo administrador</h3>
-    <p>Digite a senha para habilitar o cadastro e edição de endereços.</p>
+    <p>Digite a senha para habilitar o cadastro de endereços.</p>
     <input type="password" id="admin-pass" placeholder="Senha"/>
     <button onclick="validarSenha()">Entrar</button>
-    <button class="link-btn" onclick="fecharLogin()">Continuar apenas consultando</button>
+    <button class="link-btn" onclick="fecharLogin()">Continuar consultando</button>
   </div>
 </div>
+
+<!-- Modal Pin -->
 <div class="modal-bg" id="pin-modal-bg">
   <div class="modal">
     <div class="pin-modal-title" id="pin-modal-title">Confirmar posição</div>
@@ -286,19 +279,13 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
       </select>
     </div>
     <div class="dpad">
-      <div class="dpad-btn vazio"></div>
-      <div class="dpad-btn" onclick="moverPin(0,1)">▲</div>
-      <div class="dpad-btn vazio"></div>
-      <div class="dpad-btn" onclick="moverPin(-1,0)">◀</div>
-      <div class="dpad-btn vazio"></div>
-      <div class="dpad-btn" onclick="moverPin(1,0)">▶</div>
-      <div class="dpad-btn vazio"></div>
-      <div class="dpad-btn" onclick="moverPin(0,-1)">▼</div>
-      <div class="dpad-btn vazio"></div>
+      <div class="dpad-btn vazio"></div><div class="dpad-btn" onclick="moverPin(0,1)">▲</div><div class="dpad-btn vazio"></div>
+      <div class="dpad-btn" onclick="moverPin(-1,0)">◀</div><div class="dpad-btn vazio" style="font-size:10px;color:#aaa;display:flex;align-items:center;justify-content:center;">pin</div><div class="dpad-btn" onclick="moverPin(1,0)">▶</div>
+      <div class="dpad-btn vazio"></div><div class="dpad-btn" onclick="moverPin(0,-1)">▼</div><div class="dpad-btn vazio"></div>
     </div>
     <div class="pin-modal-btns">
       <button class="pin-reset-btn" onclick="resetarPinModal()">↺ GPS</button>
-      <button class="pin-confirm-btn" onclick="confirmarPin()">✓ Confirmar posição</button>
+      <button class="pin-confirm-btn" onclick="confirmarPin()">✓ Confirmar</button>
     </div>
   </div>
 </div>
@@ -307,101 +294,167 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-const firebaseConfig = {
-  apiKey: "AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",
-  authDomain: "app-rotas-68cf4.firebaseapp.com",
-  projectId: "app-rotas-68cf4",
-  storageBucket: "app-rotas-68cf4.firebasestorage.app",
-  messagingSenderId: "400409767391",
-  appId: "1:400409767391:web:0bcebe50738d6d3450a86a"
+const cfg = {
+  apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",
+  authDomain:"app-rotas-68cf4.firebaseapp.com",
+  projectId:"app-rotas-68cf4",
+  storageBucket:"app-rotas-68cf4.firebasestorage.app",
+  messagingSenderId:"400409767391",
+  appId:"1:400409767391:web:0bcebe50738d6d3450a86a"
 };
-const fapp = initializeApp(firebaseConfig);
-const dbFs = getFirestore(fapp);
-const registrosCol = collection(dbFs, "registros");
-const regioesCol = collection(dbFs, "regioes");
-window.__firebase = { dbFs, collection, registrosCol, regioesCol, doc, setDoc, deleteDoc, onSnapshot, query };
-window.__firebaseReady = true;
-window.dispatchEvent(new Event('firebase-ready'));
-console.log('[Firebase] OK');
+const fapp = initializeApp(cfg);
+const db = getFirestore(fapp);
+window.__fb = {
+  db, collection, doc, setDoc, deleteDoc, onSnapshot, query,
+  colRegistros: collection(db,'registros'),
+  colCidades: collection(db,'cidades')
+};
+window.__fbReady = true;
+window.dispatchEvent(new Event('fb-ready'));
 </script>
 <script>
 const SENHA_ADMIN = "qno2026";
-const CLOUDINARY_CLOUD_NAME = "dxbxm3rpd";
-const CLOUDINARY_UPLOAD_PRESET = "h90fdbtd";
+const CLOUDINARY_CLOUD = "dxbxm3rpd";
+const CLOUDINARY_PRESET = "h90fdbtd";
 const CENTER = [-15.8485, -48.1080];
 
-// Regiões carregadas dinamicamente do Firebase
-let REGIOES = {}; // { nomeRegiao: { nomeQuadra: [conjuntos] } }
-let CORES_REGIAO = {}; // { nomeRegiao: cor }
+// Estrutura dinâmica: { nomeCidade: { cor, bairros: { nomeBairro: { quadras: { nomeQuadra: [cjs] } } } } }
+let CIDADES = {};
+let fb = null, registros = [], modoAdmin = false;
+let posicaoAtual = null, trackingAtivo = false, primeiraLocalizacao = true;
+let map, markersLayer, meuMarcador, meuCirculo, mapReady = false;
+let fotoBase64 = null;
+let pinMapa = null, pinMarcador = null, posicaoPin = null, pinModalCallback = null;
+let pendenteSalvar = null, resultadoBusca = null;
 
-function corDaQuadra(quadra){
-  // Encontra a região que contém essa quadra e retorna sua cor
-  for(const [nomeReg, quadras] of Object.entries(REGIOES)){
-    if(Object.keys(quadras).includes(quadra)) return CORES_REGIAO[nomeReg]||'#888';
-  }
-  return '#888';
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function ordenar(keys){ return [...keys].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'})); }
+function corBairro(cidade, bairro){
+  return CIDADES[cidade]?.bairros?.[bairro]?.cor || CIDADES[cidade]?.cor || '#888';
 }
+function showMsg(txt,tipo){ const m=document.getElementById('save-msg'); m.textContent=txt; m.className='msg '+tipo; m.style.display='block'; setTimeout(()=>m.style.display='none',3500); }
 
-let modoAdmin=false, registros=[], posicaoAtual=null, trackingAtivo=false;
-let map, markersLayer, meuMarcador, meuCirculo, mapReady=false;
-let fb=null, fotoBase64=null, primeiraLocalizacao=true;
-let pinMapa=null, pinMarcador=null, posicaoPin=null, pinModalCallback=null;
-let pendenteSalvar=null, resultadoBusca=null;
+// ─── Firebase ─────────────────────────────────────────────────────────────────
+function init(){
+  fb = window.__fb;
+  atualizarSync('buscando','Conectando...');
+  const t = setTimeout(()=>atualizarSync('erro','Timeout. Verifique a internet.'),8000);
 
-// ─── Firebase ──────────────────────────────────────────────────────────────────
-function iniciarConexaoFirebase() {
-  fb = window.__firebase;
-  fb.colRegioes = fb.regioesCol;
-  atualizarStatusSync('buscando','Conectando à nuvem...');
-  const timeout = setTimeout(()=>atualizarStatusSync('erro','Demorando. Verifique sua internet.'),8000);
-
-  // Escuta coleção de regiões
-  fb.onSnapshot(fb.query(fb.colRegioes), snap=>{
-    REGIOES = {};
-    CORES_REGIAO = {};
+  fb.onSnapshot(fb.query(fb.colCidades), snap=>{
+    CIDADES = {};
     snap.docs.forEach(d=>{
-      const reg = {id:d.id,...d.data()};
-      REGIOES[reg.nome] = reg.quadras||{};
-      CORES_REGIAO[reg.nome] = reg.cor||'#888';
+      const data = {id:d.id,...d.data()};
+      CIDADES[data.nome] = data;
     });
-    renderSelectsRegioes();
-  }, err=>console.error('[Regioes]', err));
+    renderSelectsCidades();
+  }, err=>console.error('[Cidades]',err));
 
-  // Escuta registros
-  try {
-    fb.onSnapshot(fb.query(fb.registrosCol), snap=>{
-      clearTimeout(timeout);
-      registros = snap.docs.map(d=>{
-        const data = {id:d.id,...d.data()};
-        if(!data.regiao){
-          const matchRegiao = Object.keys(REGIOES).find(n => data.quadra === n);
-          data.regiao = matchRegiao || 'Expansão Setor O';
-        }
-        return data;
-      });
-      atualizarStats();
-      if(mapReady) filtrarMapa();
-      if(document.getElementById('screen-lista').classList.contains('active')) renderLista();
-      atualizarStatusSync('ok', registros.length+' endereços · toque para GPS');
-    }, err=>{ clearTimeout(timeout); atualizarStatusSync('erro','Erro: '+(err.code||err.message)); });
-  } catch(e){ clearTimeout(timeout); atualizarStatusSync('erro','Erro ao conectar.'); }
+  fb.onSnapshot(fb.query(fb.colRegistros), snap=>{
+    clearTimeout(t);
+    registros = snap.docs.map(d=>({id:d.id,...d.data()}));
+    atualizarStats();
+    if(mapReady) filtrarMapa();
+    if(document.getElementById('screen-lista').classList.contains('active')) renderLista();
+    atualizarSync('ok', registros.length+' endereços');
+  }, err=>{ clearTimeout(t); atualizarSync('erro','Erro: '+(err.code||err.message)); });
 }
-if(window.__firebaseReady) iniciarConexaoFirebase();
-else window.addEventListener('firebase-ready', iniciarConexaoFirebase);
+if(window.__fbReady) init();
+else window.addEventListener('fb-ready', init);
 
-function atualizarStatusSync(estado, texto){
-  document.getElementById('sync-dot').className='dot '+(estado==='ok'?'ok':estado==='buscando'?'buscando':estado==='erro'?'erro':'');
-  document.getElementById('sync-text').textContent=texto;
+function atualizarSync(e,t){
+  document.getElementById('sync-dot').className='dot '+(e==='ok'?'ok':e==='buscando'?'buscando':e==='erro'?'erro':'');
+  document.getElementById('sync-text').textContent=t;
 }
-
-// ─── Stats ─────────────────────────────────────────────────────────────────────
 function atualizarStats(){
   document.getElementById('stat-total').textContent=registros.length;
   document.getElementById('stat-gps').textContent=registros.filter(r=>r.lat).length;
   document.getElementById('stat-foto').textContent=registros.filter(r=>r.foto).length;
 }
 
-// ─── Admin ─────────────────────────────────────────────────────────────────────
+// ─── Selects encadeados 4 níveis ──────────────────────────────────────────────
+function renderSelectsCidades(){
+  ['filtro-cidade','busca-cidade','reg-cidade'].forEach(id=>{
+    const sel=document.getElementById(id); if(!sel) return;
+    const val=sel.value;
+    const isFilter=id.startsWith('filtro');
+    sel.innerHTML=isFilter?'<option value="">Todas cidades</option>':'<option value="">...</option>';
+    ordenar(Object.keys(CIDADES)).forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
+    if(val) sel.value=val;
+  });
+}
+
+function onCidadeChange(cidId, bairId, quadId, cjId){
+  const cidade=document.getElementById(cidId).value;
+  const selB=document.getElementById(bairId);
+  selB.innerHTML='<option value="">...</option>';
+  if(cidade && CIDADES[cidade]?.bairros){
+    ordenar(Object.keys(CIDADES[cidade].bairros)).forEach(b=>{ const o=document.createElement('option'); o.value=b; o.textContent=b; selB.appendChild(o); });
+  }
+  limparSelect(quadId,'...'); limparSelect(cjId,'...');
+}
+
+function onBairroChange(bairId, quadId, cjId){
+  const sel=document.getElementById(bairId);
+  const cidade=buscarCidadeDoBairro(sel.value)||document.getElementById(bairId.replace('bairro','cidade'))?.value;
+  const bairro=sel.value;
+  const selQ=document.getElementById(quadId);
+  selQ.innerHTML='<option value="">...</option>';
+  const quadras=CIDADES[cidade]?.bairros?.[bairro]?.quadras||{};
+  ordenar(Object.keys(quadras)).forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; selQ.appendChild(o); });
+  limparSelect(cjId,'...');
+}
+
+function onQuadraChange(quadId, cjId){
+  const quadra=document.getElementById(quadId).value;
+  const selCj=document.getElementById(cjId);
+  selCj.innerHTML='<option value="">...</option>';
+  selCj.disabled=false;
+  // Encontra os conjuntos dessa quadra em qualquer cidade/bairro
+  for(const cidade of Object.values(CIDADES)){
+    for(const bairro of Object.values(cidade.bairros||{})){
+      const cjs=bairro.quadras?.[quadra];
+      if(cjs!==undefined){
+        if(cjs.length>0){ cjs.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; selCj.appendChild(o); }); }
+        else { selCj.innerHTML='<option value="">—</option>'; selCj.disabled=true; }
+        return;
+      }
+    }
+  }
+}
+
+function onFiltroCidadeChange(){
+  const cidade=document.getElementById('filtro-cidade').value;
+  const selB=document.getElementById('filtro-bairro');
+  selB.innerHTML='<option value="">Todos bairros</option>';
+  if(cidade && CIDADES[cidade]?.bairros){
+    ordenar(Object.keys(CIDADES[cidade].bairros)).forEach(b=>{ const o=document.createElement('option'); o.value=b; o.textContent=b; selB.appendChild(o); });
+  }
+  document.getElementById('filtro-quadra').innerHTML='<option value="">Todas quadras</option>';
+  filtrarMapa();
+}
+
+function onFiltroBairroChange(){
+  const cidade=document.getElementById('filtro-cidade').value;
+  const bairro=document.getElementById('filtro-bairro').value;
+  const selQ=document.getElementById('filtro-quadra');
+  selQ.innerHTML='<option value="">Todas quadras</option>';
+  if(cidade && bairro && CIDADES[cidade]?.bairros?.[bairro]?.quadras){
+    ordenar(Object.keys(CIDADES[cidade].bairros[bairro].quadras)).forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; selQ.appendChild(o); });
+  }
+  filtrarMapa();
+}
+
+function limparSelect(id, placeholder){
+  const sel=document.getElementById(id); if(!sel) return;
+  sel.innerHTML=`<option value="">${placeholder}</option>`; sel.disabled=false;
+}
+
+function buscarCidadeDoBairro(bairro){
+  for(const [nc,c] of Object.entries(CIDADES)){ if(c.bairros?.[bairro]) return nc; }
+  return null;
+}
+
+// ─── Admin ────────────────────────────────────────────────────────────────────
 function abrirLogin(){ document.getElementById('login-modal-bg').style.display='flex'; }
 function fecharLogin(){ document.getElementById('login-modal-bg').style.display='none'; }
 function validarSenha(){
@@ -413,172 +466,99 @@ function validarSenha(){
   } else { alert('Senha incorreta.'); fecharLogin(); }
 }
 
-// ─── Tabs ──────────────────────────────────────────────────────────────────────
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
 function showTab(t, prog){
   if(t==='registrar'&&!modoAdmin){ abrirLogin(); return; }
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
   document.getElementById('screen-'+t).classList.add('active');
-  if(!prog&&event&&event.target) event.target.classList.add('active');
+  if(!prog&&event?.target) event.target.classList.add('active');
   else document.querySelectorAll('.tab').forEach(b=>{ if((b.getAttribute('onclick')||'').includes("'"+t+"'")) b.classList.add('active'); });
-  if(t==='mapa'){ if(!mapReady) esperarLeafletEIniciar(); else { setTimeout(()=>map.invalidateSize(),100); filtrarMapa(); } }
+  if(t==='mapa'){ if(!mapReady) esperarLeaflet(); else{ setTimeout(()=>map.invalidateSize(),100); filtrarMapa(); } }
   if(t==='lista') renderLista();
 }
 
-// ─── Seletores hierárquicos ────────────────────────────────────────────────────
-
-// Popula todos os selects de região com dados do Firebase
-function renderSelectsRegioes(){
-  const selIds = ['filtro-regiao','busca-regiao','reg-regiao','edit-regiao'];
-  selIds.forEach(id=>{
-    const sel = document.getElementById(id);
-    if(!sel) return;
-    const val = sel.value;
-    const isFilter = id.startsWith('filtro');
-    sel.innerHTML = isFilter
-      ? '<option value="">Todas as regiões</option>'
-      : '<option value="">...</option>';
-    Object.keys(REGIOES).forEach(nome=>{
-      const o=document.createElement('option');
-      o.value=nome; o.textContent=nome; sel.appendChild(o);
-    });
-    if(val) sel.value=val;
-  });
-}
-
-function onRegiaoChange(regiaoId, quadraId, cjId){
-  const regiao = document.getElementById(regiaoId).value;
-  const selQ = document.getElementById(quadraId);
-  const selCj = document.getElementById(cjId);
-  selQ.innerHTML = '<option value="">...</option>';
-  selCj.innerHTML = '<option value="">...</option>';
-  selCj.disabled = false;
-  if(regiao && REGIOES[regiao]){
-    Object.keys(REGIOES[regiao]).forEach(q=>{
-      const o = document.createElement('option');
-      o.value=q; o.textContent=q; selQ.appendChild(o);
-    });
-  }
-}
-
-function onQuadraChange(quadraId, cjId){
-  const quadra = document.getElementById(quadraId).value;
-  const selCj = document.getElementById(cjId);
-  selCj.innerHTML = '<option value="">...</option>';
-  // Acha a região correspondente
-  for(const [reg, quadras] of Object.entries(REGIOES)){
-    if(quadras[quadra]){
-      const cjs = quadras[quadra];
-      if(cjs.length>0){
-        selCj.disabled = false;
-        cjs.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; selCj.appendChild(o); });
-      } else {
-        // Sem conjuntos (ex: Cond. Privê): deixa vazio e desabilita
-        selCj.innerHTML='<option value="">—</option>';
-        selCj.disabled = true;
-      }
-      break;
-    }
-  }
-}
-
-function onFiltroRegiaoChange(){
-  const regiao = document.getElementById('filtro-regiao').value;
-  const selQ = document.getElementById('filtro-quadra');
-  selQ.innerHTML = '<option value="">Todas as quadras</option>';
-  if(regiao && REGIOES[regiao]){
-    Object.keys(REGIOES[regiao]).forEach(q=>{
-      const o=document.createElement('option'); o.value=q; o.textContent=q; selQ.appendChild(o);
-    });
-  }
-  filtrarMapa();
-}
-
-// ─── GPS ───────────────────────────────────────────────────────────────────────
+// ─── GPS ──────────────────────────────────────────────────────────────────────
 function solicitarGPSContinuo(){ if(trackingAtivo) return; document.getElementById('perm-modal-bg').style.display='flex'; }
 function ativarTrackingReal(){
   document.getElementById('perm-modal-bg').style.display='none';
   if(!navigator.geolocation) return;
   navigator.geolocation.watchPosition(pos=>{
     trackingAtivo=true;
-    posicaoAtual={lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy};
+    posicaoAtual={lat:pos.coords.latitude,lng:pos.coords.longitude,acc:pos.coords.accuracy};
     document.getElementById('gps-inline-dot').className='gps-dot-sm ok';
-    document.getElementById('gps-inline-text').textContent='✓ GPS ativo · precisão ~'+Math.round(pos.coords.accuracy)+'m';
-    atualizarPosicaoNoMapa();
+    document.getElementById('gps-inline-text').textContent='✓ GPS ativo · ~'+Math.round(pos.coords.accuracy)+'m';
+    atualizarPinNoMapa();
     if(primeiraLocalizacao&&map){ map.setView([posicaoAtual.lat,posicaoAtual.lng],17); primeiraLocalizacao=false; }
   }, err=>{
-    document.getElementById('gps-inline-text').textContent=err.code===1?'Permissão negada.':'Erro ao obter localização.';
+    document.getElementById('gps-inline-text').textContent=err.code===1?'Permissão negada.':'Erro GPS.';
   }, {enableHighAccuracy:true,maximumAge:5000,timeout:15000});
 }
-function atualizarPosicaoNoMapa(){
+function atualizarPinNoMapa(){
   if(!map||!posicaoAtual) return;
   const ll=[posicaoAtual.lat,posicaoAtual.lng];
   if(!meuMarcador){
     const icon=L.divIcon({html:'<div style="width:16px;height:16px;background:#378ADD;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px rgba(55,138,221,.4);"></div>',className:'',iconSize:[16,16],iconAnchor:[8,8]});
     meuMarcador=L.marker(ll,{icon,zIndexOffset:1000}).addTo(map).bindPopup('Você está aqui');
-    meuCirculo=L.circle(ll,{radius:posicaoAtual.accuracy,color:'#378ADD',fillColor:'#378ADD',fillOpacity:.1,weight:1}).addTo(map);
-  } else { meuMarcador.setLatLng(ll); meuCirculo.setLatLng(ll); meuCirculo.setRadius(posicaoAtual.accuracy); }
+    meuCirculo=L.circle(ll,{radius:posicaoAtual.acc,color:'#378ADD',fillColor:'#378ADD',fillOpacity:.1,weight:1}).addTo(map);
+  } else { meuMarcador.setLatLng(ll); meuCirculo.setLatLng(ll); meuCirculo.setRadius(posicaoAtual.acc); }
 }
 
-// ─── Mapa ──────────────────────────────────────────────────────────────────────
+// ─── Mapa ─────────────────────────────────────────────────────────────────────
 function initMap(){
   map=L.map('map',{zoomControl:true}).setView(CENTER,16);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
   markersLayer=L.layerGroup().addTo(map);
   L.polyline([[-15.8440,-48.0950],[-15.8440,-48.1250]],{color:'#854F0B',weight:3,dashArray:'8,5',opacity:.7}).addTo(map).bindPopup('BR-070');
   document.getElementById('map-loading').style.display='none';
-  mapReady=true; filtrarMapa();
-  if(posicaoAtual) atualizarPosicaoNoMapa();
+  mapReady=true;
+  filtrarMapa();
+  if(posicaoAtual) atualizarPinNoMapa();
   setTimeout(()=>map.invalidateSize(),200);
 }
-function centralizarMapa(){
-  if(!map) return;
-  if(posicaoAtual) map.setView([posicaoAtual.lat,posicaoAtual.lng],17);
-  else map.setView(CENTER,16);
-}
+function centralizarMapa(){ if(!map) return; if(posicaoAtual) map.setView([posicaoAtual.lat,posicaoAtual.lng],17); else map.setView(CENTER,16); }
 function filtrarMapa(){
   if(!markersLayer) return;
   markersLayer.clearLayers();
-  const regiao=document.getElementById('filtro-regiao').value;
+  const cidade=document.getElementById('filtro-cidade').value;
+  const bairro=document.getElementById('filtro-bairro').value;
   const quadra=document.getElementById('filtro-quadra').value;
   let f=registros;
-  if(regiao) f=f.filter(r=>r.regiao===regiao);
+  if(cidade) f=f.filter(r=>r.cidade===cidade);
+  if(bairro) f=f.filter(r=>r.bairro===bairro);
   if(quadra) f=f.filter(r=>r.quadra===quadra);
   f.forEach(adicionarPin);
 }
-function corPin(quadra){ return corDaQuadra(quadra); }
 function adicionarPin(r){
   if(!r.lat||!map) return;
-  const cor=corPin(r.quadra);
-  const icon=L.divIcon({html:`<div style="background:${cor};border:2px solid white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;box-shadow:0 2px 5px rgba(0,0,0,.25);">${r.cj||r.quadra}</div>`,className:'',iconSize:[26,26],iconAnchor:[13,13]});
-  let popup=`<b>${r.regiao||r.quadra}</b><br>${r.quadra} · ${r.cj?'Cj. '+r.cj+' · ':''} Casa ${r.casa}`;
+  const cor=corBairro(r.cidade,r.bairro);
+  const icon=L.divIcon({html:`<div style="background:${cor};border:2px solid white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;box-shadow:0 2px 5px rgba(0,0,0,.25);">${r.conjunto||r.quadra?.slice(-2)||'?'}</div>`,className:'',iconSize:[26,26],iconAnchor:[13,13]});
+  let popup=`<b>${r.cidade||''} · ${r.bairro||''}</b><br>${r.quadra||''} ${r.conjunto?'· Cj.'+r.conjunto:''} · Casa ${r.casa}`;
   if(r.obs) popup+=`<br><span style="font-size:12px;color:#666;">${r.obs}</span>`;
   if(r.foto) popup+=`<br><img src="${r.foto}" style="width:130px;margin-top:5px;border-radius:6px;">`;
   L.marker([r.lat,r.lng],{icon}).addTo(markersLayer).bindPopup(popup);
 }
+function esperarLeaflet(){ if(typeof L!=='undefined'){ initMap(); solicitarGPSContinuo(); } else setTimeout(esperarLeaflet,100); }
 
-// ─── Modal Pin ─────────────────────────────────────────────────────────────────
-function abrirModalPin(lat,lng,titulo,subtitulo,callback){
+// ─── Modal Pin ────────────────────────────────────────────────────────────────
+function abrirModalPin(lat,lng,titulo,sub,callback){
   posicaoPin={lat,lng}; pinModalCallback=callback;
   document.getElementById('pin-modal-title').textContent=titulo;
-  document.getElementById('pin-modal-sub').textContent=subtitulo;
+  document.getElementById('pin-modal-sub').textContent=sub;
   document.getElementById('pin-modal-bg').style.display='flex';
   atualizarCoordsDisplay();
   setTimeout(()=>{
     if(!pinMapa){
       pinMapa=L.map('pin-mapa',{zoomControl:true,attributionControl:false}).setView([lat,lng],19);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:21}).addTo(pinMapa);
-      const pinIcon=L.divIcon({html:'<div style="width:28px;height:28px;background:#E24B4A;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:grab;"></div>',className:'',iconSize:[28,28],iconAnchor:[14,14]});
-      pinMarcador=L.marker([lat,lng],{icon:pinIcon,draggable:true}).addTo(pinMapa);
+      const icon=L.divIcon({html:'<div style="width:28px;height:28px;background:#E24B4A;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:grab;"></div>',className:'',iconSize:[28,28],iconAnchor:[14,14]});
+      pinMarcador=L.marker([lat,lng],{icon,draggable:true}).addTo(pinMapa);
       pinMarcador.on('drag dragend',()=>{ const p=pinMarcador.getLatLng(); posicaoPin={lat:p.lat,lng:p.lng}; atualizarCoordsDisplay(); });
     } else { pinMapa.setView([lat,lng],19); pinMarcador.setLatLng([lat,lng]); }
     setTimeout(()=>pinMapa.invalidateSize(),100);
   },100);
 }
-function atualizarCoordsDisplay(){
-  if(!posicaoPin) return;
-  document.getElementById('pin-coords-display').textContent=posicaoPin.lat.toFixed(6)+', '+posicaoPin.lng.toFixed(6);
-}
+function atualizarCoordsDisplay(){ if(posicaoPin) document.getElementById('pin-coords-display').textContent=posicaoPin.lat.toFixed(6)+', '+posicaoPin.lng.toFixed(6); }
 function moverPin(dLng,dLat){
   if(!pinMarcador||!posicaoPin) return;
   const step=parseFloat(document.getElementById('dpad-step-sel').value);
@@ -594,71 +574,55 @@ function resetarPinModal(){
   pinMapa.setView([posicaoPin.lat,posicaoPin.lng],19);
   atualizarCoordsDisplay();
 }
-async function confirmarPin(){
-  if(!posicaoPin||!pinModalCallback) return;
-  document.getElementById('pin-modal-bg').style.display='none';
-  await pinModalCallback(posicaoPin);
-}
+async function confirmarPin(){ if(!posicaoPin||!pinModalCallback) return; document.getElementById('pin-modal-bg').style.display='none'; await pinModalCallback(posicaoPin); }
 
-// ─── Foto ──────────────────────────────────────────────────────────────────────
+// ─── Foto ─────────────────────────────────────────────────────────────────────
 function previewFoto(e){
   const file=e.target.files[0]; if(!file) return;
-  const reader=new FileReader();
-  reader.onload=ev=>comprimirImagem(ev.target.result,1024,.7).then(c=>{ fotoBase64=c; document.getElementById('foto-img').src=c; document.getElementById('foto-preview').style.display='block'; });
-  reader.readAsDataURL(file);
+  const r=new FileReader();
+  r.onload=ev=>comprimir(ev.target.result,1024,.7).then(c=>{ fotoBase64=c; document.getElementById('foto-img').src=c; document.getElementById('foto-preview').style.display='block'; });
+  r.readAsDataURL(file);
 }
-function comprimirImagem(src,maxW,q){
-  return new Promise(res=>{ const img=new Image(); img.onload=()=>{ let w=img.width,h=img.height; if(w>maxW){h=Math.round(h*maxW/w);w=maxW;} const c=document.createElement('canvas'); c.width=w;c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); res(c.toDataURL('image/jpeg',q)); }; img.src=src; });
-}
+function comprimir(src,maxW,q){ return new Promise(res=>{ const img=new Image(); img.onload=()=>{ let w=img.width,h=img.height; if(w>maxW){h=Math.round(h*maxW/w);w=maxW;} const c=document.createElement('canvas'); c.width=w;c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); res(c.toDataURL('image/jpeg',q)); }; img.src=src; }); }
 function removerFoto(){ fotoBase64=null; document.getElementById('foto-preview').style.display='none'; document.getElementById('foto-input').value=''; }
+async function uploadFoto(b64){ const fd=new FormData(); fd.append('file',b64); fd.append('upload_preset',CLOUDINARY_PRESET); const r=await fetch('https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/image/upload',{method:'POST',body:fd}); if(!r.ok) throw new Error('Cloudinary '+r.status); return (await r.json()).secure_url; }
 
-// ─── Upload Cloudinary ─────────────────────────────────────────────────────────
-async function uploadFoto(base64){
-  const url='https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD_NAME+'/image/upload';
-  const fd=new FormData(); fd.append('file',base64); fd.append('upload_preset',CLOUDINARY_UPLOAD_PRESET);
-  const resp=await fetch(url,{method:'POST',body:fd});
-  if(!resp.ok) throw new Error('Cloudinary '+resp.status);
-  return (await resp.json()).secure_url;
-}
-
-// ─── Salvar ────────────────────────────────────────────────────────────────────
+// ─── Salvar ───────────────────────────────────────────────────────────────────
 function iniciarSalvar(){
   if(!modoAdmin){ showMsg('Modo administrador necessário.','err'); return; }
-  if(!fb){ showMsg('Aguarde a conexão com a nuvem.','err'); return; }
-  const regiao=document.getElementById('reg-regiao').value;
+  if(!fb){ showMsg('Aguarde a conexão.','err'); return; }
+  const cidade=document.getElementById('reg-cidade').value;
+  const bairro=document.getElementById('reg-bairro').value;
   const quadra=document.getElementById('reg-quadra').value;
   const cjRaw=document.getElementById('reg-cj').value;
-  const cj = (cjRaw === '—' || cjRaw === 'N/A') ? '' : cjRaw;
+  const conjunto=(cjRaw==='—'||cjRaw==='N/A')?'':cjRaw;
   const casa=document.getElementById('reg-casa').value;
-  if(!regiao||!quadra||!casa){ showMsg('Preencha região, quadra/rua e casa.','err'); return; }
+  if(!cidade||!bairro||!quadra||!casa){ showMsg('Preencha cidade, bairro, quadra e casa.','err'); return; }
   const lat=posicaoAtual?posicaoAtual.lat:CENTER[0];
   const lng=posicaoAtual?posicaoAtual.lng:CENTER[1];
-  pendenteSalvar={regiao,quadra,cj,casa};
+  pendenteSalvar={cidade,bairro,quadra,conjunto,casa};
   abrirModalPin(lat,lng,
-    'Confirmar — '+regiao+' · '+quadra+(cj?' · Cj.'+cj:'')+ ' · Casa '+casa,
-    posicaoAtual?'GPS marcou este local. Ajuste se necessário.':'GPS indisponível. Posicione o pin manualmente.',
-    async(pinPos)=>await executarSalvar(pinPos)
-  );
+    cidade+' · '+bairro+' · '+quadra+(conjunto?' · Cj.'+conjunto:'')+' · Casa '+casa,
+    posicaoAtual?'GPS marcou este local. Ajuste se necessário.':'GPS indisponível. Posicione manualmente.',
+    async pp=>await executarSalvar(pp));
 }
 async function executarSalvar(pinPos){
-  const {regiao,quadra,cj,casa}=pendenteSalvar;
+  const {cidade,bairro,quadra,conjunto,casa}=pendenteSalvar;
   const obs=document.getElementById('reg-obs').value.trim();
   const btn=document.getElementById('btn-salvar');
   btn.disabled=true; btn.textContent='Salvando...';
-  try {
+  try{
     let fotoUrl=null;
     if(fotoBase64){ btn.textContent='Enviando foto...'; fotoUrl=await uploadFoto(fotoBase64); }
     btn.textContent='Salvando...';
-    const docId=(regiao+'_'+quadra+'_'+(cj||'')+'_'+casa).replace(/\s+/g,'');
-    await fb.setDoc(fb.doc(fb.dbFs,'registros',docId),{
-      regiao,quadra,cj:cj||'',casa,obs,foto:fotoUrl,
+    const docId=(cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.]/g,'');
+    await fb.setDoc(fb.doc(fb.db,'registros',docId),{
+      cidade,bairro,quadra,conjunto,casa,obs,foto:fotoUrl,
       lat:pinPos.lat,lng:pinPos.lng,
       ts:new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
     });
-    showMsg('✓ '+regiao+' · '+quadra+(cj?' · Cj.'+cj:'')+' · Casa '+casa+' salvo!','ok');
-    document.getElementById('reg-regiao').value='';
-    document.getElementById('reg-quadra').innerHTML='<option value="">...</option>';
-    document.getElementById('reg-cj').innerHTML='<option value="">...</option>';
+    showMsg('✓ '+cidade+' · '+bairro+' · '+quadra+(conjunto?' Cj.'+conjunto:'')+' · Casa '+casa+' salvo!','ok');
+    ['reg-cidade','reg-bairro','reg-quadra','reg-cj'].forEach(id=>{ const s=document.getElementById(id); if(s){s.value='';s.innerHTML='<option value="">...</option>';} });
     document.getElementById('reg-casa').value='';
     document.getElementById('reg-obs').value='';
     removerFoto(); pendenteSalvar=null;
@@ -666,90 +630,87 @@ async function executarSalvar(pinPos){
   btn.disabled=false; btn.textContent='💾 Salvar e confirmar posição';
 }
 
-// ─── Busca ─────────────────────────────────────────────────────────────────────
+// ─── Busca ────────────────────────────────────────────────────────────────────
 function buscarEndereco(){
-  const regiao=document.getElementById('busca-regiao').value;
+  const cidade=document.getElementById('busca-cidade').value;
+  const bairro=document.getElementById('busca-bairro').value;
   const quadra=document.getElementById('busca-quadra').value;
   const cjRaw=document.getElementById('busca-cj').value;
-  const cj=(cjRaw==='—'||cjRaw==='N/A')?'':cjRaw;
+  const conjunto=(cjRaw==='—'||cjRaw==='N/A')?'':cjRaw;
   const casa=document.getElementById('busca-casa').value;
   const divRes=document.getElementById('busca-resultado');
   const divSem=document.getElementById('busca-sem-resultado');
   const divCom=document.getElementById('busca-com-resultado');
-  if(!regiao||!quadra||!casa){ divRes.style.display='none'; return; }
-  const docId=(regiao+'_'+quadra+'_'+(cj||'')+'_'+casa).replace(/\s+/g,'');
+  if(!cidade||!bairro||!quadra||!casa){ divRes.style.display='none'; return; }
+  const docId=(cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.]/g,'');
   const reg=registros.find(r=>r.id===docId);
   divRes.style.display='block'; resultadoBusca=reg||null;
   if(!reg){ divSem.style.display='block'; divCom.style.display='none'; return; }
   divSem.style.display='none'; divCom.style.display='block';
-  document.getElementById('busca-addr').textContent=regiao+' · '+quadra+(cj?' · Cj.'+cj:'')+' · Casa '+casa;
+  document.getElementById('busca-addr').textContent=cidade+' · '+bairro+' · '+quadra+(conjunto?' · Cj.'+conjunto:'')+' · Casa '+casa;
   document.getElementById('busca-obs').textContent=reg.obs||'Sem observação';
   document.getElementById('busca-ts').textContent=reg.ts?'Registrado em '+reg.ts:'';
   const fc=document.getElementById('busca-foto-container');
-  if(reg.foto){ document.getElementById('busca-foto').src=reg.foto; fc.style.display='block'; } else { fc.style.display='none'; }
-  document.getElementById('busca-gps-info').textContent=reg.lat?'📍 GPS disponível':'⚠️ Sem GPS registrado';
-  const btnVer=document.getElementById('busca-ver-mapa-btn');
-  if(btnVer) btnVer.style.display=reg.lat?'':'none';
+  if(reg.foto){ document.getElementById('busca-foto').src=reg.foto; fc.style.display='block'; } else fc.style.display='none';
+  document.getElementById('busca-gps-info').textContent=reg.lat?'📍 GPS disponível':'⚠️ Sem GPS';
 }
 function verNoMapa(){
-  if(!resultadoBusca||!resultadoBusca.lat) return;
+  if(!resultadoBusca?.lat) return;
   showTab('mapa',true);
-  setTimeout(()=>{ if(map){ map.setView([resultadoBusca.lat,resultadoBusca.lng],19); markersLayer.eachLayer(l=>{ if(l.getLatLng&&Math.abs(l.getLatLng().lat-resultadoBusca.lat)<0.00001) l.openPopup(); }); } },300);
+  setTimeout(()=>{ if(map){ map.setView([resultadoBusca.lat,resultadoBusca.lng],19); markersLayer.eachLayer(l=>{ if(l.getLatLng&&Math.abs(l.getLatLng().lat-resultadoBusca.lat)<.00001) l.openPopup(); }); } },300);
 }
 function editarPinEncontrado(){
   if(!resultadoBusca) return;
-  if(!modoAdmin){ abrirLogin(); return; }
   const r=resultadoBusca;
-  const lat=r.lat||(posicaoAtual?posicaoAtual.lat:CENTER[0]);
-  const lng=r.lng||(posicaoAtual?posicaoAtual.lng:CENTER[1]);
-  abrirModalPin(lat,lng,'Editar pin — '+r.quadra+(r.cj?' Cj.'+r.cj:'')+' Casa '+r.casa,'Reposicione o pin e confirme.',
-    async(pinPos)=>{ try{ await fb.setDoc(fb.doc(fb.dbFs,'registros',r.id),{...r,lat:pinPos.lat,lng:pinPos.lng}); document.getElementById('busca-gps-info').textContent='✓ Posição atualizada!'; } catch(e){ alert('Erro: '+(e.code||e.message)); } }
-  );
+  abrirModalPin(r.lat||CENTER[0],r.lng||CENTER[1],'Editar pin · '+r.quadra+' Casa '+r.casa,'Reposicione e confirme.',
+    async pp=>{ if(!modoAdmin){abrirLogin();return;} try{ await fb.setDoc(fb.doc(fb.db,'registros',r.id),{...r,lat:pp.lat,lng:pp.lng}); document.getElementById('busca-gps-info').textContent='✓ Posição atualizada!'; }catch(e){alert('Erro: '+(e.code||e.message));} });
 }
 
-// ─── Lista ─────────────────────────────────────────────────────────────────────
-function abrirEdicaoPinPorId(id){
-  if(!modoAdmin){ abrirLogin(); return; }
-  const r=registros.find(x=>x.id===id); if(!r) return;
-  const lat=r.lat||(posicaoAtual?posicaoAtual.lat:CENTER[0]);
-  const lng=r.lng||(posicaoAtual?posicaoAtual.lng:CENTER[1]);
-  abrirModalPin(lat,lng,'Editar pin — '+(r.regiao||r.quadra)+' · '+r.quadra+(r.cj?' Cj.'+r.cj:'')+' Casa '+r.casa,
-    r.lat?'Posição atual. Ajuste com D-Pad ou arrastando.':'Sem GPS ainda. Posicione manualmente.',
-    async(pinPos)=>{ try{ await fb.setDoc(fb.doc(fb.dbFs,'registros',r.id),{...r,lat:pinPos.lat,lng:pinPos.lng}); renderLista(); } catch(e){ alert('Erro: '+(e.code||e.message)); } }
-  );
-}
+// ─── Deletar / Editar pin na lista ────────────────────────────────────────────
 async function deletar(id){
-  if(!modoAdmin){ abrirLogin(); return; }
-  if(!fb||!id) return;
-  if(!confirm('Excluir este registro da nuvem?')) return;
-  try{ await fb.deleteDoc(fb.doc(fb.dbFs,'registros',id)); } catch(e){ alert('Erro ao excluir: '+(e.code||e.message)); }
+  if(!modoAdmin){abrirLogin();return;} if(!fb||!id) return;
+  if(!confirm('Excluir este registro?')) return;
+  try{ await fb.deleteDoc(fb.doc(fb.db,'registros',id)); } catch(e){ alert('Erro: '+(e.code||e.message)); }
 }
+function abrirEdicaoPinPorId(id){
+  if(!modoAdmin){abrirLogin();return;}
+  const r=registros.find(x=>x.id===id); if(!r){alert('Não encontrado.');return;}
+  abrirModalPin(r.lat||CENTER[0],r.lng||CENTER[1],'Editar pin · '+r.quadra+' Casa '+r.casa,r.lat?'Ajuste com D-Pad ou arrastando.':'Sem GPS. Posicione manualmente.',
+    async pp=>{ try{ await fb.setDoc(fb.doc(fb.db,'registros',r.id),{...r,lat:pp.lat,lng:pp.lng}); renderLista(); }catch(e){alert('Erro: '+(e.code||e.message));} });
+}
+
+// ─── Lista ────────────────────────────────────────────────────────────────────
 function renderLista(){
   const div=document.getElementById('lista-content');
   const busca=(document.getElementById('busca-lista')?.value||'').toLowerCase();
-  let f=busca?registros.filter(r=>(r.regiao||'').toLowerCase().includes(busca)||(r.quadra||'').toLowerCase().includes(busca)||r.cj.toLowerCase().includes(busca)||r.casa.toString().includes(busca)||(r.obs||'').toLowerCase().includes(busca)):[...registros];
-  if(!f.length){ div.innerHTML='<div class="empty"><span class="icon">'+(busca?'🔍':'📭')+'</span>'+(busca?'Nenhum resultado.':'Nenhum registro ainda.')+'</div>'; return; }
-  f.sort((a,b)=>(a.regiao||'').localeCompare(b.regiao||'')||(a.quadra||'').localeCompare(b.quadra||'')||a.cj.localeCompare(b.cj,undefined,{numeric:true})||parseInt(a.casa)-parseInt(b.casa));
-  div.innerHTML=f.map(r=>'<div class="entry-card">'+(r.foto?'<img class="entry-thumb" src="'+r.foto+'">':'<div class="entry-thumb-empty">📦</div>')+'<div class="entry-info"><div class="entry-addr">'+(r.regiao?'<span style="font-size:10px;color:#aaa;">'+r.regiao+'</span><br>':'')+r.quadra+(r.cj?' · Cj. '+r.cj:'')+' · Casa '+r.casa+(r.lat?'<span class="badge-gps">GPS</span>':'')+'</div><div class="entry-obs">'+(r.obs||'Sem observação')+'</div><div class="entry-ts">'+(r.ts||'')+'</div></div>'+(modoAdmin?'<button class="edit-pin-btn" data-editid="'+r.id+'">✏️</button>':'')+(modoAdmin?'<button class="delete-btn" data-delid="'+r.id+'">🗑</button>':'')+'</div>').join('');
+  let f=busca?registros.filter(r=>(r.cidade||'').toLowerCase().includes(busca)||(r.bairro||'').toLowerCase().includes(busca)||(r.quadra||'').toLowerCase().includes(busca)||(r.conjunto||'').toLowerCase().includes(busca)||r.casa.toString().includes(busca)||(r.obs||'').toLowerCase().includes(busca)):[...registros];
+  if(!f.length){ div.innerHTML='<div class="empty"><span class="icon">'+(busca?'🔍':'📭')+'</span>'+(busca?'Nenhum resultado.':'Nenhum registro.')+'</div>'; return; }
+  f.sort((a,b)=>(a.cidade||'').localeCompare(b.cidade||'')||(a.bairro||'').localeCompare(b.bairro||'')||(a.quadra||'').localeCompare(b.quadra||'',undefined,{numeric:true})||parseInt(a.casa)-parseInt(b.casa));
+  div.innerHTML=f.map(r=>
+    '<div class="entry-card">'+
+    (r.foto?`<img class="entry-thumb" src="${r.foto}">`:'<div class="entry-thumb-empty">📦</div>')+
+    '<div class="entry-info">'+
+    `<div class="entry-addr">${r.bairro||''} · ${r.quadra||''} ${r.conjunto?'Cj.'+r.conjunto:''} · Casa ${r.casa}${r.lat?'<span class="badge-gps">GPS</span>':''}</div>`+
+    `<div class="entry-obs">${r.obs||'Sem observação'}</div>`+
+    `<div class="entry-ts">${r.ts||''}</div></div>`+
+    (modoAdmin?`<button class="edit-pin-btn" data-editid="${r.id}">✏️</button>`+`<button class="delete-btn" data-delid="${r.id}">🗑</button>`:'')+
+    '</div>'
+  ).join('');
   div.querySelectorAll('.delete-btn').forEach(btn=>btn.addEventListener('click',()=>deletar(btn.getAttribute('data-delid'))));
   div.querySelectorAll('.edit-pin-btn').forEach(btn=>btn.addEventListener('click',()=>abrirEdicaoPinPorId(btn.getAttribute('data-editid'))));
 }
 
-function showMsg(text,type){ const msg=document.getElementById('save-msg'); msg.textContent=text; msg.className='msg '+type; msg.style.display='block'; setTimeout(()=>{msg.style.display='none';},3500); }
-
-function esperarLeafletEIniciar(){ if(typeof L!=='undefined'){ initMap(); solicitarGPSContinuo(); } else setTimeout(esperarLeafletEIniciar,100); }
-
-window.showTab=showTab; window.onRegiaoChange=onRegiaoChange; window.onQuadraChange=onQuadraChange;
-window.onFiltroRegiaoChange=onFiltroRegiaoChange; window.filtrarMapa=filtrarMapa; window.centralizarMapa=centralizarMapa;
-window.renderSelectsRegioes=renderSelectsRegioes;
+// ─── Globais ──────────────────────────────────────────────────────────────────
+window.showTab=showTab; window.solicitarGPSContinuo=solicitarGPSContinuo; window.ativarTrackingReal=ativarTrackingReal;
+window.centralizarMapa=centralizarMapa; window.filtrarMapa=filtrarMapa;
+window.onCidadeChange=onCidadeChange; window.onBairroChange=onBairroChange; window.onQuadraChange=onQuadraChange;
+window.onFiltroCidadeChange=onFiltroCidadeChange; window.onFiltroBairroChange=onFiltroBairroChange;
 window.previewFoto=previewFoto; window.removerFoto=removerFoto; window.iniciarSalvar=iniciarSalvar;
-window.deletar=deletar; window.abrirEdicaoPinPorId=abrirEdicaoPinPorId;
-window.buscarEndereco=buscarEndereco; window.editarPinEncontrado=editarPinEncontrado; window.verNoMapa=verNoMapa;
+window.buscarEndereco=buscarEndereco; window.verNoMapa=verNoMapa; window.editarPinEncontrado=editarPinEncontrado;
+window.deletar=deletar; window.abrirEdicaoPinPorId=abrirEdicaoPinPorId; window.renderLista=renderLista;
 window.moverPin=moverPin; window.resetarPinModal=resetarPinModal; window.confirmarPin=confirmarPin;
-window.solicitarGPSContinuo=solicitarGPSContinuo; window.ativarTrackingReal=ativarTrackingReal;
-window.validarSenha=validarSenha; window.fecharLogin=fecharLogin; window.renderLista=renderLista;
-
-esperarLeafletEIniciar();
+window.validarSenha=validarSenha; window.fecharLogin=fecharLogin; window.abrirLogin=abrirLogin;
+esperarLeaflet();
 </script>
 </body>
 </html>
