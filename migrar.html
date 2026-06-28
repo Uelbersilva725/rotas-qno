@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Rotas QNO · Migração</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F4F6F9;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;border-radius:16px;padding:32px;width:100%;max-width:560px;box-shadow:0 4px 24px rgba(0,0,0,.1)}
+.logo{width:48px;height:48px;background:#1D9E75;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px}
+h1{font-size:20px;margin-bottom:4px}
+.sub{font-size:13px;color:#888;margin-bottom:24px}
+.step{display:none}
+.step.active{display:block}
+.btn{width:100%;padding:13px;background:#1D9E75;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:12px}
+.btn:disabled{background:#ccc;cursor:not-allowed}
+.btn-sec{background:#f5f5f5;color:#555;border:1px solid #ddd}
+.btn-red{background:#E24B4A}
+.log{background:#f5f5f5;border-radius:8px;padding:12px;margin-top:16px;font-size:12px;font-family:monospace;max-height:280px;overflow-y:auto;line-height:1.7}
+.log .ok{color:#0F6E56}
+.log .err{color:#E24B4A}
+.log .info{color:#555}
+.log .warn{color:#854F0B}
+.progress-bar{height:8px;background:#eee;border-radius:20px;overflow:hidden;margin-top:12px}
+.progress-fill{height:100%;background:#1D9E75;border-radius:20px;transition:width .3s}
+.stat-row{display:flex;gap:12px;margin-top:16px}
+.stat-box{flex:1;background:#f9f9f9;border-radius:10px;padding:12px;text-align:center;border:1px solid #eee}
+.stat-box .num{font-size:28px;font-weight:700;color:#1D9E75}
+.stat-box .lbl{font-size:11px;color:#888;margin-top:2px}
+.mapa-grupo{background:#f9f9f9;border:1px solid #eee;border-radius:10px;padding:14px;margin-bottom:10px}
+.mapa-grupo-title{font-size:13px;font-weight:600;margin-bottom:10px;color:#111}
+.mapa-grupo-sub{font-size:11px;color:#888;margin-bottom:10px}
+.form-row{display:flex;gap:8px}
+.form-group{flex:1}
+.form-group label{font-size:11px;color:#666;display:block;margin-bottom:3px;font-weight:500}
+.form-group input,.form-group select{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:7px;font-size:13px;background:#fff;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:#1D9E75}
+.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-left:4px;font-weight:500}
+.badge-qno{background:#E1F5EE;color:#0F6E56}
+.badge-cond{background:#EEEDFE;color:#3C3489}
+.badge-sem{background:#FFF3CD;color:#856404}
+.divider{border:none;border-top:1px solid #eee;margin:20px 0}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🔄</div>
+  <h1>Migração de Dados</h1>
+  <p class="sub">Rotas QNO · Atualização para estrutura Cidade → Bairro → Quadra → Conjunto</p>
+
+  <!-- STEP 1: Análise -->
+  <div class="step active" id="step-1">
+    <p style="font-size:13px;color:#555;line-height:1.6;margin-bottom:16px;">
+      Este assistente vai ler todos os seus registros atuais, identificar a cidade e bairro de cada um, e salvar com a nova estrutura — sem perder nenhum dado.
+    </p>
+    <p style="font-size:13px;color:#555;line-height:1.6;">
+      <b>Antes de começar:</b> certifique-se de que já criou a cidade <b>Ceilândia</b> e os bairros <b>Expansão Setor O</b> e <b>Cond. Agrícola Privê</b> no painel admin.
+    </p>
+    <button class="btn" onclick="analisarRegistros()">🔍 Analisar registros</button>
+    <div class="log" id="log-1" style="display:none;"></div>
+  </div>
+
+  <!-- STEP 2: Mapeamento -->
+  <div class="step" id="step-2">
+    <div class="stat-row" id="stat-row"></div>
+    <hr class="divider"/>
+    <p style="font-size:13px;font-weight:600;margin-bottom:4px;">Confirme o mapeamento</p>
+    <p style="font-size:12px;color:#888;margin-bottom:16px;">Para cada grupo de registros, confirme a cidade e bairro de destino.</p>
+    <div id="grupos-mapeamento"></div>
+    <button class="btn" onclick="executarMigracao()">🚀 Migrar registros</button>
+    <button class="btn btn-sec" onclick="voltarStep1()" style="margin-top:8px;">← Voltar</button>
+  </div>
+
+  <!-- STEP 3: Executando -->
+  <div class="step" id="step-3">
+    <p style="font-size:13px;color:#555;margin-bottom:8px;" id="exec-status">Migrando...</p>
+    <div class="progress-bar"><div class="progress-fill" id="exec-progress" style="width:0%"></div></div>
+    <div class="log" id="log-3"></div>
+  </div>
+
+  <!-- STEP 4: Concluído -->
+  <div class="step" id="step-4">
+    <div style="text-align:center;padding:20px 0;">
+      <div style="font-size:48px;margin-bottom:12px;">✅</div>
+      <h2 style="font-size:18px;margin-bottom:8px;">Migração concluída!</h2>
+      <p style="font-size:13px;color:#888;margin-bottom:20px;" id="resultado-final"></p>
+    </div>
+    <div class="log" id="log-4"></div>
+    <button class="btn" onclick="window.close()">Fechar</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, collection, doc, setDoc, deleteDoc,
+  getDocs, query
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const cfg = {
+  apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",
+  authDomain:"app-rotas-68cf4.firebaseapp.com",
+  projectId:"app-rotas-68cf4",
+  storageBucket:"app-rotas-68cf4.firebasestorage.app",
+  messagingSenderId:"400409767391",
+  appId:"1:400409767391:web:0bcebe50738d6d3450a86a"
+};
+
+const fapp = initializeApp(cfg);
+const db = getFirestore(fapp);
+const colReg = collection(db,'registros');
+const colCid = collection(db,'cidades');
+
+let registrosAntigos = [];
+let grupos = {};
+let cidadesDisponiveis = {};
+
+// ─── Inferir bairro de um registro antigo ────────────────────────────────────
+function inferirBairroCidade(r){
+  const regiao = r.regiao || '';
+  const quadra = r.quadra || '';
+
+  // Tem campo regiao preenchido
+  if(regiao === 'Cond. Agrícola Privê' || quadra === 'Cond. Agrícola Privê')
+    return { cidade:'Ceilândia', bairro:'Cond. Agrícola Privê' };
+  if(regiao === 'Expansão Setor O')
+    return { cidade:'Ceilândia', bairro:'Expansão Setor O' };
+
+  // Infere pela quadra
+  if(/^QNO/i.test(quadra)) return { cidade:'Ceilândia', bairro:'Expansão Setor O' };
+  if(/^Rua\s+\d/i.test(quadra)) return { cidade:'Ceilândia', bairro:'Cond. Agrícola Privê' };
+
+  // Não conseguiu inferir
+  return { cidade:'', bairro:'' };
+}
+
+function grupoKey(cidade, bairro){ return cidade+'||'+bairro; }
+
+// ─── Step 1: Analisar ─────────────────────────────────────────────────────────
+window.analisarRegistros = async function(){
+  const btn = document.querySelector('#step-1 .btn');
+  btn.disabled = true; btn.textContent = 'Analisando...';
+  const log = document.getElementById('log-1');
+  log.style.display = 'block';
+
+  function addLog(msg, cls='info'){ log.innerHTML += `<div class="${cls}">${msg}</div>`; log.scrollTop=log.scrollHeight; }
+
+  try {
+    addLog('Conectando ao Firebase...');
+    const snapReg = await getDocs(query(colReg));
+    const snapCid = await getDocs(query(colCid));
+
+    registrosAntigos = snapReg.docs.map(d=>({id:d.id,...d.data()}));
+    cidadesDisponiveis = {};
+    snapCid.docs.forEach(d=>{ cidadesDisponiveis[d.id]={id:d.id,...d.data()}; });
+
+    addLog(`✓ ${registrosAntigos.length} registros encontrados`,'ok');
+    addLog(`✓ ${snapCid.docs.length} cidades configuradas no banco`,'ok');
+
+    if(!registrosAntigos.length){ addLog('Nenhum registro para migrar.','warn'); btn.disabled=false; btn.textContent='🔍 Analisar registros'; return; }
+
+    // Agrupa por cidade+bairro inferido
+    grupos = {};
+    let semInferencia = 0;
+
+    registrosAntigos.forEach(r=>{
+      const inf = inferirBairroCidade(r);
+      const key = grupoKey(inf.cidade, inf.bairro);
+      if(!grupos[key]) grupos[key] = { cidade:inf.cidade, bairro:inf.bairro, registros:[] };
+      grupos[key].registros.push(r);
+      if(!inf.cidade || !inf.bairro) semInferencia++;
+    });
+
+    Object.values(grupos).forEach(g=>{
+      const tag = g.cidade ? '' : '⚠️ ';
+      addLog(`${tag}Grupo "${g.cidade||'?'} · ${g.bairro||'?'}": ${g.registros.length} registros`, g.cidade?'ok':'warn');
+    });
+
+    if(semInferencia > 0) addLog(`⚠️ ${semInferencia} registros sem bairro identificado — você precisará informar manualmente.`,'warn');
+
+    setTimeout(()=>irStep2(), 800);
+
+  } catch(e){
+    addLog('Erro: '+(e.message||e.code),'err');
+    btn.disabled=false; btn.textContent='🔍 Tentar novamente';
+  }
+};
+
+// ─── Step 2: Mapeamento ───────────────────────────────────────────────────────
+function irStep2(){
+  document.getElementById('step-1').classList.remove('active');
+  document.getElementById('step-2').classList.add('active');
+
+  // Stats
+  const total = registrosAntigos.length;
+  const comGps = registrosAntigos.filter(r=>r.lat).length;
+  const comFoto = registrosAntigos.filter(r=>r.foto).length;
+  document.getElementById('stat-row').innerHTML = `
+    <div class="stat-box"><div class="num">${total}</div><div class="lbl">registros</div></div>
+    <div class="stat-box"><div class="num">${comGps}</div><div class="lbl">com GPS</div></div>
+    <div class="stat-box"><div class="num">${comFoto}</div><div class="lbl">com foto</div></div>`;
+
+  // Opções de cidade
+  const cidOpts = Object.values(cidadesDisponiveis).map(c=>`<option value="${c.nome||c.id}">${c.nome||c.id}</option>`).join('');
+
+  // Renderiza grupos
+  const div = document.getElementById('grupos-mapeamento');
+  div.innerHTML = Object.entries(grupos).map(([key, g])=>{
+    const badge = !g.cidade ? 'badge-sem' : g.bairro.includes('Privê') ? 'badge-cond' : 'badge-qno';
+    const bLabel = !g.cidade ? 'não identificado' : g.bairro;
+    return `<div class="mapa-grupo">
+      <div class="mapa-grupo-title">
+        ${g.registros.length} registros
+        <span class="badge ${badge}">${bLabel}</span>
+      </div>
+      <div class="mapa-grupo-sub">
+        Quadras: ${[...new Set(g.registros.map(r=>r.quadra).filter(Boolean))].join(', ')||'variadas'}
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Cidade de destino</label>
+          <select id="cidade-${encodeURIComponent(key)}">
+            <option value="">Selecione...</option>
+            ${cidOpts}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Bairro de destino</label>
+          <input type="text" id="bairro-${encodeURIComponent(key)}" placeholder="Ex: Expansão Setor O" value="${g.bairro||''}"/>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Preenche cidade automaticamente onde inferiu
+  Object.entries(grupos).forEach(([key, g])=>{
+    if(g.cidade){
+      const selCid = document.getElementById('cidade-'+encodeURIComponent(key));
+      if(selCid) selCid.value = g.cidade;
+    }
+  });
+}
+
+window.voltarStep1 = function(){
+  document.getElementById('step-2').classList.remove('active');
+  document.getElementById('step-1').classList.add('active');
+  const btn = document.querySelector('#step-1 .btn');
+  btn.disabled=false; btn.textContent='🔍 Analisar registros';
+};
+
+// ─── Step 3: Migrar ───────────────────────────────────────────────────────────
+window.executarMigracao = async function(){
+  // Valida mapeamentos
+  let ok = true;
+  Object.keys(grupos).forEach(key=>{
+    const cid = document.getElementById('cidade-'+encodeURIComponent(key))?.value;
+    const bair = document.getElementById('bairro-'+encodeURIComponent(key))?.value?.trim();
+    if(!cid || !bair){ alert('Preencha cidade e bairro para todos os grupos.'); ok=false; }
+    grupos[key].cidadeDestino = cid;
+    grupos[key].bairroDestino = bair;
+  });
+  if(!ok) return;
+
+  document.getElementById('step-2').classList.remove('active');
+  document.getElementById('step-3').classList.add('active');
+
+  const log = document.getElementById('log-3');
+  const progress = document.getElementById('exec-progress');
+  const status = document.getElementById('exec-status');
+
+  function addLog(msg, cls='info'){ log.innerHTML+=`<div class="${cls}">${msg}</div>`; log.scrollTop=log.scrollHeight; }
+
+  const total = registrosAntigos.length;
+  let processados = 0, erros = 0, pulados = 0;
+
+  addLog(`Iniciando migração de ${total} registros...`);
+
+  for(const [key, grupo] of Object.entries(grupos)){
+    const { cidadeDestino, bairroDestino, registros } = grupo;
+    addLog(`Migrando grupo "${cidadeDestino} · ${bairroDestino}" (${registros.length} registros)...`,'info');
+
+    for(const r of registros){
+      try {
+        // Monta novo ID com a estrutura nova
+        const conjunto = (r.conjunto || r.cj || '');
+        const casa = r.casa || '';
+        const quadra = r.quadra || '';
+        const novoId = (cidadeDestino+'_'+bairroDestino+'_'+quadra+'_'+conjunto+'_'+casa)
+          .replace(/[\s\.çãõáéíóú]/g, c => {
+            const map = {'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''};
+            return map[c]||c;
+          });
+
+        // Novo registro com campos cidade e bairro
+        const novoReg = {
+          cidade: cidadeDestino,
+          bairro: bairroDestino,
+          quadra: r.quadra || '',
+          conjunto: conjunto,
+          casa: casa,
+          obs: r.obs || '',
+          foto: r.foto || null,
+          lat: r.lat || null,
+          lng: r.lng || null,
+          ts: r.ts || '',
+        };
+
+        // Salva novo documento
+        await setDoc(doc(db,'registros',novoId), novoReg);
+
+        // Remove documento antigo (só se ID mudou)
+        if(r.id !== novoId){
+          await deleteDoc(doc(db,'registros',r.id));
+        }
+
+        processados++;
+        const pct = Math.round(processados/total*100);
+        progress.style.width = pct+'%';
+        status.textContent = `Migrando... ${processados}/${total}`;
+
+      } catch(e){
+        erros++;
+        addLog(`✗ Erro em ${r.id}: ${e.message||e.code}`,'err');
+      }
+    }
+    addLog(`✓ Grupo concluído: ${registros.length} registros`, 'ok');
+  }
+
+  // Concluído
+  document.getElementById('step-3').classList.remove('active');
+  document.getElementById('step-4').classList.add('active');
+  document.getElementById('resultado-final').textContent =
+    `${processados} registros migrados com sucesso${erros>0?' · '+erros+' erros':''}.`;
+
+  const log4 = document.getElementById('log-4');
+  log4.innerHTML = `<div class="ok">✓ ${processados} registros migrados</div>`;
+  if(erros) log4.innerHTML += `<div class="err">✗ ${erros} erros — verifique o Firebase Console</div>`;
+  log4.innerHTML += `<div class="info">Abra o app e verifique se os dados aparecem corretamente.</div>`;
+};
+</script>
+</body>
+</html>
