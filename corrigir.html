@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Rotas QNO · Correção</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F4F6F9;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;border-radius:16px;padding:32px;width:100%;max-width:520px;box-shadow:0 4px 24px rgba(0,0,0,.1)}
+.logo{width:48px;height:48px;background:#1D9E75;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px}
+h1{font-size:20px;margin-bottom:4px}
+.sub{font-size:13px;color:#888;margin-bottom:24px}
+.btn{width:100%;padding:13px;background:#1D9E75;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:12px}
+.btn:disabled{background:#ccc;cursor:not-allowed}
+.log{background:#f5f5f5;border-radius:8px;padding:12px;margin-top:16px;font-size:12px;font-family:monospace;max-height:320px;overflow-y:auto;line-height:1.8}
+.log .ok{color:#0F6E56}
+.log .err{color:#E24B4A}
+.log .info{color:#555}
+.log .warn{color:#854F0B}
+.progress-bar{height:8px;background:#eee;border-radius:20px;overflow:hidden;margin-top:12px}
+.progress-fill{height:100%;background:#1D9E75;border-radius:20px;transition:width .3s}
+.stat-box{background:#f9f9f9;border:1px solid #eee;border-radius:10px;padding:14px;margin-bottom:16px}
+.stat-box p{font-size:13px;color:#555;line-height:1.6}
+.stat-box code{background:#eee;border-radius:4px;padding:1px 5px;font-size:11px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🔧</div>
+  <h1>Correção de Registros</h1>
+  <p class="sub">Rotas QNO · Corrige os campos cidade, bairro, quadra, conjunto e casa</p>
+
+  <div class="stat-box">
+    <p>O script vai ler cada registro, extrair os valores corretos do ID do documento e salvar os campos corretamente.</p>
+    <p style="margin-top:8px;">Exemplo: <code>Ceilândia_Expansao_Setor_O_QNO_16_06_25</code> → <b>cidade:</b> Ceilândia, <b>bairro:</b> Expansão Setor O, <b>quadra:</b> QNO 16, <b>conjunto:</b> 06, <b>casa:</b> 25</p>
+  </div>
+
+  <button class="btn" id="btn-iniciar" onclick="iniciar()">🔍 Analisar e corrigir</button>
+  <div class="progress-bar" id="progress-bar" style="display:none;">
+    <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+  </div>
+  <div class="log" id="log" style="display:none;"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, getDocs, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const cfg = {
+  apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",
+  authDomain:"app-rotas-68cf4.firebaseapp.com",
+  projectId:"app-rotas-68cf4",
+  storageBucket:"app-rotas-68cf4.firebasestorage.app",
+  messagingSenderId:"400409767391",
+  appId:"1:400409767391:web:0bcebe50738d6d3450a86a"
+};
+
+const fapp = initializeApp(cfg);
+const db = getFirestore(fapp);
+const colReg = collection(db,'registros');
+const colCid = collection(db,'cidades');
+
+const log = document.getElementById('log');
+const progressFill = document.getElementById('progress-fill');
+
+function addLog(msg, cls='info'){
+  log.style.display = 'block';
+  log.innerHTML += `<div class="${cls}">${msg}</div>`;
+  log.scrollTop = log.scrollHeight;
+}
+
+// Mapeia partes do ID para valores legíveis
+const MAPA_BAIRRO = {
+  'Expansao_Setor_O': 'Expansão Setor O',
+  'ExpansaoSetorO': 'Expansão Setor O',
+  'Cond_Agricola_Prive': 'Cond. Agrícola Privê',
+  'CondAgricolaPrive': 'Cond. Agrícola Privê',
+  'Cond_Agr_cola_Priv_': 'Cond. Agrícola Privê',
+};
+
+// Busca cidades do banco para obter nomes exatos
+let cidadesDisponiveis = {};
+
+function normalizarTexto(t){
+  return t.toLowerCase()
+    .replace(/[àáâãä]/g,'a').replace(/[èéêë]/g,'e')
+    .replace(/[ìíîï]/g,'i').replace(/[òóôõö]/g,'o')
+    .replace(/[ùúûü]/g,'u').replace(/ç/g,'c')
+    .replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+}
+
+function encontrarCidade(parteId){
+  // Tenta bater com cidades disponíveis
+  for(const [id, cid] of Object.entries(cidadesDisponiveis)){
+    const nomNorm = normalizarTexto(cid.nome||id);
+    if(parteId.toLowerCase().startsWith(nomNorm.toLowerCase())){
+      return { cidade: cid.nome||id, resto: parteId.slice(nomNorm.length).replace(/^_/,'') };
+    }
+  }
+  // Fallback: tenta Ceilândia diretamente
+  const nomCeil = normalizarTexto('Ceilândia');
+  if(parteId.toLowerCase().startsWith(nomCeil)){
+    return { cidade: 'Ceilândia', resto: parteId.slice(nomCeil.length).replace(/^_/,'') };
+  }
+  return { cidade: '', resto: parteId };
+}
+
+function encontrarBairro(resto){
+  // Tenta bater com bairros conhecidos
+  for(const [key, nome] of Object.entries(MAPA_BAIRRO)){
+    if(resto.toLowerCase().startsWith(key.toLowerCase())){
+      return { bairro: nome, resto: resto.slice(key.length).replace(/^_/,'') };
+    }
+  }
+  // Tenta via cidades disponíveis
+  for(const cid of Object.values(cidadesDisponiveis)){
+    for(const bairro of Object.keys(cid.bairros||{})){
+      const bNorm = normalizarTexto(bairro);
+      if(resto.toLowerCase().startsWith(bNorm.toLowerCase())){
+        return { bairro, resto: resto.slice(bNorm.length).replace(/^_/,'') };
+      }
+    }
+  }
+  return { bairro: '', resto };
+}
+
+function extrairCamposDoId(id){
+  // Tenta extrair: cidade_bairro_quadra_conjunto_casa
+  // Ex: Ceil_ndia_Expansao_Setor_O_QNO_16_06_25
+  let resto = id;
+
+  const { cidade, resto: r1 } = encontrarCidade(resto);
+  resto = r1;
+
+  const { bairro, resto: r2 } = encontrarBairro(resto);
+  resto = r2;
+
+  // Resto é quadra_conjunto_casa ou quadra_casa (sem conjunto)
+  // Tenta identificar quadra (começa com QNO, Rua, etc)
+  let quadra = '', conjunto = '', casa = '';
+  const partes = resto.split('_').filter(Boolean);
+
+  if(/^(QNO|Rua|Setor)/i.test(partes[0]||'')){
+    // QNO + número = 2 partes da quadra
+    if(partes[1] && /^\d+$/.test(partes[1]) && parseInt(partes[1]) < 100 && partes.length > 2){
+      quadra = partes[0]+' '+partes[1];
+      const restQdr = partes.slice(2);
+      if(restQdr.length >= 2){ conjunto = restQdr[0]; casa = restQdr.slice(1).join(''); }
+      else if(restQdr.length === 1){ casa = restQdr[0]; }
+    } else {
+      quadra = partes[0]+' '+(partes[1]||'');
+      const restQdr = partes.slice(2);
+      if(restQdr.length >= 2){ conjunto = restQdr[0]; casa = restQdr.slice(1).join(''); }
+      else if(restQdr.length === 1){ casa = restQdr[0]; }
+    }
+  } else {
+    // Sem quadra identificável — usa partes
+    if(partes.length >= 3){ quadra=partes[0]; conjunto=partes[1]; casa=partes.slice(2).join(''); }
+    else if(partes.length === 2){ quadra=partes[0]; casa=partes[1]; }
+    else if(partes.length === 1){ casa=partes[0]; }
+  }
+
+  return { cidade, bairro, quadra: quadra.trim(), conjunto: conjunto.trim(), casa: casa.trim() };
+}
+
+window.iniciar = async function(){
+  const btn = document.getElementById('btn-iniciar');
+  btn.disabled = true;
+  btn.textContent = 'Analisando...';
+  document.getElementById('progress-bar').style.display = 'block';
+
+  try {
+    addLog('Buscando cidades do banco...');
+    const snapCid = await getDocs(query(colCid));
+    snapCid.docs.forEach(d=>{ cidadesDisponiveis[d.id]={id:d.id,...d.data()}; });
+    addLog(`✓ ${snapCid.docs.length} cidade(s) encontrada(s)`,'ok');
+
+    addLog('Buscando registros...');
+    const snap = await getDocs(query(colReg));
+    const total = snap.docs.length;
+    addLog(`✓ ${total} registros encontrados`,'ok');
+
+    let corrigidos = 0, jaCorretos = 0, erros = 0;
+
+    for(let i=0; i<snap.docs.length; i++){
+      const d = snap.docs[i];
+      const data = {id:d.id,...d.data()};
+      const pct = Math.round((i+1)/total*100);
+      progressFill.style.width = pct+'%';
+
+      // Verifica se já está correto (campos cidade e bairro com valores simples)
+      const cidadeOk = data.cidade && !data.cidade.includes('_') && data.cidade.length < 50;
+      const bairroOk = data.bairro && !data.bairro.includes('_Expansao') && !data.bairro.includes('_QNO');
+
+      if(cidadeOk && bairroOk){
+        jaCorretos++;
+        continue;
+      }
+
+      // Extrai campos do ID
+      const extraido = extrairCamposDoId(d.id);
+      addLog(`Corrigindo: ${d.id.slice(0,50)}...`,'info');
+      addLog(`  → cidade:"${extraido.cidade}" bairro:"${extraido.bairro}" quadra:"${extraido.quadra}" cj:"${extraido.conjunto}" casa:"${extraido.casa}"`,'ok');
+
+      try {
+        await setDoc(doc(db,'registros',d.id), {
+          ...data,
+          cidade: extraido.cidade || data.cidade || '',
+          bairro: extraido.bairro || data.bairro || '',
+          quadra: extraido.quadra || data.quadra || '',
+          conjunto: extraido.conjunto || data.conjunto || data.cj || '',
+          casa: extraido.casa || data.casa || '',
+        });
+        corrigidos++;
+      } catch(e){
+        erros++;
+        addLog(`  ✗ Erro: ${e.message}`,'err');
+      }
+    }
+
+    progressFill.style.width = '100%';
+    addLog('','info');
+    addLog(`✅ Concluído! ${corrigidos} corrigidos · ${jaCorretos} já corretos · ${erros} erros`,'ok');
+    if(corrigidos > 0) addLog('Recarregue o app para ver as mudanças.','info');
+    btn.textContent = 'Concluído ✓';
+
+  } catch(e){
+    addLog('Erro geral: '+(e.message||e.code),'err');
+    btn.disabled = false;
+    btn.textContent = '🔍 Tentar novamente';
+  }
+};
+</script>
+</body>
+</html>
