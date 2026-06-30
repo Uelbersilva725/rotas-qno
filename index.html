@@ -12,112 +12,175 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 #app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto;background:#fff}
-.header{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff;border-bottom:.5px solid #e5e5e5}
-.header-icon{width:34px;height:34px;background:#1D9E75;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.header-title{font-size:15px;font-weight:600;color:#111}
-.header-sub{font-size:11px;color:#888}
-.header-mode{margin-left:auto;font-size:10px;padding:4px 9px;border-radius:20px;font-weight:600}
-.header-mode.admin{background:#E1F5EE;color:#0F6E56}
-.header-mode.leitor{background:#EEEDFE;color:#3C3489}
-.sync-bar{display:flex;align-items:center;gap:8px;padding:7px 14px;font-size:11.5px;background:#f9f9f9;border-bottom:.5px solid #e5e5e5}
-.sync-bar .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#ccc}
+
+/* Login */
+#login-screen{position:fixed;inset:0;background:#F4F6F9;display:flex;align-items:center;justify-content:center;padding:20px;z-index:9999}
+.login-card{background:#fff;border-radius:16px;padding:32px;width:100%;max-width:360px;box-shadow:0 4px 24px rgba(0,0,0,.1);text-align:center}
+.login-logo{width:52px;height:52px;background:#1D9E75;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 14px}
+.login-card h2{font-size:19px;margin-bottom:4px}
+.login-card p{font-size:12px;color:#888;margin-bottom:22px}
+.login-input{width:100%;padding:11px 14px;border:1px solid #ddd;border-radius:9px;font-size:14px;margin-bottom:10px;outline:none;text-align:left}
+.login-input:focus{border-color:#1D9E75}
+.login-btn{width:100%;padding:12px;background:#1D9E75;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;margin-top:2px}
+.login-btn:disabled{background:#ccc;cursor:not-allowed}
+.login-err{font-size:12px;color:#E24B4A;margin-top:8px;display:none;text-align:center}
+.login-link{font-size:12px;color:#888;margin-top:14px;cursor:pointer;text-decoration:underline}
+
+/* Header */
+.header{display:flex;align-items:center;gap:10px;padding:11px 14px;background:#fff;border-bottom:.5px solid #e5e5e5}
+.header-icon{width:32px;height:32px;background:#1D9E75;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.header-title{font-size:14px;font-weight:600;color:#111}
+.header-sub{font-size:10px;color:#888}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+.user-badge{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:600}
+.user-badge.admin{background:#E1F5EE;color:#0F6E56}
+.user-badge.entregador{background:#EEF2FF;color:#3730A3}
+.user-badge.visitante{background:#F5F5F5;color:#888}
+.logout-btn{font-size:11px;padding:4px 9px;border:.5px solid #ddd;border-radius:6px;background:#fff;color:#666;cursor:pointer}
+
+/* Sync */
+.sync-bar{display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:11px;background:#f9f9f9;border-bottom:.5px solid #e5e5e5}
+.sync-bar .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#ccc}
 .sync-bar .dot.ok{background:#1D9E75}
 .sync-bar .dot.buscando{background:#EF9F27;animation:pulse 1s infinite}
 .sync-bar .dot.erro{background:#E24B4A}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-.sync-bar .txt{color:#666;flex:1;cursor:pointer}
-.tab-bar{display:flex;gap:4px;padding:8px;background:#fff;border-bottom:.5px solid #e5e5e5}
-.tab{flex:1;padding:8px 4px;font-size:11px;font-weight:500;border:.5px solid #ddd;background:#f5f5f5;cursor:pointer;border-radius:8px;color:#666}
+
+/* Tabs */
+.tab-bar{display:flex;gap:4px;padding:7px;background:#fff;border-bottom:.5px solid #e5e5e5}
+.tab{flex:1;padding:7px 4px;font-size:11px;font-weight:500;border:.5px solid #ddd;background:#f5f5f5;cursor:pointer;border-radius:7px;color:#666}
 .tab.active{background:#1D9E75;color:#fff;border-color:#0F6E56}
+
+/* Screens */
 .screen{display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0}
 .screen.active{display:flex}
 #map{flex:1;z-index:0;min-height:0}
-.stats-bar{display:flex;padding:8px;background:#f9f9f9;border-bottom:.5px solid #e5e5e5;gap:6px}
-.stat{flex:1;text-align:center;background:#fff;border-radius:8px;padding:6px 4px;border:.5px solid #eee}
-.stat .num{font-size:20px;font-weight:600;color:#1D9E75}
-.stat .lbl{font-size:10px;color:#888;margin-top:1px}
-.map-toolbar{display:flex;gap:6px;padding:8px;background:#fff;border-bottom:.5px solid #e5e5e5;flex-wrap:wrap}
-.map-toolbar select{flex:1;min-width:80px;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:8px;background:#fff;color:#111}
-.btn{padding:7px 12px;font-size:12px;font-weight:500;border:.5px solid #ddd;border-radius:8px;background:#fff;color:#111;cursor:pointer;white-space:nowrap}
+
+/* Stats */
+.stats-bar{display:flex;padding:7px;background:#f9f9f9;border-bottom:.5px solid #e5e5e5;gap:5px}
+.stat{flex:1;text-align:center;background:#fff;border-radius:7px;padding:5px 4px;border:.5px solid #eee}
+.stat .num{font-size:18px;font-weight:600;color:#1D9E75}
+.stat .lbl{font-size:9px;color:#888;margin-top:1px}
+
+/* Map toolbar */
+.map-toolbar{display:flex;gap:5px;padding:7px;background:#fff;border-bottom:.5px solid #e5e5e5;flex-wrap:wrap}
+.map-toolbar select{flex:1;min-width:70px;font-size:11px;padding:6px 7px;border:.5px solid #ddd;border-radius:7px;background:#fff;color:#111}
+.btn-icon{padding:6px 10px;font-size:12px;border:.5px solid #ddd;border-radius:7px;background:#fff;cursor:pointer}
 .btn-green{background:#1D9E75;color:#fff;border-color:#0F6E56}
+
+/* Forms */
 .reg-screen{padding:12px;overflow-y:auto;flex:1}
-.form-group{margin-bottom:12px}
-.form-group label{font-size:12px;color:#666;display:block;margin-bottom:4px;font-weight:500}
-.form-group input,.form-group select,.form-group textarea{width:100%;font-size:14px;padding:10px 12px;border:.5px solid #ddd;border-radius:8px;background:#fff;color:#111;-webkit-appearance:none;appearance:none}
-.form-group textarea{height:70px;resize:none}
+.section-label{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.form-group{margin-bottom:11px}
+.form-group label{font-size:12px;color:#666;display:block;margin-bottom:3px;font-weight:500}
+.form-group input,.form-group select,.form-group textarea{width:100%;font-size:14px;padding:9px 11px;border:.5px solid #ddd;border-radius:8px;background:#fff;color:#111;-webkit-appearance:none}
+.form-group textarea{height:65px;resize:none}
 .form-row{display:flex;gap:8px}
 .form-row .form-group{flex:1}
-.photo-area{border:1.5px dashed #ccc;border-radius:10px;padding:18px;text-align:center;font-size:13px;color:#888;cursor:pointer;background:#fafafa}
-.photo-area .icon{font-size:26px;display:block;margin-bottom:5px}
+
+/* Foto */
+.photo-area{border:1.5px dashed #ccc;border-radius:10px;padding:16px;text-align:center;font-size:13px;color:#888;cursor:pointer;background:#fafafa}
+.photo-area .icon{font-size:24px;display:block;margin-bottom:4px}
 #foto-preview{margin-top:8px;display:none;position:relative}
 #foto-preview img{width:100%;border-radius:10px;border:.5px solid #eee}
 #foto-remove{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:26px;height:26px;font-size:14px;cursor:pointer}
-.gps-inline-box{background:#f5f5f5;border-radius:8px;padding:10px 12px;font-size:12px;color:#666;display:flex;align-items:center;gap:8px;margin-bottom:12px;border:.5px solid #e5e5e5}
-.gps-dot-sm{width:9px;height:9px;border-radius:50%;background:#ccc;flex-shrink:0}
-.gps-dot-sm.ok{background:#1D9E75}
-.save-btn{width:100%;padding:13px;font-size:15px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:4px}
-.save-btn:active{transform:scale(.98)}
+
+/* GPS */
+.gps-box{background:#f5f5f5;border-radius:8px;padding:9px 11px;font-size:12px;color:#666;display:flex;align-items:center;gap:8px;margin-bottom:11px;border:.5px solid #e5e5e5}
+.gps-dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0}
+.gps-dot.ok{background:#1D9E75}
+
+/* Buttons */
+.save-btn{width:100%;padding:12px;font-size:14px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:4px}
 .save-btn:disabled{background:#ccc;cursor:not-allowed}
 .msg{margin-top:10px;font-size:13px;text-align:center;padding:8px;border-radius:8px;display:none}
 .msg.ok{background:#E1F5EE;color:#0F6E56}
 .msg.err{background:#FCEBEB;color:#A32D2D}
+
+/* Lista */
 .list-toolbar{padding:8px;border-bottom:.5px solid #e5e5e5;background:#fff}
-.list-toolbar input{width:100%;font-size:13px;padding:8px 12px;border:.5px solid #ddd;border-radius:8px;background:#fff;color:#111}
+.list-toolbar input{width:100%;font-size:13px;padding:8px 11px;border:.5px solid #ddd;border-radius:8px;background:#fff;color:#111}
 .list-screen{padding:8px;overflow-y:auto;flex:1}
-.entry-card{background:#fff;border:.5px solid #eee;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center}
-.entry-thumb{width:54px;height:54px;border-radius:8px;object-fit:cover;border:.5px solid #eee;flex-shrink:0}
-.entry-thumb-empty{width:54px;height:54px;border-radius:8px;background:#f5f5f5;border:.5px solid #eee;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.entry-card{background:#fff;border:.5px solid #eee;border-radius:11px;padding:9px 11px;margin-bottom:8px;display:flex;gap:9px;align-items:center}
+.entry-thumb{width:50px;height:50px;border-radius:8px;object-fit:cover;border:.5px solid #eee;flex-shrink:0}
+.entry-thumb-empty{width:50px;height:50px;border-radius:8px;background:#f5f5f5;border:.5px solid #eee;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 .entry-info{flex:1;min-width:0}
-.entry-addr{font-size:13px;font-weight:600;color:#111}
-.entry-obs{font-size:11px;color:#888;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.entry-ts{font-size:10px;color:#bbb;margin-top:3px}
-.badge-gps{font-size:10px;padding:1px 6px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:4px;font-weight:500}
-.delete-btn{background:none;border:none;cursor:pointer;font-size:18px;color:#ccc;padding:6px;flex-shrink:0}
-.edit-pin-btn{background:none;border:none;cursor:pointer;font-size:18px;color:#ccc;padding:6px;flex-shrink:0}
+.entry-addr{font-size:12px;font-weight:600;color:#111}
+.entry-obs{font-size:11px;color:#888;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry-ts{font-size:10px;color:#bbb;margin-top:2px}
+.badge-gps{font-size:9px;padding:1px 5px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:3px;font-weight:500}
+.action-btn{background:none;border:none;cursor:pointer;font-size:16px;color:#ccc;padding:5px;flex-shrink:0}
+
+/* Busca */
+.busca-result{background:#fff;border:.5px solid #eee;border-radius:10px;padding:12px;margin-top:12px}
+
+/* Loading */
 .loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;z-index:1000;font-size:13px;color:#666}
 .empty{text-align:center;padding:40px 20px;color:#aaa;font-size:13px;line-height:1.8}
-.empty .icon{font-size:36px;display:block;margin-bottom:10px}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px}
-.modal-bg.open,.modal-bg[style*="flex"]{display:flex}
-.modal{background:#fff;border-radius:16px;padding:22px;max-width:380px;width:100%;text-align:center}
-.modal .icon{font-size:32px;margin-bottom:10px}
-.modal h3{font-size:16px;margin-bottom:8px;color:#111}
-.modal p{font-size:13px;color:#666;line-height:1.5;margin-bottom:16px}
-.modal input{width:100%;padding:11px;border:.5px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:10px}
-.modal button{width:100%;padding:12px;background:#1D9E75;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
-.modal .link-btn{background:none;color:#888;font-weight:400;font-size:12px;margin-top:8px;padding:6px}
+.empty .icon{font-size:34px;display:block;margin-bottom:10px}
+
+/* Modais */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:none;align-items:center;justify-content:center;padding:16px}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:20px;max-width:380px;width:100%;text-align:center}
+.modal .icon{font-size:30px;margin-bottom:8px}
+.modal h3{font-size:15px;margin-bottom:6px;color:#111}
+.modal p{font-size:12px;color:#666;line-height:1.5;margin-bottom:14px}
+.modal button{width:100%;padding:11px;background:#1D9E75;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+.modal .link-btn{background:none;color:#888;font-weight:400;font-size:12px;margin-top:8px;padding:5px}
+
+/* Pin modal */
 #pin-modal-bg{z-index:3000}
-#pin-modal-bg .modal{max-width:420px;padding:16px;text-align:left}
-.pin-modal-title{font-size:14px;font-weight:600;color:#111;margin-bottom:4px}
-.pin-modal-sub{font-size:12px;color:#888;margin-bottom:10px}
-#pin-mapa{width:100%;height:220px;border-radius:10px;border:.5px solid #ddd;overflow:hidden;margin-bottom:10px}
-.dpad{display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:4px;justify-content:center;margin:10px auto}
-.dpad-btn{width:44px;height:44px;background:#f5f5f5;border:.5px solid #ddd;border-radius:8px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none}
-.dpad-btn:active{background:#1D9E75;color:#fff;border-color:#0F6E56;transform:scale(.93)}
+#pin-modal-bg .modal{max-width:420px;padding:14px;text-align:left}
+.pin-title{font-size:13px;font-weight:600;color:#111;margin-bottom:3px}
+.pin-sub{font-size:11px;color:#888;margin-bottom:8px}
+#pin-mapa{width:100%;height:210px;border-radius:10px;border:.5px solid #ddd;overflow:hidden;margin-bottom:8px}
+.dpad{display:grid;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,42px);gap:4px;justify-content:center;margin:8px auto}
+.dpad-btn{width:42px;height:42px;background:#f5f5f5;border:.5px solid #ddd;border-radius:8px;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none}
+.dpad-btn:active{background:#1D9E75;color:#fff;transform:scale(.93)}
 .dpad-btn.vazio{background:transparent;border:none;cursor:default}
-.dpad-step{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px}
+.dpad-step{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px}
 .dpad-step label{font-size:11px;color:#888}
-.dpad-step select{font-size:12px;padding:5px 8px;border:.5px solid #ddd;border-radius:6px;background:#fff}
-.pin-coords-display{font-size:10px;color:#aaa;text-align:center;margin-bottom:10px}
-.pin-modal-btns{display:flex;gap:8px}
-.pin-modal-btns button{flex:1;padding:11px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:.5px solid #ddd}
-.pin-confirm-btn{background:#1D9E75;color:#fff;border-color:#0F6E56}
-.pin-reset-btn{background:#f5f5f5;color:#555}
-.busca-result-card{background:#fff;border:.5px solid #eee;border-radius:10px;padding:12px;margin-top:12px}
-.section-label{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.dpad-step select{font-size:12px;padding:4px 8px;border:.5px solid #ddd;border-radius:6px;background:#fff}
+.pin-coords{font-size:10px;color:#aaa;text-align:center;margin-bottom:8px}
+.pin-btns{display:flex;gap:8px}
+.pin-btns button{flex:1;padding:10px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;border:.5px solid #ddd}
+.pin-confirm{background:#1D9E75;color:#fff;border-color:#0F6E56}
+.pin-reset{background:#f5f5f5;color:#555}
 </style>
 </head>
 <body>
-<div id="app">
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">📦</div>
+    <h2>Rotas QNO</h2>
+    <p>Ceilândia · Expansão Setor O</p>
+    <input class="login-input" type="email" id="login-email" placeholder="E-mail" autocomplete="email"/>
+    <input class="login-input" type="password" id="login-senha" placeholder="Senha" onkeydown="if(event.key==='Enter')fazerLogin()"/>
+    <button class="login-btn" id="login-btn" onclick="fazerLogin()">Entrar</button>
+    <div class="login-err" id="login-err"></div>
+    <div class="login-link" onclick="abrirCadastro()">Não tem conta? Solicite acesso</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;">
   <div class="header">
     <div class="header-icon">📦</div>
     <div><div class="header-title">Rotas QNO</div><div class="header-sub">Ceilândia · DF</div></div>
-    <div class="header-mode leitor" id="header-mode">Visualização</div>
+    <div class="header-right">
+      <span class="user-badge visitante" id="user-badge">...</span>
+      <button class="logout-btn" onclick="fazerLogout()">Sair</button>
+    </div>
   </div>
+
   <div class="sync-bar">
     <div class="dot" id="sync-dot"></div>
-    <span class="txt" id="sync-text" onclick="solicitarGPSContinuo()">Conectando à nuvem...</span>
+    <span id="sync-text">Conectando...</span>
   </div>
+
   <div class="tab-bar">
     <button class="tab active" onclick="showTab('mapa')">🗺 Mapa</button>
     <button class="tab" onclick="showTab('busca')">🔍 Buscar</button>
@@ -136,7 +199,7 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
       <select id="filtro-cidade" onchange="onFiltroCidadeChange()"><option value="">Todas cidades</option></select>
       <select id="filtro-bairro" onchange="onFiltroBairroChange()"><option value="">Todos bairros</option></select>
       <select id="filtro-quadra" onchange="filtrarMapa()"><option value="">Todas quadras</option></select>
-      <button class="btn btn-green" onclick="centralizarMapa()">📍</button>
+      <button class="btn-icon btn-green" onclick="centralizarMapa()">📍</button>
     </div>
     <div id="map" style="position:relative;"><div class="loading-overlay" id="map-loading">⏳ Carregando mapa...</div></div>
   </div>
@@ -147,15 +210,15 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
       <div class="section-label">Localizar endereço</div>
       <div class="form-row">
         <div class="form-group"><label>Cidade</label>
-          <select id="busca-cidade" onchange="onCidadeChange('busca-cidade','busca-bairro','busca-quadra','busca-cj'); buscarEndereco()"><option value="">...</option></select>
+          <select id="busca-cidade" onchange="onCidadeChange('busca-cidade','busca-bairro','busca-quadra','busca-cj');buscarEndereco()"><option value="">...</option></select>
         </div>
         <div class="form-group"><label>Bairro</label>
-          <select id="busca-bairro" onchange="onBairroChange('busca-bairro','busca-quadra','busca-cj'); buscarEndereco()"><option value="">...</option></select>
+          <select id="busca-bairro" onchange="onBairroChange('busca-bairro','busca-quadra','busca-cj');buscarEndereco()"><option value="">...</option></select>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Quadra/Rua</label>
-          <select id="busca-quadra" onchange="onQuadraChange('busca-quadra','busca-cj'); buscarEndereco()"><option value="">...</option></select>
+          <select id="busca-quadra" onchange="onQuadraChange('busca-quadra','busca-cj');buscarEndereco()"><option value="">...</option></select>
         </div>
         <div class="form-group"><label>Conjunto</label>
           <select id="busca-cj" onchange="buscarEndereco()"><option value="">...</option></select>
@@ -165,22 +228,22 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
         <input type="number" id="busca-casa" placeholder="Ex: 15" min="1" max="500" oninput="buscarEndereco()"/>
       </div>
       <div id="busca-resultado" style="display:none;">
-        <div id="busca-sem-resultado" style="display:none;" class="empty"><span class="icon">📭</span>Não cadastrado ainda.</div>
-        <div id="busca-com-resultado" style="display:none;" class="busca-result-card">
-          <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;">
-            <div id="busca-foto-container" style="flex-shrink:0;display:none;">
-              <img id="busca-foto" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:.5px solid #eee;"/>
+        <div id="busca-sem" style="display:none;" class="empty"><span class="icon">📭</span>Não cadastrado ainda.</div>
+        <div id="busca-com" style="display:none;" class="busca-result">
+          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;">
+            <div id="busca-foto-wrap" style="display:none;flex-shrink:0;">
+              <img id="busca-foto" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:.5px solid #eee;"/>
             </div>
             <div style="flex:1;">
-              <div id="busca-addr" style="font-size:14px;font-weight:600;color:#111;margin-bottom:4px;"></div>
-              <div id="busca-obs" style="font-size:12px;color:#666;line-height:1.5;"></div>
-              <div id="busca-gps-info" style="font-size:11px;color:#1D9E75;margin-top:5px;"></div>
+              <div id="busca-addr" style="font-size:13px;font-weight:600;color:#111;margin-bottom:4px;"></div>
+              <div id="busca-obs" style="font-size:12px;color:#666;line-height:1.4;"></div>
+              <div id="busca-gps-info" style="font-size:11px;color:#1D9E75;margin-top:4px;"></div>
               <div id="busca-ts" style="font-size:10px;color:#bbb;margin-top:3px;"></div>
             </div>
           </div>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-green" style="flex:1;" onclick="verNoMapa()">🗺 Ver no mapa</button>
-            <button class="btn" style="flex:1;" onclick="editarPinEncontrado()">📍 Editar pin</button>
+            <button class="save-btn" style="font-size:12px;padding:9px;" onclick="verNoMapa()">🗺 Ver no mapa</button>
+            <button class="save-btn" style="font-size:12px;padding:9px;background:#378ADD;border:none;" id="btn-editar-pin-busca" onclick="editarPinEncontrado()">📍 Editar pin</button>
           </div>
         </div>
       </div>
@@ -190,9 +253,9 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
   <!-- REGISTRAR -->
   <div id="screen-registrar" class="screen">
     <div class="reg-screen">
-      <div class="gps-inline-box">
-        <div class="gps-dot-sm" id="gps-inline-dot"></div>
-        <span id="gps-inline-text">Aguardando localização...</span>
+      <div class="gps-box">
+        <div class="gps-dot" id="gps-dot"></div>
+        <span id="gps-text">Aguardando localização...</span>
       </div>
       <div class="section-label">Novo registro</div>
       <div class="form-row">
@@ -221,7 +284,7 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
         <div class="photo-area" onclick="document.getElementById('foto-input').click()">
           <span class="icon">📷</span>Tirar foto da fachada
         </div>
-        <div id="foto-preview"><img id="foto-img" src="" alt="Fachada"/><button id="foto-remove" onclick="removerFoto()">✕</button></div>
+        <div id="foto-preview"><img id="foto-img" src="" alt=""/><button id="foto-remove" onclick="removerFoto()">✕</button></div>
         <input type="file" id="foto-input" accept="image/*" capture="environment" style="display:none;" onchange="previewFoto(event)"/>
       </div>
       <button class="save-btn" id="btn-salvar" onclick="iniciarSalvar()">💾 Salvar e confirmar posição</button>
@@ -241,37 +304,35 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 </div>
 
 <!-- Modal GPS -->
-<div class="modal-bg" id="perm-modal-bg">
+<div class="modal-bg" id="perm-modal">
   <div class="modal">
     <div class="icon">📍</div>
     <h3>Ativar localização</h3>
-    <p>Para o app saber sua posição durante as entregas, permita o acesso à localização. No Android, escolha <b>"Permitir o tempo todo"</b>.</p>
-    <button onclick="ativarTrackingReal()">Ativar localização</button>
+    <p>Para o app saber sua posição durante as entregas, permita o acesso. No Android, escolha <b>"Permitir o tempo todo"</b>.</p>
+    <button onclick="ativarGPS()">Ativar localização</button>
   </div>
 </div>
 
-<!-- Modal Login -->
-<div class="modal-bg" id="login-modal-bg">
+<!-- Modal Solicitar acesso -->
+<div class="modal-bg" id="acesso-modal">
   <div class="modal">
-    <div class="icon">🔑</div>
-    <h3>Modo administrador</h3>
-    <p>Digite a senha para habilitar o cadastro de endereços.</p>
-    <input type="password" id="admin-pass" placeholder="Senha"/>
-    <button onclick="validarSenha()">Entrar</button>
-    <button class="link-btn" onclick="fecharLogin()">Continuar consultando</button>
+    <div class="icon">📋</div>
+    <h3>Solicitar acesso</h3>
+    <p>Entre em contato com o administrador do sistema para receber seu e-mail e senha de acesso.</p>
+    <button onclick="fecharModal('acesso-modal')">Entendi</button>
   </div>
 </div>
 
 <!-- Modal Pin -->
 <div class="modal-bg" id="pin-modal-bg">
   <div class="modal">
-    <div class="pin-modal-title" id="pin-modal-title">Confirmar posição</div>
-    <div class="pin-modal-sub" id="pin-modal-sub">Ajuste o pin se necessário.</div>
+    <div class="pin-title" id="pin-titulo">Confirmar posição</div>
+    <div class="pin-sub" id="pin-sub">Ajuste o pin se necessário.</div>
     <div id="pin-mapa"></div>
-    <div class="pin-coords-display" id="pin-coords-display">—</div>
+    <div class="pin-coords" id="pin-coords">—</div>
     <div class="dpad-step">
       <label>Passo:</label>
-      <select id="dpad-step-sel">
+      <select id="dpad-step">
         <option value="0.000050">Muito fino (~5m)</option>
         <option value="0.000150" selected>Fino (~15m)</option>
         <option value="0.000400">Médio (~40m)</option>
@@ -280,12 +341,14 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
     </div>
     <div class="dpad">
       <div class="dpad-btn vazio"></div><div class="dpad-btn" onclick="moverPin(0,1)">▲</div><div class="dpad-btn vazio"></div>
-      <div class="dpad-btn" onclick="moverPin(-1,0)">◀</div><div class="dpad-btn vazio" style="font-size:10px;color:#aaa;display:flex;align-items:center;justify-content:center;">pin</div><div class="dpad-btn" onclick="moverPin(1,0)">▶</div>
+      <div class="dpad-btn" onclick="moverPin(-1,0)">◀</div>
+      <div class="dpad-btn vazio" style="font-size:10px;color:#aaa;display:flex;align-items:center;justify-content:center;">pin</div>
+      <div class="dpad-btn" onclick="moverPin(1,0)">▶</div>
       <div class="dpad-btn vazio"></div><div class="dpad-btn" onclick="moverPin(0,-1)">▼</div><div class="dpad-btn vazio"></div>
     </div>
-    <div class="pin-modal-btns">
-      <button class="pin-reset-btn" onclick="resetarPinModal()">↺ GPS</button>
-      <button class="pin-confirm-btn" onclick="confirmarPin()">✓ Confirmar</button>
+    <div class="pin-btns">
+      <button class="pin-reset" onclick="resetarPin()">↺ GPS</button>
+      <button class="pin-confirm" onclick="confirmarPin()">✓ Confirmar</button>
     </div>
   </div>
 </div>
@@ -294,6 +357,8 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
 const cfg = {
   apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",
   authDomain:"app-rotas-68cf4.firebaseapp.com",
@@ -302,227 +367,259 @@ const cfg = {
   messagingSenderId:"400409767391",
   appId:"1:400409767391:web:0bcebe50738d6d3450a86a"
 };
+
 const fapp = initializeApp(cfg);
-const db = getFirestore(fapp);
+const db   = getFirestore(fapp);
+const auth = getAuth(fapp);
+
 window.__fb = {
-  db, collection, doc, setDoc, deleteDoc, onSnapshot, query,
+  db, auth, collection, doc, setDoc, deleteDoc, onSnapshot, query,
+  signInWithEmailAndPassword, signOut, onAuthStateChanged,
   colRegistros: collection(db,'registros'),
-  colCidades: collection(db,'cidades')
+  colCidades:   collection(db,'cidades')
 };
 window.__fbReady = true;
 window.dispatchEvent(new Event('fb-ready'));
 </script>
 <script>
-const SENHA_ADMIN = "qno2026";
-const CLOUDINARY_CLOUD = "dxbxm3rpd";
+const UID_ADMIN = "vepKTSZjEiVNtPyzXG9CcPagnk83";
+const CLOUDINARY_CLOUD  = "dxbxm3rpd";
 const CLOUDINARY_PRESET = "h90fdbtd";
 const CENTER = [-15.8485, -48.1080];
 
-// Estrutura dinâmica: { nomeCidade: { cor, bairros: { nomeBairro: { quadras: { nomeQuadra: [cjs] } } } } }
-let CIDADES = {};
-let fb = null, registros = [], modoAdmin = false;
-let posicaoAtual = null, trackingAtivo = false, primeiraLocalizacao = true;
-let map, markersLayer, meuMarcador, meuCirculo, mapReady = false;
+let fb = null;
+let usuarioAtual = null;   // objeto do Firebase Auth
+let nivelAcesso  = 'visitante'; // 'admin' | 'entregador' | 'visitante'
+let registros = [], CIDADES = {};
+let posicaoAtual = null, trackingAtivo = false, primeiraLoc = true;
+let map, markersLayer, meuPin, meuCirculo, mapReady = false;
 let fotoBase64 = null;
-let pinMapa = null, pinMarcador = null, posicaoPin = null, pinModalCallback = null;
-let pendenteSalvar = null, resultadoBusca = null;
+let pinMapa = null, pinMarcador = null, posicaoPin = null, pinCallback = null;
+let pendente = null, resultadoBusca = null;
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-function ordenar(keys){ return [...keys].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'})); }
-function corBairro(cidade, bairro){
-  return CIDADES[cidade]?.bairros?.[bairro]?.cor || CIDADES[cidade]?.cor || '#888';
-}
-function showMsg(txt,tipo){ const m=document.getElementById('save-msg'); m.textContent=txt; m.className='msg '+tipo; m.style.display='block'; setTimeout(()=>m.style.display='none',3500); }
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+function ordenar(k){ return [...k].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'})); }
+function corBairro(cidade,bairro){ return CIDADES[cidade]?.bairros?.[bairro]?.cor || CIDADES[cidade]?.cor || '#888'; }
+function showMsg(t,c){ const m=$('save-msg'); m.textContent=t; m.className='msg '+c; m.style.display='block'; setTimeout(()=>m.style.display='none',3500); }
+function fecharModal(id){ $(id).classList.remove('open'); }
+function abrirModal(id){ $(id).classList.add('open'); }
 
-// ─── Firebase ─────────────────────────────────────────────────────────────────
-function init(){
+// ─── Firebase Init ─────────────────────────────────────────────────────────────
+function initFirebase(){
   fb = window.__fb;
-  atualizarSync('buscando','Conectando...');
-  const t = setTimeout(()=>atualizarSync('erro','Timeout. Verifique a internet.'),8000);
 
+  // Observa estado de autenticação
+  fb.onAuthStateChanged(fb.auth, usuario => {
+    usuarioAtual = usuario;
+    if(usuario){
+      nivelAcesso = usuario.uid === UID_ADMIN ? 'admin' : 'entregador';
+      mostrarApp(usuario);
+    } else {
+      nivelAcesso = 'visitante';
+      mostrarLogin();
+    }
+  });
+
+  // Escuta cidades
   fb.onSnapshot(fb.query(fb.colCidades), snap=>{
     CIDADES = {};
-    snap.docs.forEach(d=>{
-      const data = {id:d.id,...d.data()};
-      CIDADES[data.nome] = data;
-    });
+    snap.docs.forEach(d=>{ CIDADES[d.id]={id:d.id,...d.data()}; });
     renderSelectsCidades();
-  }, err=>console.error('[Cidades]',err));
+  });
 
+  // Escuta registros
+  const t = setTimeout(()=>atualizarSync('erro','Timeout.'),8000);
   fb.onSnapshot(fb.query(fb.colRegistros), snap=>{
     clearTimeout(t);
     registros = snap.docs.map(d=>({id:d.id,...d.data()}));
     atualizarStats();
     if(mapReady) filtrarMapa();
-    if(document.getElementById('screen-lista').classList.contains('active')) renderLista();
+    if($('screen-lista').classList.contains('active')) renderLista();
     atualizarSync('ok', registros.length+' endereços');
-  }, err=>{ clearTimeout(t); atualizarSync('erro','Erro: '+(err.code||err.message)); });
+  }, err=>{ clearTimeout(t); atualizarSync('erro','Erro: '+err.code); });
 }
-if(window.__fbReady) init();
-else window.addEventListener('fb-ready', init);
+
+if(window.__fbReady) initFirebase();
+else window.addEventListener('fb-ready', initFirebase);
 
 function atualizarSync(e,t){
-  document.getElementById('sync-dot').className='dot '+(e==='ok'?'ok':e==='buscando'?'buscando':e==='erro'?'erro':'');
-  document.getElementById('sync-text').textContent=t;
+  $('sync-dot').className='dot '+(e==='ok'?'ok':e==='buscando'?'buscando':e==='erro'?'erro':'');
+  $('sync-text').textContent=t;
 }
 function atualizarStats(){
-  document.getElementById('stat-total').textContent=registros.length;
-  document.getElementById('stat-gps').textContent=registros.filter(r=>r.lat).length;
-  document.getElementById('stat-foto').textContent=registros.filter(r=>r.foto).length;
+  $('stat-total').textContent=registros.length;
+  $('stat-gps').textContent=registros.filter(r=>r.lat).length;
+  $('stat-foto').textContent=registros.filter(r=>r.foto).length;
 }
 
-// ─── Selects encadeados 4 níveis ──────────────────────────────────────────────
-function renderSelectsCidades(){
-  ['filtro-cidade','busca-cidade','reg-cidade'].forEach(id=>{
-    const sel=document.getElementById(id); if(!sel) return;
-    const val=sel.value;
-    const isFilter=id.startsWith('filtro');
-    sel.innerHTML=isFilter?'<option value="">Todas cidades</option>':'<option value="">...</option>';
-    ordenar(Object.keys(CIDADES)).forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
-    if(val) sel.value=val;
-  });
+// ─── Auth ──────────────────────────────────────────────────────────────────────
+function mostrarLogin(){
+  $('login-screen').style.display='flex';
+  $('app').style.display='none';
 }
-
-function onCidadeChange(cidId, bairId, quadId, cjId){
-  const cidade=document.getElementById(cidId).value;
-  const selB=document.getElementById(bairId);
-  selB.innerHTML='<option value="">...</option>';
-  if(cidade && CIDADES[cidade]?.bairros){
-    ordenar(Object.keys(CIDADES[cidade].bairros)).forEach(b=>{ const o=document.createElement('option'); o.value=b; o.textContent=b; selB.appendChild(o); });
+function mostrarApp(usuario){
+  $('login-screen').style.display='none';
+  $('app').style.display='flex';
+  const badge = $('user-badge');
+  if(nivelAcesso==='admin'){
+    badge.textContent='Admin'; badge.className='user-badge admin';
+  } else {
+    badge.textContent='Entregador'; badge.className='user-badge entregador';
   }
-  limparSelect(quadId,'...'); limparSelect(cjId,'...');
+  solicitarGPS();
 }
-
-function onBairroChange(bairId, quadId, cjId){
-  const sel=document.getElementById(bairId);
-  const cidade=buscarCidadeDoBairro(sel.value)||document.getElementById(bairId.replace('bairro','cidade'))?.value;
-  const bairro=sel.value;
-  const selQ=document.getElementById(quadId);
-  selQ.innerHTML='<option value="">...</option>';
-  const quadras=CIDADES[cidade]?.bairros?.[bairro]?.quadras||{};
-  ordenar(Object.keys(quadras)).forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; selQ.appendChild(o); });
-  limparSelect(cjId,'...');
-}
-
-function onQuadraChange(quadId, cjId){
-  const quadra=document.getElementById(quadId).value;
-  const selCj=document.getElementById(cjId);
-  selCj.innerHTML='<option value="">...</option>';
-  selCj.disabled=false;
-  // Encontra os conjuntos dessa quadra em qualquer cidade/bairro
-  for(const cidade of Object.values(CIDADES)){
-    for(const bairro of Object.values(cidade.bairros||{})){
-      const cjs=bairro.quadras?.[quadra];
-      if(cjs!==undefined){
-        if(cjs.length>0){ cjs.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; selCj.appendChild(o); }); }
-        else { selCj.innerHTML='<option value="">—</option>'; selCj.disabled=true; }
-        return;
-      }
-    }
+async function fazerLogin(){
+  const email = $('login-email').value.trim();
+  const senha = $('login-senha').value;
+  const btn = $('login-btn');
+  const err = $('login-err');
+  if(!email||!senha){ err.textContent='Preencha e-mail e senha.'; err.style.display='block'; return; }
+  btn.disabled=true; btn.textContent='Entrando...'; err.style.display='none';
+  try {
+    await fb.signInWithEmailAndPassword(fb.auth, email, senha);
+  } catch(e){
+    const msgs = {
+      'auth/user-not-found':'Usuário não encontrado.',
+      'auth/wrong-password':'Senha incorreta.',
+      'auth/invalid-email':'E-mail inválido.',
+      'auth/invalid-credential':'E-mail ou senha incorretos.',
+      'auth/too-many-requests':'Muitas tentativas. Aguarde um momento.'
+    };
+    err.textContent = msgs[e.code] || 'Erro ao entrar: '+e.code;
+    err.style.display='block';
   }
+  btn.disabled=false; btn.textContent='Entrar';
 }
-
-function onFiltroCidadeChange(){
-  const cidade=document.getElementById('filtro-cidade').value;
-  const selB=document.getElementById('filtro-bairro');
-  selB.innerHTML='<option value="">Todos bairros</option>';
-  if(cidade && CIDADES[cidade]?.bairros){
-    ordenar(Object.keys(CIDADES[cidade].bairros)).forEach(b=>{ const o=document.createElement('option'); o.value=b; o.textContent=b; selB.appendChild(o); });
-  }
-  document.getElementById('filtro-quadra').innerHTML='<option value="">Todas quadras</option>';
-  filtrarMapa();
+async function fazerLogout(){
+  if(!confirm('Deseja sair?')) return;
+  await fb.signOut(fb.auth);
 }
+function abrirCadastro(){ abrirModal('acesso-modal'); }
 
-function onFiltroBairroChange(){
-  const cidade=document.getElementById('filtro-cidade').value;
-  const bairro=document.getElementById('filtro-bairro').value;
-  const selQ=document.getElementById('filtro-quadra');
-  selQ.innerHTML='<option value="">Todas quadras</option>';
-  if(cidade && bairro && CIDADES[cidade]?.bairros?.[bairro]?.quadras){
-    ordenar(Object.keys(CIDADES[cidade].bairros[bairro].quadras)).forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; selQ.appendChild(o); });
-  }
-  filtrarMapa();
-}
+// ─── Permissões ────────────────────────────────────────────────────────────────
+function podeRegistrar(){ return nivelAcesso==='admin'||nivelAcesso==='entregador'; }
+function podeExcluir(){ return nivelAcesso==='admin'; }
 
-function limparSelect(id, placeholder){
-  const sel=document.getElementById(id); if(!sel) return;
-  sel.innerHTML=`<option value="">${placeholder}</option>`; sel.disabled=false;
-}
-
-function buscarCidadeDoBairro(bairro){
-  for(const [nc,c] of Object.entries(CIDADES)){ if(c.bairros?.[bairro]) return nc; }
-  return null;
-}
-
-// ─── Admin ────────────────────────────────────────────────────────────────────
-function abrirLogin(){ document.getElementById('login-modal-bg').style.display='flex'; }
-function fecharLogin(){ document.getElementById('login-modal-bg').style.display='none'; }
-function validarSenha(){
-  if(document.getElementById('admin-pass').value===SENHA_ADMIN){
-    modoAdmin=true;
-    document.getElementById('header-mode').textContent='Administrador';
-    document.getElementById('header-mode').className='header-mode admin';
-    fecharLogin(); solicitarGPSContinuo();
-  } else { alert('Senha incorreta.'); fecharLogin(); }
-}
-
-// ─── Tabs ─────────────────────────────────────────────────────────────────────
+// ─── Tabs ──────────────────────────────────────────────────────────────────────
 function showTab(t, prog){
-  if(t==='registrar'&&!modoAdmin){ abrirLogin(); return; }
+  if(t==='registrar'&&!podeRegistrar()){
+    showMsg('Faça login para registrar endereços.','err'); return;
+  }
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
-  document.getElementById('screen-'+t).classList.add('active');
+  $('screen-'+t).classList.add('active');
   if(!prog&&event?.target) event.target.classList.add('active');
   else document.querySelectorAll('.tab').forEach(b=>{ if((b.getAttribute('onclick')||'').includes("'"+t+"'")) b.classList.add('active'); });
   if(t==='mapa'){ if(!mapReady) esperarLeaflet(); else{ setTimeout(()=>map.invalidateSize(),100); filtrarMapa(); } }
   if(t==='lista') renderLista();
 }
 
-// ─── GPS ──────────────────────────────────────────────────────────────────────
-function solicitarGPSContinuo(){ if(trackingAtivo) return; document.getElementById('perm-modal-bg').style.display='flex'; }
-function ativarTrackingReal(){
-  document.getElementById('perm-modal-bg').style.display='none';
+// ─── Selects encadeados ────────────────────────────────────────────────────────
+function renderSelectsCidades(){
+  ['filtro-cidade','busca-cidade','reg-cidade'].forEach(id=>{
+    const sel=$(id); if(!sel) return;
+    const val=sel.value;
+    const isFilter=id.startsWith('filtro');
+    sel.innerHTML=isFilter?'<option value="">Todas cidades</option>':'<option value="">...</option>';
+    ordenar(Object.values(CIDADES).map(c=>c.nome||c.id)).forEach(nome=>{
+      const o=document.createElement('option'); o.value=nome; o.textContent=nome; sel.appendChild(o);
+    });
+    if(val) sel.value=val;
+  });
+}
+function getCidade(nome){ return Object.values(CIDADES).find(c=>c.nome===nome); }
+
+function onCidadeChange(cidId,bairId,quadId,cjId){
+  const cidade=$(cidId).value;
+  const selB=$(bairId);
+  selB.innerHTML='<option value="">...</option>';
+  const cid=getCidade(cidade);
+  if(cid?.bairros) ordenar(Object.keys(cid.bairros)).forEach(b=>{ const o=document.createElement('option'); o.value=b; o.textContent=b; selB.appendChild(o); });
+  limpar(quadId); limpar(cjId);
+}
+function onBairroChange(bairId,quadId,cjId){
+  const bairro=$(bairId).value;
+  const selQ=$(quadId);
+  selQ.innerHTML='<option value="">...</option>';
+  // Encontra cidade pai
+  let quadras={};
+  Object.values(CIDADES).forEach(c=>{ if(c.bairros?.[bairro]) quadras=c.bairros[bairro].quadras||{}; });
+  ordenar(Object.keys(quadras)).forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; selQ.appendChild(o); });
+  limpar(cjId);
+}
+function onQuadraChange(quadId,cjId){
+  const quadra=$(quadId).value;
+  const selCj=$(cjId);
+  selCj.innerHTML='<option value="">...</option>';
+  selCj.disabled=false;
+  let cjs=[];
+  Object.values(CIDADES).forEach(c=>{ Object.values(c.bairros||{}).forEach(b=>{ if(b.quadras?.[quadra]!==undefined) cjs=b.quadras[quadra]; }); });
+  if(cjs.length){ cjs.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; selCj.appendChild(o); }); }
+  else { selCj.innerHTML='<option value="">—</option>'; selCj.disabled=true; }
+}
+function onFiltroCidadeChange(){
+  const cidade=$('filtro-cidade').value;
+  const selB=$('filtro-bairro');
+  selB.innerHTML='<option value="">Todos bairros</option>';
+  const cid=getCidade(cidade);
+  if(cid?.bairros) ordenar(Object.keys(cid.bairros)).forEach(b=>{ const o=document.createElement('option'); o.value=b; o.textContent=b; selB.appendChild(o); });
+  $('filtro-quadra').innerHTML='<option value="">Todas quadras</option>';
+  filtrarMapa();
+}
+function onFiltroBairroChange(){
+  const cidade=$('filtro-cidade').value, bairro=$('filtro-bairro').value;
+  const selQ=$('filtro-quadra');
+  selQ.innerHTML='<option value="">Todas quadras</option>';
+  const cid=getCidade(cidade);
+  if(cid?.bairros?.[bairro]?.quadras) ordenar(Object.keys(cid.bairros[bairro].quadras)).forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; selQ.appendChild(o); });
+  filtrarMapa();
+}
+function limpar(id){ const s=$(id); if(s){s.innerHTML='<option value="">...</option>';s.disabled=false;} }
+
+// ─── GPS ───────────────────────────────────────────────────────────────────────
+function solicitarGPS(){ if(trackingAtivo) return; abrirModal('perm-modal'); }
+function ativarGPS(){
+  fecharModal('perm-modal');
   if(!navigator.geolocation) return;
   navigator.geolocation.watchPosition(pos=>{
     trackingAtivo=true;
     posicaoAtual={lat:pos.coords.latitude,lng:pos.coords.longitude,acc:pos.coords.accuracy};
-    document.getElementById('gps-inline-dot').className='gps-dot-sm ok';
-    document.getElementById('gps-inline-text').textContent='✓ GPS ativo · ~'+Math.round(pos.coords.accuracy)+'m';
-    atualizarPinNoMapa();
-    if(primeiraLocalizacao&&map){ map.setView([posicaoAtual.lat,posicaoAtual.lng],17); primeiraLocalizacao=false; }
+    $('gps-dot').className='gps-dot ok';
+    $('gps-text').textContent='✓ GPS ativo · ~'+Math.round(pos.coords.accuracy)+'m';
+    atualizarPinMapa();
+    if(primeiraLoc&&map){ map.setView([posicaoAtual.lat,posicaoAtual.lng],17); primeiraLoc=false; }
   }, err=>{
-    document.getElementById('gps-inline-text').textContent=err.code===1?'Permissão negada.':'Erro GPS.';
-  }, {enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+    $('gps-text').textContent=err.code===1?'Permissão negada.':'Erro GPS.';
+  },{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
 }
-function atualizarPinNoMapa(){
+function atualizarPinMapa(){
   if(!map||!posicaoAtual) return;
   const ll=[posicaoAtual.lat,posicaoAtual.lng];
-  if(!meuMarcador){
-    const icon=L.divIcon({html:'<div style="width:16px;height:16px;background:#378ADD;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px rgba(55,138,221,.4);"></div>',className:'',iconSize:[16,16],iconAnchor:[8,8]});
-    meuMarcador=L.marker(ll,{icon,zIndexOffset:1000}).addTo(map).bindPopup('Você está aqui');
+  if(!meuPin){
+    const icon=L.divIcon({html:'<div style="width:14px;height:14px;background:#378ADD;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px rgba(55,138,221,.4);"></div>',className:'',iconSize:[14,14],iconAnchor:[7,7]});
+    meuPin=L.marker(ll,{icon,zIndexOffset:1000}).addTo(map).bindPopup('Você está aqui');
     meuCirculo=L.circle(ll,{radius:posicaoAtual.acc,color:'#378ADD',fillColor:'#378ADD',fillOpacity:.1,weight:1}).addTo(map);
-  } else { meuMarcador.setLatLng(ll); meuCirculo.setLatLng(ll); meuCirculo.setRadius(posicaoAtual.acc); }
+  } else { meuPin.setLatLng(ll); meuCirculo.setLatLng(ll); meuCirculo.setRadius(posicaoAtual.acc); }
 }
 
-// ─── Mapa ─────────────────────────────────────────────────────────────────────
+// ─── Mapa ──────────────────────────────────────────────────────────────────────
 function initMap(){
   map=L.map('map',{zoomControl:true}).setView(CENTER,16);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
   markersLayer=L.layerGroup().addTo(map);
   L.polyline([[-15.8440,-48.0950],[-15.8440,-48.1250]],{color:'#854F0B',weight:3,dashArray:'8,5',opacity:.7}).addTo(map).bindPopup('BR-070');
-  document.getElementById('map-loading').style.display='none';
+  $('map-loading').style.display='none';
   mapReady=true;
   filtrarMapa();
-  if(posicaoAtual) atualizarPinNoMapa();
+  if(posicaoAtual) atualizarPinMapa();
   setTimeout(()=>map.invalidateSize(),200);
 }
-function centralizarMapa(){ if(!map) return; if(posicaoAtual) map.setView([posicaoAtual.lat,posicaoAtual.lng],17); else map.setView(CENTER,16); }
+function centralizarMapa(){ if(!map)return; if(posicaoAtual) map.setView([posicaoAtual.lat,posicaoAtual.lng],17); else map.setView(CENTER,16); }
 function filtrarMapa(){
-  if(!markersLayer) return;
+  if(!markersLayer)return;
   markersLayer.clearLayers();
-  const cidade=document.getElementById('filtro-cidade').value;
-  const bairro=document.getElementById('filtro-bairro').value;
-  const quadra=document.getElementById('filtro-quadra').value;
+  const cidade=$('filtro-cidade').value, bairro=$('filtro-bairro').value, quadra=$('filtro-quadra').value;
   let f=registros;
   if(cidade) f=f.filter(r=>r.cidade===cidade);
   if(bairro) f=f.filter(r=>r.bairro===bairro);
@@ -530,161 +627,164 @@ function filtrarMapa(){
   f.forEach(adicionarPin);
 }
 function adicionarPin(r){
-  if(!r.lat||!map) return;
+  if(!r.lat||!map)return;
   const cor=corBairro(r.cidade,r.bairro);
-  const icon=L.divIcon({html:`<div style="background:${cor};border:2px solid white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;box-shadow:0 2px 5px rgba(0,0,0,.25);">${r.conjunto||r.quadra?.slice(-2)||'?'}</div>`,className:'',iconSize:[26,26],iconAnchor:[13,13]});
-  let popup=`<b>${r.cidade||''} · ${r.bairro||''}</b><br>${r.quadra||''} ${r.conjunto?'· Cj.'+r.conjunto:''} · Casa ${r.casa}`;
-  if(r.obs) popup+=`<br><span style="font-size:12px;color:#666;">${r.obs}</span>`;
-  if(r.foto) popup+=`<br><img src="${r.foto}" style="width:130px;margin-top:5px;border-radius:6px;">`;
-  L.marker([r.lat,r.lng],{icon}).addTo(markersLayer).bindPopup(popup);
+  const icon=L.divIcon({html:`<div style="background:${cor};border:2px solid white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:white;box-shadow:0 2px 5px rgba(0,0,0,.25);">${r.conjunto||r.quadra?.slice(-2)||'?'}</div>`,className:'',iconSize:[24,24],iconAnchor:[12,12]});
+  let p=`<b>${r.cidade||''} · ${r.bairro||''}</b><br>${r.quadra||''} ${r.conjunto?'· Cj.'+r.conjunto:''} · Casa ${r.casa}`;
+  if(r.obs) p+=`<br><span style="font-size:12px;color:#666;">${r.obs}</span>`;
+  if(r.foto) p+=`<br><img src="${r.foto}" style="width:120px;margin-top:5px;border-radius:6px;">`;
+  L.marker([r.lat,r.lng],{icon}).addTo(markersLayer).bindPopup(p);
 }
-function esperarLeaflet(){ if(typeof L!=='undefined'){ initMap(); solicitarGPSContinuo(); } else setTimeout(esperarLeaflet,100); }
+function esperarLeaflet(){ if(typeof L!=='undefined'){ initMap(); } else setTimeout(esperarLeaflet,100); }
 
-// ─── Modal Pin ────────────────────────────────────────────────────────────────
+// ─── Modal Pin ─────────────────────────────────────────────────────────────────
 function abrirModalPin(lat,lng,titulo,sub,callback){
-  posicaoPin={lat,lng}; pinModalCallback=callback;
-  document.getElementById('pin-modal-title').textContent=titulo;
-  document.getElementById('pin-modal-sub').textContent=sub;
-  document.getElementById('pin-modal-bg').style.display='flex';
-  atualizarCoordsDisplay();
+  posicaoPin={lat,lng}; pinCallback=callback;
+  $('pin-titulo').textContent=titulo;
+  $('pin-sub').textContent=sub;
+  abrirModal('pin-modal-bg');
+  atualizarCoords();
   setTimeout(()=>{
     if(!pinMapa){
       pinMapa=L.map('pin-mapa',{zoomControl:true,attributionControl:false}).setView([lat,lng],19);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:21}).addTo(pinMapa);
-      const icon=L.divIcon({html:'<div style="width:28px;height:28px;background:#E24B4A;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:grab;"></div>',className:'',iconSize:[28,28],iconAnchor:[14,14]});
+      const icon=L.divIcon({html:'<div style="width:26px;height:26px;background:#E24B4A;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:grab;"></div>',className:'',iconSize:[26,26],iconAnchor:[13,13]});
       pinMarcador=L.marker([lat,lng],{icon,draggable:true}).addTo(pinMapa);
-      pinMarcador.on('drag dragend',()=>{ const p=pinMarcador.getLatLng(); posicaoPin={lat:p.lat,lng:p.lng}; atualizarCoordsDisplay(); });
+      pinMarcador.on('drag dragend',()=>{ const p=pinMarcador.getLatLng(); posicaoPin={lat:p.lat,lng:p.lng}; atualizarCoords(); });
     } else { pinMapa.setView([lat,lng],19); pinMarcador.setLatLng([lat,lng]); }
     setTimeout(()=>pinMapa.invalidateSize(),100);
   },100);
 }
-function atualizarCoordsDisplay(){ if(posicaoPin) document.getElementById('pin-coords-display').textContent=posicaoPin.lat.toFixed(6)+', '+posicaoPin.lng.toFixed(6); }
+function atualizarCoords(){ if(posicaoPin) $('pin-coords').textContent=posicaoPin.lat.toFixed(6)+', '+posicaoPin.lng.toFixed(6); }
 function moverPin(dLng,dLat){
-  if(!pinMarcador||!posicaoPin) return;
-  const step=parseFloat(document.getElementById('dpad-step-sel').value);
-  posicaoPin={lat:posicaoPin.lat+dLat*step,lng:posicaoPin.lng+dLng*step};
+  if(!pinMarcador||!posicaoPin)return;
+  const s=parseFloat($('dpad-step').value);
+  posicaoPin={lat:posicaoPin.lat+dLat*s,lng:posicaoPin.lng+dLng*s};
   pinMarcador.setLatLng([posicaoPin.lat,posicaoPin.lng]);
   pinMapa.panTo([posicaoPin.lat,posicaoPin.lng]);
-  atualizarCoordsDisplay();
+  atualizarCoords();
 }
-function resetarPinModal(){
-  if(!posicaoAtual) return;
+function resetarPin(){
+  if(!posicaoAtual)return;
   posicaoPin={lat:posicaoAtual.lat,lng:posicaoAtual.lng};
   pinMarcador.setLatLng([posicaoPin.lat,posicaoPin.lng]);
   pinMapa.setView([posicaoPin.lat,posicaoPin.lng],19);
-  atualizarCoordsDisplay();
+  atualizarCoords();
 }
-async function confirmarPin(){ if(!posicaoPin||!pinModalCallback) return; document.getElementById('pin-modal-bg').style.display='none'; await pinModalCallback(posicaoPin); }
+async function confirmarPin(){ if(!posicaoPin||!pinCallback)return; fecharModal('pin-modal-bg'); await pinCallback(posicaoPin); }
 
-// ─── Foto ─────────────────────────────────────────────────────────────────────
+// ─── Foto ──────────────────────────────────────────────────────────────────────
 function previewFoto(e){
-  const file=e.target.files[0]; if(!file) return;
+  const f=e.target.files[0]; if(!f)return;
   const r=new FileReader();
-  r.onload=ev=>comprimir(ev.target.result,1024,.7).then(c=>{ fotoBase64=c; document.getElementById('foto-img').src=c; document.getElementById('foto-preview').style.display='block'; });
-  r.readAsDataURL(file);
+  r.onload=ev=>comprimir(ev.target.result,1024,.7).then(c=>{ fotoBase64=c; $('foto-img').src=c; $('foto-preview').style.display='block'; });
+  r.readAsDataURL(f);
 }
 function comprimir(src,maxW,q){ return new Promise(res=>{ const img=new Image(); img.onload=()=>{ let w=img.width,h=img.height; if(w>maxW){h=Math.round(h*maxW/w);w=maxW;} const c=document.createElement('canvas'); c.width=w;c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); res(c.toDataURL('image/jpeg',q)); }; img.src=src; }); }
-function removerFoto(){ fotoBase64=null; document.getElementById('foto-preview').style.display='none'; document.getElementById('foto-input').value=''; }
-async function uploadFoto(b64){ const fd=new FormData(); fd.append('file',b64); fd.append('upload_preset',CLOUDINARY_PRESET); const r=await fetch('https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/image/upload',{method:'POST',body:fd}); if(!r.ok) throw new Error('Cloudinary '+r.status); return (await r.json()).secure_url; }
+function removerFoto(){ fotoBase64=null; $('foto-preview').style.display='none'; $('foto-input').value=''; }
+async function uploadFoto(b64){
+  const fd=new FormData(); fd.append('file',b64); fd.append('upload_preset',CLOUDINARY_PRESET);
+  const r=await fetch('https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/image/upload',{method:'POST',body:fd});
+  if(!r.ok) throw new Error('Cloudinary '+r.status);
+  return (await r.json()).secure_url;
+}
 
-// ─── Salvar ───────────────────────────────────────────────────────────────────
+// ─── Salvar ────────────────────────────────────────────────────────────────────
 function iniciarSalvar(){
-  if(!modoAdmin){ showMsg('Modo administrador necessário.','err'); return; }
+  if(!podeRegistrar()){ showMsg('Faça login para registrar.','err'); return; }
   if(!fb){ showMsg('Aguarde a conexão.','err'); return; }
-  const cidade=document.getElementById('reg-cidade').value;
-  const bairro=document.getElementById('reg-bairro').value;
-  const quadra=document.getElementById('reg-quadra').value;
-  const cjRaw=document.getElementById('reg-cj').value;
+  const cidade=$('reg-cidade').value, bairro=$('reg-bairro').value;
+  const quadra=$('reg-quadra').value;
+  const cjRaw=$('reg-cj').value;
   const conjunto=(cjRaw==='—'||cjRaw==='N/A')?'':cjRaw;
-  const casa=document.getElementById('reg-casa').value;
+  const casa=$('reg-casa').value;
   if(!cidade||!bairro||!quadra||!casa){ showMsg('Preencha cidade, bairro, quadra e casa.','err'); return; }
   const lat=posicaoAtual?posicaoAtual.lat:CENTER[0];
   const lng=posicaoAtual?posicaoAtual.lng:CENTER[1];
-  pendenteSalvar={cidade,bairro,quadra,conjunto,casa};
+  pendente={cidade,bairro,quadra,conjunto,casa};
   abrirModalPin(lat,lng,
-    cidade+' · '+bairro+' · '+quadra+(conjunto?' · Cj.'+conjunto:'')+' · Casa '+casa,
+    cidade+' · '+bairro+' · '+quadra+(conjunto?' Cj.'+conjunto:'')+' Casa '+casa,
     posicaoAtual?'GPS marcou este local. Ajuste se necessário.':'GPS indisponível. Posicione manualmente.',
     async pp=>await executarSalvar(pp));
 }
-async function executarSalvar(pinPos){
-  const {cidade,bairro,quadra,conjunto,casa}=pendenteSalvar;
-  const obs=document.getElementById('reg-obs').value.trim();
-  const btn=document.getElementById('btn-salvar');
+async function executarSalvar(pp){
+  const {cidade,bairro,quadra,conjunto,casa}=pendente;
+  const obs=$('reg-obs').value.trim();
+  const btn=$('btn-salvar');
   btn.disabled=true; btn.textContent='Salvando...';
-  try{
+  try {
     let fotoUrl=null;
     if(fotoBase64){ btn.textContent='Enviando foto...'; fotoUrl=await uploadFoto(fotoBase64); }
     btn.textContent='Salvando...';
-    const docId=(cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.]/g,'');
+    const docId=(cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
     await fb.setDoc(fb.doc(fb.db,'registros',docId),{
       cidade,bairro,quadra,conjunto,casa,obs,foto:fotoUrl,
-      lat:pinPos.lat,lng:pinPos.lng,
+      lat:pp.lat,lng:pp.lng,
+      registradoPor: usuarioAtual?.email||'',
+      registradoPorUid: usuarioAtual?.uid||'',
       ts:new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
     });
-    showMsg('✓ '+cidade+' · '+bairro+' · '+quadra+(conjunto?' Cj.'+conjunto:'')+' · Casa '+casa+' salvo!','ok');
-    ['reg-cidade','reg-bairro','reg-quadra','reg-cj'].forEach(id=>{ const s=document.getElementById(id); if(s){s.value='';s.innerHTML='<option value="">...</option>';} });
-    document.getElementById('reg-casa').value='';
-    document.getElementById('reg-obs').value='';
-    removerFoto(); pendenteSalvar=null;
-  } catch(e){ console.error('[Salvar]',e); showMsg('Erro: '+(e.code||e.message||'desconhecido'),'err'); }
+    showMsg('✓ '+bairro+' · '+quadra+(conjunto?' Cj.'+conjunto:'')+' · Casa '+casa+' salvo!','ok');
+    ['reg-cidade','reg-bairro','reg-quadra','reg-cj'].forEach(id=>{ const s=$(id); if(s){s.value='';s.innerHTML='<option value="">...</option>';} });
+    $('reg-casa').value=''; $('reg-obs').value='';
+    removerFoto(); pendente=null;
+  } catch(e){ console.error('[Salvar]',e); showMsg('Erro: '+(e.code||e.message),'err'); }
   btn.disabled=false; btn.textContent='💾 Salvar e confirmar posição';
 }
 
-// ─── Busca ────────────────────────────────────────────────────────────────────
+// ─── Busca ─────────────────────────────────────────────────────────────────────
 function buscarEndereco(){
-  const cidade=document.getElementById('busca-cidade').value;
-  const bairro=document.getElementById('busca-bairro').value;
-  const quadra=document.getElementById('busca-quadra').value;
-  const cjRaw=document.getElementById('busca-cj').value;
+  const cidade=$('busca-cidade').value, bairro=$('busca-bairro').value;
+  const quadra=$('busca-quadra').value;
+  const cjRaw=$('busca-cj').value;
   const conjunto=(cjRaw==='—'||cjRaw==='N/A')?'':cjRaw;
-  const casa=document.getElementById('busca-casa').value;
-  const divRes=document.getElementById('busca-resultado');
-  const divSem=document.getElementById('busca-sem-resultado');
-  const divCom=document.getElementById('busca-com-resultado');
+  const casa=$('busca-casa').value;
+  const divRes=$('busca-resultado'), divSem=$('busca-sem'), divCom=$('busca-com');
   if(!cidade||!bairro||!quadra||!casa){ divRes.style.display='none'; return; }
-  const docId=(cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.]/g,'');
+  const docId=(cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
   const reg=registros.find(r=>r.id===docId);
   divRes.style.display='block'; resultadoBusca=reg||null;
   if(!reg){ divSem.style.display='block'; divCom.style.display='none'; return; }
   divSem.style.display='none'; divCom.style.display='block';
-  document.getElementById('busca-addr').textContent=cidade+' · '+bairro+' · '+quadra+(conjunto?' · Cj.'+conjunto:'')+' · Casa '+casa;
-  document.getElementById('busca-obs').textContent=reg.obs||'Sem observação';
-  document.getElementById('busca-ts').textContent=reg.ts?'Registrado em '+reg.ts:'';
-  const fc=document.getElementById('busca-foto-container');
-  if(reg.foto){ document.getElementById('busca-foto').src=reg.foto; fc.style.display='block'; } else fc.style.display='none';
-  document.getElementById('busca-gps-info').textContent=reg.lat?'📍 GPS disponível':'⚠️ Sem GPS';
+  $('busca-addr').textContent=bairro+' · '+quadra+(conjunto?' · Cj.'+conjunto:'')+' · Casa '+casa;
+  $('busca-obs').textContent=reg.obs||'Sem observação';
+  $('busca-ts').textContent=reg.ts?'Registrado em '+reg.ts+(reg.registradoPor?' por '+reg.registradoPor:''):'';
+  const fc=$('busca-foto-wrap');
+  if(reg.foto){ $('busca-foto').src=reg.foto; fc.style.display='block'; } else fc.style.display='none';
+  $('busca-gps-info').textContent=reg.lat?'📍 GPS disponível':'⚠️ Sem GPS';
+  $('btn-editar-pin-busca').style.display=podeRegistrar()?'block':'none';
 }
 function verNoMapa(){
-  if(!resultadoBusca?.lat) return;
+  if(!resultadoBusca?.lat)return;
   showTab('mapa',true);
   setTimeout(()=>{ if(map){ map.setView([resultadoBusca.lat,resultadoBusca.lng],19); markersLayer.eachLayer(l=>{ if(l.getLatLng&&Math.abs(l.getLatLng().lat-resultadoBusca.lat)<.00001) l.openPopup(); }); } },300);
 }
 function editarPinEncontrado(){
-  if(!resultadoBusca) return;
+  if(!resultadoBusca||!podeRegistrar())return;
   const r=resultadoBusca;
   abrirModalPin(r.lat||CENTER[0],r.lng||CENTER[1],'Editar pin · '+r.quadra+' Casa '+r.casa,'Reposicione e confirme.',
-    async pp=>{ if(!modoAdmin){abrirLogin();return;} try{ await fb.setDoc(fb.doc(fb.db,'registros',r.id),{...r,lat:pp.lat,lng:pp.lng}); document.getElementById('busca-gps-info').textContent='✓ Posição atualizada!'; }catch(e){alert('Erro: '+(e.code||e.message));} });
+    async pp=>{ try{ await fb.setDoc(fb.doc(fb.db,'registros',r.id),{...r,lat:pp.lat,lng:pp.lng}); $('busca-gps-info').textContent='✓ Posição atualizada!'; }catch(e){alert('Erro: '+(e.code||e.message));} });
 }
 
 // ─── Deletar / Editar pin na lista ────────────────────────────────────────────
 async function deletar(id){
-  if(!modoAdmin){abrirLogin();return;} if(!fb||!id) return;
-  if(!confirm('Excluir este registro?')) return;
-  try{ await fb.deleteDoc(fb.doc(fb.db,'registros',id)); } catch(e){ alert('Erro: '+(e.code||e.message)); }
+  if(!podeExcluir()){ showMsg('Apenas administradores podem excluir.','err'); return; }
+  if(!confirm('Excluir este registro?'))return;
+  try{ await fb.deleteDoc(fb.doc(fb.db,'registros',id)); }catch(e){ alert('Erro: '+(e.code||e.message)); }
 }
-function abrirEdicaoPinPorId(id){
-  if(!modoAdmin){abrirLogin();return;}
+function editarPin(id){
+  if(!podeRegistrar()){ showMsg('Faça login para editar.','err'); return; }
   const r=registros.find(x=>x.id===id); if(!r){alert('Não encontrado.');return;}
   abrirModalPin(r.lat||CENTER[0],r.lng||CENTER[1],'Editar pin · '+r.quadra+' Casa '+r.casa,r.lat?'Ajuste com D-Pad ou arrastando.':'Sem GPS. Posicione manualmente.',
     async pp=>{ try{ await fb.setDoc(fb.doc(fb.db,'registros',r.id),{...r,lat:pp.lat,lng:pp.lng}); renderLista(); }catch(e){alert('Erro: '+(e.code||e.message));} });
 }
 
-// ─── Lista ────────────────────────────────────────────────────────────────────
+// ─── Lista ─────────────────────────────────────────────────────────────────────
 function renderLista(){
-  const div=document.getElementById('lista-content');
-  const busca=(document.getElementById('busca-lista')?.value||'').toLowerCase();
+  const div=$('lista-content');
+  const busca=($('busca-lista')?.value||'').toLowerCase();
   let f=busca?registros.filter(r=>(r.cidade||'').toLowerCase().includes(busca)||(r.bairro||'').toLowerCase().includes(busca)||(r.quadra||'').toLowerCase().includes(busca)||(r.conjunto||'').toLowerCase().includes(busca)||r.casa.toString().includes(busca)||(r.obs||'').toLowerCase().includes(busca)):[...registros];
-  if(!f.length){ div.innerHTML='<div class="empty"><span class="icon">'+(busca?'🔍':'📭')+'</span>'+(busca?'Nenhum resultado.':'Nenhum registro.')+'</div>'; return; }
+  if(!f.length){ div.innerHTML='<div class="empty"><span class="icon">'+(busca?'🔍':'📭')+'</span>'+(busca?'Nenhum resultado.':'Nenhum registro ainda.')+'</div>'; return; }
   f.sort((a,b)=>(a.cidade||'').localeCompare(b.cidade||'')||(a.bairro||'').localeCompare(b.bairro||'')||(a.quadra||'').localeCompare(b.quadra||'',undefined,{numeric:true})||parseInt(a.casa)-parseInt(b.casa));
   div.innerHTML=f.map(r=>
     '<div class="entry-card">'+
@@ -692,24 +792,26 @@ function renderLista(){
     '<div class="entry-info">'+
     `<div class="entry-addr">${r.bairro||''} · ${r.quadra||''} ${r.conjunto?'Cj.'+r.conjunto:''} · Casa ${r.casa}${r.lat?'<span class="badge-gps">GPS</span>':''}</div>`+
     `<div class="entry-obs">${r.obs||'Sem observação'}</div>`+
-    `<div class="entry-ts">${r.ts||''}</div></div>`+
-    (modoAdmin?`<button class="edit-pin-btn" data-editid="${r.id}">✏️</button>`+`<button class="delete-btn" data-delid="${r.id}">🗑</button>`:'')+
+    `<div class="entry-ts">${r.ts||''}${r.registradoPor?' · '+r.registradoPor:''}</div></div>`+
+    (podeRegistrar()?`<button class="action-btn" data-editid="${r.id}" title="Editar pin">✏️</button>`:'') +
+    (podeExcluir()?`<button class="action-btn" data-delid="${r.id}" title="Excluir">🗑</button>`:'') +
     '</div>'
   ).join('');
-  div.querySelectorAll('.delete-btn').forEach(btn=>btn.addEventListener('click',()=>deletar(btn.getAttribute('data-delid'))));
-  div.querySelectorAll('.edit-pin-btn').forEach(btn=>btn.addEventListener('click',()=>abrirEdicaoPinPorId(btn.getAttribute('data-editid'))));
+  div.querySelectorAll('[data-delid]').forEach(btn=>btn.addEventListener('click',()=>deletar(btn.getAttribute('data-delid'))));
+  div.querySelectorAll('[data-editid]').forEach(btn=>btn.addEventListener('click',()=>editarPin(btn.getAttribute('data-editid'))));
 }
 
-// ─── Globais ──────────────────────────────────────────────────────────────────
-window.showTab=showTab; window.solicitarGPSContinuo=solicitarGPSContinuo; window.ativarTrackingReal=ativarTrackingReal;
-window.centralizarMapa=centralizarMapa; window.filtrarMapa=filtrarMapa;
+// ─── Globais ───────────────────────────────────────────────────────────────────
+window.showTab=showTab;
+window.fazerLogin=fazerLogin; window.fazerLogout=fazerLogout; window.abrirCadastro=abrirCadastro;
+window.ativarGPS=ativarGPS; window.solicitarGPS=solicitarGPS;
 window.onCidadeChange=onCidadeChange; window.onBairroChange=onBairroChange; window.onQuadraChange=onQuadraChange;
 window.onFiltroCidadeChange=onFiltroCidadeChange; window.onFiltroBairroChange=onFiltroBairroChange;
+window.centralizarMapa=centralizarMapa; window.filtrarMapa=filtrarMapa;
 window.previewFoto=previewFoto; window.removerFoto=removerFoto; window.iniciarSalvar=iniciarSalvar;
 window.buscarEndereco=buscarEndereco; window.verNoMapa=verNoMapa; window.editarPinEncontrado=editarPinEncontrado;
-window.deletar=deletar; window.abrirEdicaoPinPorId=abrirEdicaoPinPorId; window.renderLista=renderLista;
-window.moverPin=moverPin; window.resetarPinModal=resetarPinModal; window.confirmarPin=confirmarPin;
-window.validarSenha=validarSenha; window.fecharLogin=fecharLogin; window.abrirLogin=abrirLogin;
+window.moverPin=moverPin; window.resetarPin=resetarPin; window.confirmarPin=confirmarPin;
+window.fecharModal=fecharModal;
 esperarLeaflet();
 </script>
 </body>

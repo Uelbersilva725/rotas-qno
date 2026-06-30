@@ -150,9 +150,10 @@ tr:hover td{background:#FAFBFC}
     <div class="login-logo">📦</div>
     <h2>Rotas QNO</h2>
     <p>Painel de Administração</p>
-    <input type="password" id="login-pass" placeholder="Senha" onkeydown="if(event.key==='Enter')entrar()"/>
+    <input type="email" id="login-email" placeholder="E-mail do administrador" style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:10px;outline:none;"/>
+    <input type="password" id="login-pass" placeholder="Senha" onkeydown="if(event.key==='Enter')entrar()" style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:12px;outline:none;"/>
     <button onclick="entrar()">Entrar no painel</button>
-    <div class="login-err" id="login-err">Senha incorreta.</div>
+    <div class="login-err" id="login-err">Acesso negado.</div>
   </div>
 </div>
 
@@ -173,6 +174,7 @@ tr:hover td{background:#FAFBFC}
         <div class="sync-dot" id="sync-dot"></div>
         <span id="sync-text">Conectando...</span>
       </div>
+      <button onclick="sairAdmin()" style="margin-top:10px;width:100%;padding:7px;background:none;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);border-radius:7px;font-size:11px;cursor:pointer;">Sair</button>
     </div>
   </div>
 
@@ -327,15 +329,17 @@ tr:hover td{background:#FAFBFC}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, doc, setDoc, addDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 const cfg={apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",authDomain:"app-rotas-68cf4.firebaseapp.com",projectId:"app-rotas-68cf4",storageBucket:"app-rotas-68cf4.firebasestorage.app",messagingSenderId:"400409767391",appId:"1:400409767391:web:0bcebe50738d6d3450a86a"};
 const fapp=initializeApp(cfg);
 const db=getFirestore(fapp);
-window.__fb={db,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,colReg:collection(db,'registros'),colCid:collection(db,'cidades')};
+const auth=getAuth(fapp);
+window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades')};
 window.__fbReady=true;
 window.dispatchEvent(new Event('fb-ready'));
 </script>
 <script>
-const SENHA="qno2026";
+const UID_ADMIN="vepKTSZjEiVNtPyzXG9CcPagnk83";
 const CENTER=[-15.8485,-48.1080];
 const POR_PAG=20;
 const CORES_PAD=['#1D9E75','#378ADD','#D85A30','#BA7517','#D4537E','#7B5EA7','#2D9CDB','#F2994A'];
@@ -349,12 +353,30 @@ let novaBairroParaCidade=null,novaQuadraParaBairro=null,novaQuadraParaCidade=nul
 function ordenar(keys){return [...keys].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));}
 function corBairro(cidade,bairro){return CIDADES[cidade]?.bairros?.[bairro]?.cor||CIDADES[cidade]?.cor||'#888';}
 
-function entrar(){
-  if(document.getElementById('login-pass').value===SENHA){
+async function entrar(){
+  const email=document.getElementById('login-email').value.trim();
+  const senha=document.getElementById('login-pass').value;
+  const err=document.getElementById('login-err');
+  err.style.display='none';
+  if(!email||!senha){ err.textContent='Preencha e-mail e senha.'; err.style.display='block'; return; }
+  if(!window.__fbReady){ err.textContent='Aguarde o carregamento e tente novamente.'; err.style.display='block'; return; }
+  fb=window.__fb;
+  try {
+    const cred = await fb.signInWithEmailAndPassword(fb.auth, email, senha);
+    if(cred.user.uid !== UID_ADMIN){
+      await fb.signOut(fb.auth);
+      err.textContent='Este painel é exclusivo do administrador.';
+      err.style.display='block';
+      return;
+    }
     document.getElementById('login-screen').style.display='none';
     document.getElementById('admin-screen').style.display='block';
     iniciarFb();
-  } else { document.getElementById('login-err').style.display='block'; }
+  } catch(e){
+    const msgs={'auth/user-not-found':'Usuário não encontrado.','auth/wrong-password':'Senha incorreta.','auth/invalid-credential':'E-mail ou senha incorretos.','auth/invalid-email':'E-mail inválido.'};
+    err.textContent=msgs[e.code]||'Erro: '+e.code;
+    err.style.display='block';
+  }
 }
 
 function iniciarFb(){
@@ -776,8 +798,13 @@ async function excluir(id){
 function verFoto(url){ document.getElementById('foto-modal-img').src=url; document.getElementById('foto-modal').classList.add('open'); }
 function abrirModal(id){document.getElementById(id).classList.add('open');}
 function fecharModal(id){document.getElementById(id).classList.remove('open');}
+async function sairAdmin(){
+  if(!confirm('Deseja sair do painel?')) return;
+  if(fb) await fb.signOut(fb.auth);
+  location.reload();
+}
 
-window.entrar=entrar; window.navTo=navTo; window.irPara=irPara;
+window.entrar=entrar; window.navTo=navTo; window.irPara=irPara; window.sairAdmin=sairAdmin;
 window.renderTabela=renderTabela; window.onTabCidadeChange=onTabCidadeChange; window.onTabBairroChange=onTabBairroChange;
 window.onMapCidadeChange=onMapCidadeChange; window.onMapBairroChange=onMapBairroChange; window.filtrarMapaAdmin=filtrarMapaAdmin;
 window.selecionarCidade=selecionarCidade; window.selecionarBairro=selecionarBairro;
