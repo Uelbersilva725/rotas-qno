@@ -155,8 +155,8 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 <div id="login-screen">
   <div class="login-card">
     <div class="login-logo">📦</div>
-    <h2>Rota Facil</h2>
-    <p></p>
+    <h2>Rotas QNO</h2>
+    <p>Ceilândia · Expansão Setor O</p>
     <input class="login-input" type="email" id="login-email" placeholder="E-mail" autocomplete="email"/>
     <input class="login-input" type="password" id="login-senha" placeholder="Senha" onkeydown="if(event.key==='Enter')fazerLogin()"/>
     <button class="login-btn" id="login-btn" onclick="fazerLogin()">Entrar</button>
@@ -169,7 +169,7 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 <div id="app" style="display:none;">
   <div class="header">
     <div class="header-icon">📦</div>
-    <div><div class="header-title">Rota Facil</div><div class="header-sub"></div></div>
+    <div><div class="header-title">Rotas QNO</div><div class="header-sub">Ceilândia · DF</div></div>
     <div class="header-right">
       <span class="user-badge visitante" id="user-badge">...</span>
       <button class="logout-btn" onclick="fazerLogout()">Sair</button>
@@ -400,7 +400,11 @@ let pendente = null, resultadoBusca = null;
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 function ordenar(k){ return [...k].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'})); }
-function corBairro(cidade,bairro){ return CIDADES[cidade]?.bairros?.[bairro]?.cor || CIDADES[cidade]?.cor || '#888'; }
+function getCidade(nome){ return Object.values(CIDADES).find(c=>c.nome===nome); }
+function corBairro(cidade,bairro){
+  const cid = getCidade(cidade);
+  return cid?.bairros?.[bairro]?.cor || cid?.cor || '#888';
+}
 function showMsg(t,c){ const m=$('save-msg'); m.textContent=t; m.className='msg '+c; m.style.display='block'; setTimeout(()=>m.style.display='none',3500); }
 function fecharModal(id){ $(id).classList.remove('open'); }
 function abrirModal(id){ $(id).classList.add('open'); }

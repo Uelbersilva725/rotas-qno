@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Painel Admin</title>
+<title>Rotas QNO · Painel Admin</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -148,9 +148,9 @@ tr:hover td{background:#FAFBFC}
 <div id="login-screen">
   <div class="login-card">
     <div class="login-logo">📦</div>
-    <h2>Rota Facil</h2>
+    <h2>Rotas QNO</h2>
     <p>Painel de Administração</p>
-    <input type="email" id="login-email" placeholder="E-mail" style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:10px;outline:none;"/>
+    <input type="email" id="login-email" placeholder="E-mail do administrador" style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:10px;outline:none;"/>
     <input type="password" id="login-pass" placeholder="Senha" onkeydown="if(event.key==='Enter')entrar()" style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:12px;outline:none;"/>
     <button onclick="entrar()">Entrar no painel</button>
     <div class="login-err" id="login-err">Acesso negado.</div>
@@ -161,7 +161,7 @@ tr:hover td{background:#FAFBFC}
   <div class="sidebar">
     <div class="sidebar-logo">
       <div class="sidebar-logo-icon">📦</div>
-      <div><div class="sidebar-logo-text">Rota Facil</div><div class="sidebar-logo-sub">Painel Admin</div></div>
+      <div><div class="sidebar-logo-text">Rotas QNO</div><div class="sidebar-logo-sub">Painel Admin</div></div>
     </div>
     <div class="nav-section">Principal</div>
     <div class="nav-item active" onclick="navTo('dashboard',this)"><span class="nav-icon">📊</span> Dashboard</div>
@@ -351,7 +351,11 @@ let cidSel=null,bairSel=null;
 let novaBairroParaCidade=null,novaQuadraParaBairro=null,novaQuadraParaCidade=null;
 
 function ordenar(keys){return [...keys].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));}
-function corBairro(cidade,bairro){return CIDADES[cidade]?.bairros?.[bairro]?.cor||CIDADES[cidade]?.cor||'#888';}
+function getCidadeByNome(nome){ return Object.values(CIDADES).find(c=>c.nome===nome); }
+function corBairro(cidade,bairro){
+  const cid=getCidadeByNome(cidade);
+  return cid?.bairros?.[bairro]?.cor||cid?.cor||'#888';
+}
 
 async function entrar(){
   const email=document.getElementById('login-email').value.trim();
