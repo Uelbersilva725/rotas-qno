@@ -609,7 +609,7 @@ function initFirebase(){
     atualizarStats();
     if(mapReady) filtrarMapa();
     if($('screen-lista').classList.contains('active')) renderLista();
-    atualizarSync('ok', registros.length+' endereços');
+    atualizarSync('ok', nivelAcesso==='admin' ? (registros.length+' endereços') : 'Conectado');
   }, err=>{ clearTimeout(t); atualizarSync('erro','Erro: '+err.code); });
 }
 
@@ -646,6 +646,7 @@ function mostrarApp(usuario){
   $('fab-centralizar').style.display = ehAdmin ? 'none' : 'flex';
   $('tab-registrar').style.display = ehAdmin ? 'block' : 'none';
   $('tab-lista').style.display = ehAdmin ? 'block' : 'none';
+  if(!ehAdmin && $('sync-text').textContent.includes('endereços')) $('sync-text').textContent='Conectado';
   if(mapReady) filtrarMapa(); // reaplica a regra de visibilidade dos pins se o mapa já estava carregado
   else esperarLeaflet(); // primeira vez: app já está visível aqui, então o mapa nasce com o tamanho certo
   solicitarGPS();
