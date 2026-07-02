@@ -235,76 +235,59 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 
   <div class="tab-bar">
     <button class="tab active" onclick="showTab('mapa')">🗺 Mapa</button>
-    <button class="tab" onclick="showTab('busca')">🔍 Buscar</button>
     <button class="tab" onclick="showTab('rota')">🛣 Rota</button>
-    <button class="tab" onclick="showTab('registrar')">📍 Registrar</button>
-    <button class="tab" onclick="showTab('lista')">📋 Lista</button>
+    <button class="tab" id="tab-registrar" onclick="showTab('registrar')">📍 Registrar</button>
+    <button class="tab" id="tab-lista" onclick="showTab('lista')">📋 Lista</button>
   </div>
 
-  <!-- MAPA -->
+  <!-- MAPA (com busca integrada) -->
   <div id="screen-mapa" class="screen active">
     <div class="stats-bar">
       <div class="stat"><div class="num" id="stat-total">0</div><div class="lbl">mapeadas</div></div>
       <div class="stat"><div class="num" id="stat-gps">0</div><div class="lbl">com GPS</div></div>
       <div class="stat"><div class="num" id="stat-foto">0</div><div class="lbl">com foto</div></div>
     </div>
+
     <div class="map-toolbar" id="map-toolbar-admin">
       <select id="filtro-cidade" onchange="onFiltroCidadeChange()"><option value="">Todas cidades</option></select>
       <select id="filtro-bairro" onchange="onFiltroBairroChange()"><option value="">Todos bairros</option></select>
       <select id="filtro-quadra" onchange="filtrarMapa()"><option value="">Todas quadras</option></select>
       <button class="btn-icon btn-green" onclick="centralizarMapa()">📍</button>
     </div>
-    <div class="map-toolbar" id="map-toolbar-visitante" style="display:none;">
-      <span style="font-size:11px;color:#888;flex:1;padding:4px 2px;">🔍 Use "Buscar" ou "Rota" para localizar endereços</span>
-      <button class="btn-icon btn-green" onclick="centralizarMapa()">📍</button>
-    </div>
-    <div id="map" style="position:relative;"><div class="loading-overlay" id="map-loading">⏳ Carregando mapa...</div></div>
-  </div>
 
-  <!-- BUSCA -->
-  <div id="screen-busca" class="screen">
-    <div class="reg-screen">
-      <div class="section-label">Localizar endereço</div>
-      <div class="form-row">
-        <div class="form-group"><label>Cidade</label>
-          <select id="busca-cidade" onchange="onCidadeChange('busca-cidade','busca-bairro','busca-quadra','busca-cj');buscarEndereco()"><option value="">...</option></select>
-        </div>
-        <div class="form-group"><label>Bairro</label>
-          <select id="busca-bairro" onchange="onBairroChange('busca-bairro','busca-quadra','busca-cj');buscarEndereco()"><option value="">...</option></select>
-        </div>
+    <div class="busca-inline" style="padding:8px;background:#fff;border-bottom:.5px solid #e5e5e5;">
+      <div class="form-row" style="margin-bottom:6px;">
+        <select id="busca-cidade" onchange="onCidadeChange('busca-cidade','busca-bairro','busca-quadra','busca-cj');buscarEndereco()" style="flex:1;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:7px;"><option value="">Cidade...</option></select>
+        <select id="busca-bairro" onchange="onBairroChange('busca-bairro','busca-quadra','busca-cj');buscarEndereco()" style="flex:1;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:7px;"><option value="">Bairro...</option></select>
       </div>
-      <div class="form-row">
-        <div class="form-group"><label>Quadra/Rua</label>
-          <select id="busca-quadra" onchange="onQuadraChange('busca-quadra','busca-cj');buscarEndereco()"><option value="">...</option></select>
-        </div>
-        <div class="form-group"><label>Conjunto</label>
-          <select id="busca-cj" onchange="buscarEndereco()"><option value="">...</option></select>
-        </div>
-      </div>
-      <div class="form-group"><label>Casa nº</label>
-        <input type="number" id="busca-casa" placeholder="Ex: 15" min="1" max="500" oninput="buscarEndereco()"/>
+      <div class="form-row" style="margin-bottom:6px;">
+        <select id="busca-quadra" onchange="onQuadraChange('busca-quadra','busca-cj');buscarEndereco()" style="flex:1;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:7px;"><option value="">Quadra...</option></select>
+        <select id="busca-cj" onchange="buscarEndereco()" style="flex:1;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:7px;"><option value="">Conjunto...</option></select>
+        <input type="number" id="busca-casa" placeholder="Casa" min="1" max="500" oninput="buscarEndereco()" style="width:64px;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:7px;"/>
       </div>
       <div id="busca-resultado" style="display:none;">
-        <div id="busca-sem" style="display:none;" class="empty"><span class="icon">📭</span>Não cadastrado ainda.</div>
-        <div id="busca-com" style="display:none;" class="busca-result">
-          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;">
+        <div id="busca-sem" style="display:none;" class="empty" style="padding:12px;"><span class="icon">📭</span>Não cadastrado ainda.</div>
+        <div id="busca-com" style="display:none;" class="busca-result" style="margin-top:6px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;">
             <div id="busca-foto-wrap" style="display:none;flex-shrink:0;">
-              <img id="busca-foto" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:.5px solid #eee;"/>
+              <img id="busca-foto" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:.5px solid #eee;"/>
             </div>
             <div style="flex:1;">
-              <div id="busca-addr" style="font-size:13px;font-weight:600;color:#111;margin-bottom:4px;"></div>
+              <div id="busca-addr" style="font-size:13px;font-weight:600;color:#111;margin-bottom:3px;"></div>
               <div id="busca-obs" style="font-size:12px;color:#666;line-height:1.4;"></div>
-              <div id="busca-gps-info" style="font-size:11px;color:#1D9E75;margin-top:4px;"></div>
-              <div id="busca-ts" style="font-size:10px;color:#bbb;margin-top:3px;"></div>
+              <div id="busca-gps-info" style="font-size:11px;color:#1D9E75;margin-top:3px;"></div>
+              <div id="busca-ts" style="font-size:10px;color:#bbb;margin-top:2px;"></div>
             </div>
           </div>
           <div style="display:flex;gap:8px;">
-            <button class="save-btn" style="font-size:12px;padding:9px;" onclick="verNoMapa()">🗺 Ver no mapa</button>
-            <button class="save-btn" style="font-size:12px;padding:9px;background:#378ADD;border:none;" id="btn-editar-pin-busca" onclick="editarPinEncontrado()">📍 Editar pin</button>
+            <button class="save-btn" style="font-size:12px;padding:8px;flex:1;" onclick="verNoMapa()">🗺 Ver no mapa</button>
+            <button class="save-btn" style="font-size:12px;padding:8px;flex:1;background:#378ADD;border:none;" id="btn-editar-pin-busca" onclick="editarPinEncontrado()">📍 Editar pin</button>
           </div>
         </div>
       </div>
     </div>
+
+    <div id="map" style="position:relative;"><div class="loading-overlay" id="map-loading">⏳ Carregando mapa...</div></div>
   </div>
 
   <!-- REGISTRAR -->
@@ -631,7 +614,8 @@ function mostrarApp(usuario){
     badge.textContent='Entregador'; badge.className='user-badge entregador';
   }
   $('map-toolbar-admin').style.display = ehAdmin ? 'flex' : 'none';
-  $('map-toolbar-visitante').style.display = ehAdmin ? 'none' : 'flex';
+  $('tab-registrar').style.display = ehAdmin ? 'block' : 'none';
+  $('tab-lista').style.display = ehAdmin ? 'block' : 'none';
   if(mapReady) filtrarMapa(); // reaplica a regra de visibilidade dos pins se o mapa já estava carregado
   solicitarGPS();
 }
@@ -908,6 +892,8 @@ async function executarSalvar(pp){
 }
 
 // ─── Busca ─────────────────────────────────────────────────────────────────────
+let buscaPinMarker = null;
+
 function buscarEndereco(){
   const cidade=$('busca-cidade').value, bairro=$('busca-bairro').value;
   const quadra=$('busca-quadra').value;
@@ -915,11 +901,11 @@ function buscarEndereco(){
   const conjunto=(cjRaw==='—'||cjRaw==='N/A')?'':cjRaw;
   const casa=$('busca-casa').value;
   const divRes=$('busca-resultado'), divSem=$('busca-sem'), divCom=$('busca-com');
-  if(!cidade||!bairro||!quadra||!casa){ divRes.style.display='none'; return; }
+  if(!cidade||!bairro||!quadra||!casa){ divRes.style.display='none'; removerPinBusca(); return; }
   const docId=(cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
   const reg=registros.find(r=>r.id===docId);
   divRes.style.display='block'; resultadoBusca=reg||null;
-  if(!reg){ divSem.style.display='block'; divCom.style.display='none'; return; }
+  if(!reg){ divSem.style.display='block'; divCom.style.display='none'; removerPinBusca(); return; }
   divSem.style.display='none'; divCom.style.display='block';
   $('busca-addr').textContent=bairro+' · '+quadra+(conjunto?' · Cj.'+conjunto:'')+' · Casa '+casa;
   $('busca-obs').textContent=reg.obs||'Sem observação';
@@ -928,17 +914,45 @@ function buscarEndereco(){
   if(reg.foto){ $('busca-foto').src=reg.foto; fc.style.display='block'; } else fc.style.display='none';
   $('busca-gps-info').textContent=reg.lat?(reg.verificado?'✅ Endereço verificado ('+(reg.totalConfirmacoes||0)+' confirmações)':'📍 GPS disponível'+(reg.totalConfirmacoes?' · '+reg.totalConfirmacoes+'/3 confirmações':'')):'⚠️ Sem GPS';
   $('btn-editar-pin-busca').style.display=podeRegistrar()?'block':'none';
+  if(reg.lat) mostrarPinBusca(reg); else removerPinBusca();
 }
+
+// Mostra um pin específico no mapa para o resultado da busca — funciona mesmo
+// para quem não é admin (que não vê os pins gerais do mapa)
+function mostrarPinBusca(reg){
+  if(!mapReady || !map) return;
+  const icon = L.divIcon({
+    html:'<div style="width:30px;height:30px;background:#E24B4A;border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,.4);"></div>',
+    className:'', iconSize:[30,30], iconAnchor:[15,30]
+  });
+  if(!buscaPinMarker){
+    buscaPinMarker = L.marker([reg.lat,reg.lng], { icon, zIndexOffset:2000 }).addTo(map);
+  } else {
+    buscaPinMarker.setLatLng([reg.lat,reg.lng]);
+    buscaPinMarker.setIcon(icon);
+  }
+  buscaPinMarker.bindPopup('<b>'+reg.quadra+' · Cj.'+(reg.conjunto||'?')+' · Casa '+reg.casa+'</b>'+(reg.obs?'<br>'+reg.obs:''));
+}
+function removerPinBusca(){
+  if(buscaPinMarker && map){ map.removeLayer(buscaPinMarker); buscaPinMarker = null; }
+}
+
 function verNoMapa(){
   if(!resultadoBusca?.lat)return;
   showTab('mapa',true);
-  setTimeout(()=>{ if(map){ map.setView([resultadoBusca.lat,resultadoBusca.lng],19); markersLayer.eachLayer(l=>{ if(l.getLatLng&&Math.abs(l.getLatLng().lat-resultadoBusca.lat)<.00001) l.openPopup(); }); } },300);
+  setTimeout(()=>{
+    if(map){
+      map.setView([resultadoBusca.lat,resultadoBusca.lng],19);
+      mostrarPinBusca(resultadoBusca);
+      buscaPinMarker?.openPopup();
+    }
+  },300);
 }
 function editarPinEncontrado(){
   if(!resultadoBusca||!podeRegistrar())return;
   const r=resultadoBusca;
   abrirModalPin(r.lat||CENTER[0],r.lng||CENTER[1],'Editar pin · '+r.quadra+' Casa '+r.casa,'Reposicione e confirme.',
-    async pp=>{ try{ await fb.setDoc(fb.doc(fb.db,'registros',r.id),{...r,lat:pp.lat,lng:pp.lng}); $('busca-gps-info').textContent='✓ Posição atualizada!'; }catch(e){alert('Erro: '+(e.code||e.message));} });
+    async pp=>{ try{ await fb.setDoc(fb.doc(fb.db,'registros',r.id),{...r,lat:pp.lat,lng:pp.lng}); $('busca-gps-info').textContent='✓ Posição atualizada!'; mostrarPinBusca({...r,lat:pp.lat,lng:pp.lng}); }catch(e){alert('Erro: '+(e.code||e.message));} });
 }
 
 // ─── Deletar / Editar pin na lista ────────────────────────────────────────────
