@@ -96,6 +96,9 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 .msg{margin-top:10px;font-size:13px;text-align:center;padding:8px;border-radius:8px;display:none}
 .msg.ok{background:#E1F5EE;color:#0F6E56}
 .msg.err{background:#FCEBEB;color:#A32D2D}
+.toast-msg{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);max-width:90%;padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;text-align:center;z-index:6000;display:none;box-shadow:0 4px 16px rgba(0,0,0,.15)}
+.toast-msg.ok{background:#1D9E75;color:#fff}
+.toast-msg.err{background:#E24B4A;color:#fff}
 
 /* Lista */
 .list-toolbar{padding:8px;border-bottom:.5px solid #e5e5e5;background:#fff}
@@ -215,6 +218,7 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 
 <!-- APP -->
 <div id="app" style="display:none;">
+  <div class="toast-msg" id="toast-msg"></div>
   <div class="header">
     <div class="header-icon">📦</div>
     <div><div class="header-title">Rotas QNO</div><div class="header-sub">Ceilândia · DF</div></div>
@@ -346,6 +350,11 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
     <div class="rota-screen" id="rota-screen-inner">
       <div>
         <div class="section-label">Lista de pacotes do dia</div>
+        <button class="btn" style="width:100%;padding:10px;margin-bottom:8px;background:#f5f5f5;border:1.5px dashed #ccc;color:#555;font-size:13px;" onclick="document.getElementById('rota-csv-input').click()">
+          📁 Importar arquivo CSV
+        </button>
+        <input type="file" id="rota-csv-input" accept=".csv,text/csv" style="display:none;" onchange="importarCSV(event)"/>
+        <div style="text-align:center;font-size:11px;color:#aaa;margin-bottom:8px;">ou cole o conteúdo manualmente abaixo</div>
         <textarea class="rota-textarea" id="rota-input" placeholder='Cole aqui o CSV de pacotes. Exemplo:&#10;"QNO 18 Cj 25, 30, Ceilândia...",Brasília,DF,556199...&#10;"QNO 17 Cj 59, 03, Brasília...",Brasília,DF,556198...'></textarea>
       </div>
       <button class="rota-btn" id="rota-btn" onclick="analisarLista()">🔍 Analisar lista</button>
@@ -520,7 +529,7 @@ function corBairro(cidade,bairro){
   const cid = getCidade(cidade);
   return cid?.bairros?.[bairro]?.cor || cid?.cor || '#888';
 }
-function showMsg(t,c){ const m=$('save-msg'); m.textContent=t; m.className='msg '+c; m.style.display='block'; setTimeout(()=>m.style.display='none',3500); }
+function showMsg(t,c){ const m=$('toast-msg'); m.textContent=t; m.className='toast-msg '+c; m.style.display='block'; setTimeout(()=>m.style.display='none',3500); }
 function fecharModal(id){ $(id).classList.remove('open'); }
 function abrirModal(id){ $(id).classList.add('open'); }
 
@@ -1076,6 +1085,26 @@ function infoTipoGPS(tipo){
 // ─── Etapa 1: Analisar lista ────────────────────────────────────────────────
 let pacotesAnalisados = [];
 
+// ─── Importar arquivo CSV ──────────────────────────────────────────────────────
+function importarCSV(e){
+  const file = e.target.files[0];
+  e.target.value = ''; // permite selecionar o mesmo arquivo de novo depois
+  if(!file) return;
+  if(!/\.(csv|txt)$/i.test(file.name)){
+    showMsg('Selecione um arquivo .csv', 'err');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const texto = ev.target.result;
+    document.getElementById('rota-input').value = texto;
+    showMsg('✓ Arquivo "'+file.name+'" carregado! Analisando...', 'ok');
+    analisarLista();
+  };
+  reader.onerror = () => showMsg('Erro ao ler o arquivo.', 'err');
+  reader.readAsText(file, 'UTF-8');
+}
+
 function analisarLista(){
   const input = document.getElementById('rota-input').value.trim();
   if(!input){ showMsg('Cole a lista de pacotes antes.','err'); return; }
@@ -1499,7 +1528,7 @@ function pularParada(){ confirmarEntrega(); }
 
 // ─── Globais ───────────────────────────────────────────────────────────────────
 window.showTab=showTab; window.fazerLogin=fazerLogin;
-window.analisarLista=analisarLista; window.fecharRota=fecharRota; window.copiarRota=copiarRota;
+window.analisarLista=analisarLista; window.importarCSV=importarCSV; window.fecharRota=fecharRota; window.copiarRota=copiarRota;
 window.fazerLogout=fazerLogout; window.abrirCadastro=abrirCadastro;
 window.ativarGPS=ativarGPS; window.solicitarGPS=solicitarGPS;
 window.onCidadeChange=onCidadeChange; window.onBairroChange=onBairroChange; window.onQuadraChange=onQuadraChange;
