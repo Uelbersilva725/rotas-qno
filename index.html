@@ -114,8 +114,30 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 /* Busca */
 .busca-result{background:#fff;border:.5px solid #eee;border-radius:10px;padding:12px;margin-top:12px}
 
-/* Loading */
-.loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;z-index:1000;font-size:13px;color:#666}
+/* Roteirização */
+.rota-screen{padding:12px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px}
+.rota-textarea{width:100%;height:120px;font-size:12px;padding:10px;border:.5px solid #ddd;border-radius:8px;background:#fff;color:#111;resize:none;font-family:monospace}
+.rota-btn{width:100%;padding:11px;background:#1D9E75;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+.rota-btn:disabled{background:#ccc;cursor:not-allowed}
+.rota-stats{display:flex;gap:8px}
+.rota-stat{flex:1;text-align:center;background:#f9f9f9;border-radius:8px;padding:8px;border:.5px solid #eee;font-size:11px;color:#666}
+.rota-stat .n{font-size:20px;font-weight:700;color:#1D9E75;display:block}
+.rota-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border:.5px solid #eee;border-radius:10px}
+.rota-num{width:28px;height:28px;border-radius:50%;background:#1D9E75;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rota-num.sem-gps{background:#EF9F27}
+.rota-num.estimado{background:#aaa}
+.rota-info{flex:1;min-width:0}
+.rota-addr{font-size:13px;font-weight:600;color:#111}
+.rota-detalhe{font-size:11px;color:#888;margin-top:2px}
+.rota-contato{font-size:11px;color:#1D9E75;margin-top:1px}
+.rota-badge{font-size:9px;padding:1px 5px;border-radius:10px;margin-left:4px;font-weight:500}
+.rota-badge.gps{background:#E1F5EE;color:#0F6E56}
+.rota-badge.est{background:#FFF3CD;color:#856404}
+.rota-badge.nf{background:#FCEBEB;color:#A32D2D}
+.rota-sep{font-size:10px;color:#bbb;text-align:center;padding:2px 0}
+.rota-copy-btn{padding:5px 10px;font-size:11px;border:.5px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;flex-shrink:0}
+.rota-empty{text-align:center;padding:30px 20px;color:#aaa;font-size:13px}
+.rota-aviso{background:#FFF8E1;border:.5px solid #FFE082;border-radius:8px;padding:10px 12px;font-size:12px;color:#856404;line-height:1.5}{position:absolute;inset:0;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;z-index:1000;font-size:13px;color:#666}
 .empty{text-align:center;padding:40px 20px;color:#aaa;font-size:13px;line-height:1.8}
 .empty .icon{font-size:34px;display:block;margin-bottom:10px}
 
@@ -184,6 +206,7 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
   <div class="tab-bar">
     <button class="tab active" onclick="showTab('mapa')">🗺 Mapa</button>
     <button class="tab" onclick="showTab('busca')">🔍 Buscar</button>
+    <button class="tab" onclick="showTab('rota')">🛣 Rota</button>
     <button class="tab" onclick="showTab('registrar')">📍 Registrar</button>
     <button class="tab" onclick="showTab('lista')">📋 Lista</button>
   </div>
@@ -289,6 +312,26 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
       </div>
       <button class="save-btn" id="btn-salvar" onclick="iniciarSalvar()">💾 Salvar e confirmar posição</button>
       <div class="msg" id="save-msg"></div>
+    </div>
+  </div>
+
+  <!-- ROTA -->
+  <div id="screen-rota" class="screen">
+    <div class="rota-screen" id="rota-screen-inner">
+      <div>
+        <div class="section-label">Lista de pacotes do dia</div>
+        <textarea class="rota-textarea" id="rota-input" placeholder='Cole aqui o CSV de pacotes. Exemplo:&#10;"QNO 18 Cj 25, 30, Ceilândia...",Brasília,DF,556199...&#10;"QNO 17 Cj 59, 03, Brasília...",Brasília,DF,556198...'></textarea>
+      </div>
+      <button class="rota-btn" id="rota-btn" onclick="processarRota()">🛣 Calcular rota otimizada</button>
+      <div id="rota-resultado" style="display:none;">
+        <div class="rota-stats" id="rota-stats"></div>
+        <div class="rota-aviso" id="rota-aviso" style="display:none;"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0;">
+          <span style="font-size:12px;font-weight:600;color:#555;">Sequência de entrega</span>
+          <button class="rota-copy-btn" onclick="copiarRota()">📋 Copiar</button>
+        </div>
+        <div id="rota-lista"></div>
+      </div>
     </div>
   </div>
 
@@ -474,15 +517,20 @@ function mostrarApp(usuario){
   solicitarGPS();
 }
 async function fazerLogin(){
-  const email = $('login-email').value.trim();
-  const senha = $('login-senha').value;
-  const btn = $('login-btn');
-  const err = $('login-err');
+  const email=$('login-email').value.trim();
+  const senha=$('login-senha').value;
+  const btn=$('login-btn');
+  const err=$('login-err');
+  err.style.display='none';
   if(!email||!senha){ err.textContent='Preencha e-mail e senha.'; err.style.display='block'; return; }
-  btn.disabled=true; btn.textContent='Entrando...'; err.style.display='none';
+  btn.disabled=true; btn.textContent='Entrando...';
   try {
-    await fb.signInWithEmailAndPassword(fb.auth, email, senha);
+    const f = window.__fb;
+    if(!f){ throw new Error('Firebase não carregado (window.__fb indefinido)'); }
+    if(!f.auth){ throw new Error('Firebase Auth não inicializado (f.auth indefinido)'); }
+    await f.signInWithEmailAndPassword(f.auth, email, senha);
   } catch(e){
+    console.error('[Login] Erro completo:', e);
     const msgs = {
       'auth/user-not-found':'Usuário não encontrado.',
       'auth/wrong-password':'Senha incorreta.',
@@ -490,7 +538,7 @@ async function fazerLogin(){
       'auth/invalid-credential':'E-mail ou senha incorretos.',
       'auth/too-many-requests':'Muitas tentativas. Aguarde um momento.'
     };
-    err.textContent = msgs[e.code] || 'Erro ao entrar: '+e.code;
+    err.textContent = msgs[e.code] || ('Erro: ' + (e.code || e.message || 'desconhecido'));
     err.style.display='block';
   }
   btn.disabled=false; btn.textContent='Entrar';
@@ -805,9 +853,215 @@ function renderLista(){
   div.querySelectorAll('[data-editid]').forEach(btn=>btn.addEventListener('click',()=>editarPin(btn.getAttribute('data-editid'))));
 }
 
+// ─── Roteirização ─────────────────────────────────────────────────────────────
+
+// Coordenadas centrais aproximadas de cada quadra (fallback sem GPS)
+const COORDS_QUADRA = {
+  'QNO 16': [-15.8520, -48.1050],
+  'QNO 17': [-15.8505, -48.1065],
+  'QNO 18': [-15.8490, -48.1080],
+  'QNO 19': [-15.8475, -48.1095],
+  'QNO 20': [-15.8460, -48.1068],
+};
+
+function normalizarTexto(t){
+  return (t||'').toLowerCase()
+    .replace(/[àáâãä]/g,'a').replace(/[èéêë]/g,'e')
+    .replace(/[ìíîï]/g,'i').replace(/[òóôõö]/g,'o')
+    .replace(/[ùúûü]/g,'u').replace(/ç/g,'c')
+    .trim();
+}
+
+function parsearLinha(linha){
+  // Remove aspas externas e divide por vírgula respeitando aspas
+  linha = linha.trim();
+  if(!linha) return null;
+
+  // Extrai o campo Address (primeiro campo CSV)
+  let address = '';
+  if(linha.startsWith('"')){
+    const fechaAspas = linha.indexOf('"', 1);
+    address = linha.slice(1, fechaAspas === -1 ? linha.length : fechaAspas);
+  } else {
+    address = linha.split(',')[0];
+  }
+
+  // Extrai contato (último campo)
+  const partes = linha.split(',');
+  const contato = partes[partes.length - 1]?.trim().replace(/"/g,'') || '';
+
+  // Tenta extrair do trecho entre parênteses primeiro (mais confiável)
+  const matchParens = address.match(/\(([^)]+)\)/);
+  const dentro = matchParens ? matchParens[1] : address;
+
+  let quadra = '', conjunto = '', casa = '';
+
+  // Padrão: QNO XX Conjunto/Cj XX Casa/numero
+  const reQNO = /(?:qno|qn[o0])\s*(\d+)/i;
+  const reCJ  = /(?:conjunto|conj\.?|cj\.?)\s*(\w+)/i;
+  const reCASA = /(?:casa|ca\.?)\s*(\d+)/i;
+
+  const mQ = dentro.match(reQNO) || address.match(reQNO);
+  if(mQ) quadra = 'QNO ' + mQ[1];
+
+  const mCJ = dentro.match(reCJ) || address.match(reCJ);
+  if(mCJ) conjunto = mCJ[1].replace(/^0+/,'').padStart(2,'0');
+
+  const mCASA = dentro.match(reCASA);
+  if(mCASA){ casa = mCASA[1]; }
+  else {
+    // Tenta pegar número após "Cj XX, NUMERO"
+    const mNum = address.match(/cj[^\d]*\d+[,\s]+(\d+)/i);
+    if(mNum && parseInt(mNum[1]) < 200) casa = mNum[1];
+  }
+
+  // Infere bairro pela quadra
+  let bairro = 'Expansão Setor O';
+  if(/^Rua\s+\d/i.test(quadra)) bairro = 'Cond. Agrícola Privê';
+
+  if(!quadra) return null;
+
+  return { quadra, conjunto, casa, bairro, cidade:'Ceilândia', contato, enderecoOriginal: address };
+}
+
+function encontrarGPS(pacote){
+  // Tenta bater com registros do banco
+  const norm = s => normalizarTexto(s||'');
+  const match = registros.find(r =>
+    norm(r.quadra) === norm(pacote.quadra) &&
+    norm(r.conjunto) === norm(pacote.conjunto) &&
+    (norm(r.casa) === norm(pacote.casa) || !pacote.casa)
+  );
+  if(match?.lat) return { lat: match.lat, lng: match.lng, tipo: 'gps' };
+
+  // Fallback: coordenada central da quadra
+  const coords = COORDS_QUADRA[pacote.quadra];
+  if(coords) return { lat: coords[0], lng: coords[1], tipo: 'estimado' };
+
+  return null;
+}
+
+function distancia(a, b){
+  // Distância euclidiana simples (suficiente para área pequena)
+  const dlat = a.lat - b.lat, dlng = a.lng - b.lng;
+  return Math.sqrt(dlat*dlat + dlng*dlng);
+}
+
+function otimizarRota(pacotes){
+  // Algoritmo do vizinho mais próximo partindo da posição atual (ou centro)
+  const inicio = posicaoAtual || { lat: CENTER[0], lng: CENTER[1] };
+  const restantes = [...pacotes];
+  const ordenados = [];
+  let posAtual = inicio;
+
+  while(restantes.length > 0){
+    let melhorIdx = 0, melhorDist = Infinity;
+    restantes.forEach((p, i) => {
+      if(!p.coords) return;
+      const d = distancia(posAtual, p.coords);
+      if(d < melhorDist){ melhorDist = d; melhorIdx = i; }
+    });
+    const proximo = restantes.splice(melhorIdx, 1)[0];
+    ordenados.push(proximo);
+    if(proximo.coords) posAtual = proximo.coords;
+  }
+  return ordenados;
+}
+
+function processarRota(){
+  const input = document.getElementById('rota-input').value.trim();
+  if(!input){ showMsg('Cole a lista de pacotes antes.','err'); return; }
+
+  const btn = document.getElementById('rota-btn');
+  btn.disabled = true; btn.textContent = 'Processando...';
+
+  try {
+    const linhas = input.split('\n').filter(l => l.trim() && !l.startsWith('Address,'));
+    const pacotes = [];
+    let naoReconhecidos = 0;
+
+    linhas.forEach(linha => {
+      const p = parsearLinha(linha);
+      if(!p){ naoReconhecidos++; return; }
+      const gps = encontrarGPS(p);
+      pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo || 'nao_encontrado' });
+    });
+
+    // Separa com e sem coords para otimizar só os com coords
+    const comCoords = pacotes.filter(p => p.coords);
+    const semCoords = pacotes.filter(p => !p.coords);
+
+    const rotaOtimizada = [...otimizarRota(comCoords), ...semCoords];
+
+    renderRota(rotaOtimizada, naoReconhecidos);
+  } catch(e){
+    console.error('[Rota]', e);
+    showMsg('Erro ao processar: ' + e.message, 'err');
+  }
+
+  btn.disabled = false; btn.textContent = '🛣 Calcular rota otimizada';
+}
+
+let rotaAtual = [];
+
+function renderRota(pacotes, naoReconhecidos){
+  rotaAtual = pacotes;
+  const div = document.getElementById('rota-resultado');
+  div.style.display = 'block';
+
+  const comGPS   = pacotes.filter(p => p.tipoGPS === 'gps').length;
+  const estimado = pacotes.filter(p => p.tipoGPS === 'estimado').length;
+  const naoAch   = pacotes.filter(p => p.tipoGPS === 'nao_encontrado').length;
+
+  document.getElementById('rota-stats').innerHTML =
+    `<div class="rota-stat"><span class="n">${pacotes.length}</span>pacotes</div>
+     <div class="rota-stat"><span class="n" style="color:#1D9E75">${comGPS}</span>com GPS</div>
+     <div class="rota-stat"><span class="n" style="color:#EF9F27">${estimado}</span>estimados</div>
+     <div class="rota-stat"><span class="n" style="color:#E24B4A">${naoAch}</span>sem loc.</div>`;
+
+  const aviso = document.getElementById('rota-aviso');
+  if(estimado > 0 || naoAch > 0){
+    aviso.style.display = 'block';
+    aviso.textContent = '⚠️ Endereços com GPS confirmado têm prioridade na ordenação. ' +
+      (estimado > 0 ? `${estimado} usam posição estimada da quadra. ` : '') +
+      (naoAch > 0 ? `${naoAch} não encontrados foram listados por último.` : '');
+  } else { aviso.style.display = 'none'; }
+
+  const lista = document.getElementById('rota-lista');
+  let prevBairro = '';
+  lista.innerHTML = pacotes.map((p, i) => {
+    let sep = '';
+    if(p.bairro !== prevBairro){
+      sep = `<div class="rota-sep">── ${p.bairro} ──</div>`;
+      prevBairro = p.bairro;
+    }
+    const badgeCls = p.tipoGPS==='gps'?'gps':p.tipoGPS==='estimado'?'est':'nf';
+    const badgeTxt = p.tipoGPS==='gps'?'GPS':p.tipoGPS==='estimado'?'Est.':'Não enc.';
+    const numCls   = p.tipoGPS==='gps'?'':p.tipoGPS==='estimado'?' estimado':' sem-gps';
+    const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
+    return `${sep}<div class="rota-item">
+      <div class="rota-num${numCls}">${i+1}</div>
+      <div class="rota-info">
+        <div class="rota-addr">${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:''}
+          <span class="rota-badge ${badgeCls}">${badgeTxt}</span>
+        </div>
+        <div class="rota-detalhe">${p.enderecoOriginal.slice(0,60)}${p.enderecoOriginal.length>60?'...':''}</div>
+        ${contatoFmt?`<div class="rota-contato">📞 ${contatoFmt}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function copiarRota(){
+  const texto = rotaAtual.map((p,i) =>
+    `${i+1}. ${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:''} [${p.tipoGPS==='gps'?'GPS':p.tipoGPS==='estimado'?'Estimado':'Sem localização'}]`
+  ).join('\n');
+  navigator.clipboard?.writeText(texto).then(()=>showMsg('Rota copiada!','ok')).catch(()=>showMsg('Não foi possível copiar.','err'));
+}
+
 // ─── Globais ───────────────────────────────────────────────────────────────────
-window.showTab=showTab;
-window.fazerLogin=fazerLogin; window.fazerLogout=fazerLogout; window.abrirCadastro=abrirCadastro;
+window.showTab=showTab; window.fazerLogin=fazerLogin;
+window.processarRota=processarRota; window.copiarRota=copiarRota; window.fazerLogout=fazerLogout; window.abrirCadastro=abrirCadastro;
 window.ativarGPS=ativarGPS; window.solicitarGPS=solicitarGPS;
 window.onCidadeChange=onCidadeChange; window.onBairroChange=onBairroChange; window.onQuadraChange=onQuadraChange;
 window.onFiltroCidadeChange=onFiltroCidadeChange; window.onFiltroBairroChange=onFiltroBairroChange;
