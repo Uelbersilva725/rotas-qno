@@ -181,7 +181,7 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 .modal .link-btn{background:none;color:#888;font-weight:400;font-size:12px;margin-top:8px;padding:5px}
 
 /* Pin modal */
-#pin-modal-bg{z-index:3000}
+#pin-modal-bg{z-index:6000}
 #pin-modal-bg .modal{max-width:420px;padding:14px;text-align:left}
 .pin-title{font-size:13px;font-weight:600;color:#111;margin-bottom:3px}
 .pin-sub{font-size:11px;color:#888;margin-bottom:8px}
@@ -354,20 +354,18 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
         <div class="rota-stats" id="rota-stats"></div>
         <div class="rota-aviso" id="rota-aviso" style="display:none;"></div>
 
-        <!-- Etapa 1: revisão + preenchimento manual -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0;">
-          <span style="font-size:12px;font-weight:600;color:#555;">Revisão dos endereços</span>
-        </div>
-        <div id="rota-lista"></div>
-        <div id="rota-fechar-wrap" style="display:none;">
-          <button class="rota-btn" style="background:#378ADD;margin-top:10px;" onclick="fecharRota()">🛣 Fechar rota e otimizar</button>
+        <!-- Etapa 1: revisão + preenchimento manual (some depois de otimizar) -->
+        <div id="rota-revisao-wrap">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0;">
+            <span style="font-size:12px;font-weight:600;color:#555;">Revisão dos endereços</span>
+          </div>
+          <div id="rota-lista"></div>
+          <div id="rota-fechar-wrap" style="display:none;">
+            <button class="rota-btn" style="background:#378ADD;margin-top:10px;" onclick="fecharRota()">🛣 Otimizar a rota</button>
+          </div>
         </div>
 
-        <!-- Etapa 2: rota final otimizada -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 4px;">
-          <span style="font-size:12px;font-weight:600;color:#555;">Sequência de entrega</span>
-          <button class="rota-copy-btn" onclick="copiarRota()">📋 Copiar</button>
-        </div>
+        <!-- Etapa 2: rota final otimizada — mapa primeiro, lista depois -->
         <div id="rota-nav-start-wrap" style="display:none;">
           <button class="nav-start-btn" onclick="iniciarNavegacao()">🧭 Iniciar navegação guiada</button>
         </div>
@@ -376,7 +374,13 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
             <div class="nav-loading" id="rota-mapa-loading" style="display:none;">⏳ Traçando rota no mapa...</div>
           </div>
         </div>
-        <div id="rota-lista-final" style="display:none;"></div>
+        <div id="rota-lista-final-wrap" style="display:none;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 4px;">
+            <span style="font-size:12px;font-weight:600;color:#555;">Sequência de entrega</span>
+            <button class="rota-copy-btn" onclick="copiarRota()">📋 Copiar</button>
+          </div>
+          <div id="rota-lista-final"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1233,7 +1237,8 @@ function analisarLista(){
 function renderAnalise(pacotes, naoReconhecidos){
   const div = document.getElementById('rota-resultado');
   div.style.display = 'block';
-  document.getElementById('rota-lista-final').style.display = 'none';
+  document.getElementById('rota-revisao-wrap').style.display = 'block';
+  document.getElementById('rota-lista-final-wrap').style.display = 'none';
   document.getElementById('rota-fechar-wrap').style.display = 'block';
   document.getElementById('rota-nav-start-wrap').style.display = 'none';
   document.getElementById('rota-mapa-wrap').style.display = 'none';
@@ -1334,7 +1339,8 @@ function fecharRota(){
 }
 
 function renderRotaFinal(pacotes){
-  document.getElementById('rota-lista-final').style.display = 'block';
+  document.getElementById('rota-revisao-wrap').style.display = 'none';
+  document.getElementById('rota-lista-final-wrap').style.display = 'block';
   document.getElementById('rota-fechar-wrap').style.display = 'none';
   document.getElementById('rota-nav-start-wrap').style.display = 'block';
 
@@ -1545,15 +1551,47 @@ async function simEhAqui(){
   await registrarConfirmacaoLocal();
   confirmarEntrega();
 }
+
 function naoEhAqui(){
+  const banner = $('nav-arrived-banner');
+  banner.style.display = 'block';
+  banner.textContent = '📍 Onde fica o endereço correto?';
+  const skipBtn = $('nav-btn-skip');
+  const confirmBtn = $('nav-btn-confirm');
+  skipBtn.textContent = '⏭ Pular sem marcar';
+  skipBtn.onclick = pularSemMarcar;
+  confirmBtn.textContent = '📍 Marcar local correto';
+  confirmBtn.classList.remove('chegou');
+  confirmBtn.onclick = abrirMarcacaoLocalCorreto;
+}
+
+function pularSemMarcar(){
   showMsg('Endereço não confirmado — avançando sem registrar.','err');
   confirmarEntrega();
 }
 
-// ─── Registro da confirmação de local (sistema de 3 confirmações) ────────────
-async function registrarConfirmacaoLocal(){
+function abrirMarcacaoLocalCorreto(){
   const p = rotaNavegacao[navIndex];
-  if(!p || !posicaoAtual || !fb) return;
+  if(!p){ confirmarEntrega(); return; }
+  const lat = posicaoAtual?.lat ?? p.coords?.lat ?? CENTER[0];
+  const lng = posicaoAtual?.lng ?? p.coords?.lng ?? CENTER[1];
+  abrirModalPin(lat, lng,
+    'Marcar local correto · '+p.quadra+' Cj.'+(p.conjunto||'?')+' Casa '+(p.casa||'?'),
+    'Arraste o pin ou use o D-Pad até a posição exata da casa.',
+    async (pinPos) => {
+      await registrarConfirmacaoLocal(pinPos);
+      confirmarEntrega();
+    }
+  );
+}
+
+// ─── Registro da confirmação de local (sistema de 3 confirmações) ────────────
+// coordOverride: opcional — usado quando o entregador marca manualmente a posição
+// correta no mapa (fluxo "Não é aqui" → "Marcar local correto"), em vez do GPS bruto.
+async function registrarConfirmacaoLocal(coordOverride){
+  const p = rotaNavegacao[navIndex];
+  const coordUsada = coordOverride || posicaoAtual;
+  if(!p || !coordUsada || !fb) return;
   const { cidade, bairro, quadra, conjunto, casa } = p;
   if(!casa){ showMsg('Sem número de casa — confirmação não pôde ser vinculada.','err'); return; }
 
@@ -1561,7 +1599,7 @@ async function registrarConfirmacaoLocal(){
   const existente = registros.find(r => r.id === docId);
 
   const novaConfirmacao = {
-    lat: posicaoAtual.lat, lng: posicaoAtual.lng,
+    lat: coordUsada.lat, lng: coordUsada.lng,
     uid: usuarioAtual?.uid || '', email: usuarioAtual?.email || '',
     ts: new Date().toISOString()
   };
