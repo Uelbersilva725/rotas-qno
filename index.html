@@ -1301,6 +1301,8 @@ function distancia(a, b){
   const dlat = a.lat - b.lat, dlng = a.lng - b.lng;
   return Math.sqrt(dlat*dlat + dlng*dlng);
 }
+
+// Construção inicial por vizinho mais próximo (rápido, sem depender de internet)
 function otimizarRota(pacotes){
   const inicio = posicaoAtual || { lat: CENTER[0], lng: CENTER[1] };
   const restantes = [...pacotes];
@@ -1320,9 +1322,56 @@ function otimizarRota(pacotes){
   return ordenados;
 }
 
+// Refinamento 2-opt: corrige cruzamentos que o vizinho mais próximo costuma deixar,
+// usando distância real (metros) entre os pontos. Só mexe se realmente encurtar o total.
+function aplicar2opt(pontosComCoords, maxIteracoes){
+  if(pontosComCoords.length < 4) return pontosComCoords;
+  let rota = pontosComCoords.slice();
+  let melhorou = true, tentativas = 0;
+  const limite = maxIteracoes || 300;
+  while(melhorou && tentativas < limite){
+    melhorou = false; tentativas++;
+    for(let i=0; i<rota.length-2; i++){
+      for(let j=i+2; j<rota.length-1; j++){
+        const a=rota[i], b=rota[i+1], c=rota[j], d=rota[j+1];
+        const distAtual = distanciaMetros(a.coords,b.coords) + distanciaMetros(c.coords,d.coords);
+        const distNova   = distanciaMetros(a.coords,c.coords) + distanciaMetros(b.coords,d.coords);
+        if(distNova < distAtual - 1){
+          const meio = rota.slice(i+1, j+1).reverse();
+          rota = [...rota.slice(0,i+1), ...meio, ...rota.slice(j+1)];
+          melhorou = true;
+        }
+      }
+    }
+  }
+  return rota;
+}
+
+// Otimização real via OSRM Trip — considera as ruas de verdade (tempo real de percurso),
+// não só distância em linha reta. É a forma mais precisa de minimizar o tempo do motorista.
+async function otimizarRotaComOSRM(pacotesComCoords){
+  if(!pacotesComCoords.length) return [];
+  if(pacotesComCoords.length === 1) return pacotesComCoords;
+  const origem = posicaoAtual || { lat: CENTER[0], lng: CENTER[1] };
+  const todasCoords = [origem, ...pacotesComCoords.map(p=>p.coords)];
+  const coordsStr = todasCoords.map(c=>c.lng+','+c.lat).join(';');
+  const url = `https://router.project-osrm.org/trip/v1/driving/${coordsStr}?source=first&roundtrip=false&overview=false`;
+  const resp = await fetch(url);
+  const data = await resp.json();
+  if(data.code !== 'Ok' || !data.waypoints) throw new Error('OSRM trip: '+data.code);
+  // waypoints vem na MESMA ordem da entrada; o índice 0 é a origem (motorista) — removemos.
+  const waypointsPacotes = data.waypoints.slice(1);
+  const comOrdem = waypointsPacotes.map((wp, idxOriginal) => ({
+    pacote: pacotesComCoords[idxOriginal],
+    ordem: wp.waypoint_index
+  }));
+  comOrdem.sort((a,b) => a.ordem - b.ordem);
+  return comOrdem.map(x => x.pacote);
+}
+
 let rotaAtual = [];
 
-function fecharRota(){
+async function fecharRota(){
   // Aplica valores digitados manualmente para casas pendentes
   document.querySelectorAll('.rota-casa-input').forEach(inp => {
     const idx = parseInt(inp.getAttribute('data-idx'));
@@ -1340,8 +1389,20 @@ function fecharRota(){
 
   const comCoords = pacotesAnalisados.filter(p => p.coords);
   const semCoords = pacotesAnalisados.filter(p => !p.coords);
-  rotaAtual = [...otimizarRota(comCoords), ...semCoords];
 
+  const btn = document.querySelector('#rota-fechar-wrap .rota-btn');
+  if(btn){ btn.disabled = true; btn.textContent = '🛣 Calculando melhor rota...'; }
+
+  let otimizados;
+  try {
+    otimizados = await otimizarRotaComOSRM(comCoords);
+  } catch(e){
+    console.warn('[Rota] OSRM Trip indisponível, usando otimização local:', e);
+    otimizados = aplicar2opt(otimizarRota(comCoords));
+  }
+
+  rotaAtual = [...otimizados, ...semCoords];
+  if(btn){ btn.disabled = false; btn.textContent = '🛣 Otimizar a rota'; }
   renderRotaFinal(rotaAtual);
 }
 
