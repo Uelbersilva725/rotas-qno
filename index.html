@@ -156,6 +156,7 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 .rota-contato{font-size:11px;color:#1D9E75;margin-top:1px}
 .rota-badge{font-size:9px;padding:1px 5px;border-radius:10px;margin-left:4px;font-weight:500}
 .rota-badge.gps{background:#E1F5EE;color:#0F6E56}
+.rota-badge.estc{background:#E3F0FC;color:#1B5A8A}
 .rota-badge.est{background:#FFF3CD;color:#856404}
 .rota-badge.nf{background:#FCEBEB;color:#A32D2D}
 .rota-sep{font-size:10px;color:#bbb;text-align:center;padding:2px 0}
@@ -1017,21 +1018,53 @@ function parsearLinha(linha){
   };
 }
 
-function encontrarGPS(pacote){
-  // Tenta bater com registros do banco
-  const norm = s => normalizarTexto(s||'');
-  const match = registros.find(r =>
-    norm(r.quadra) === norm(pacote.quadra) &&
-    norm(r.conjunto) === norm(pacote.conjunto) &&
-    (norm(r.casa) === norm(pacote.casa) || !pacote.casa)
-  );
-  if(match?.lat) return { lat: match.lat, lng: match.lng, tipo: 'gps' };
+// Comparação tolerante — evita falhas por diferença de zero à esquerda (ex: "9" vs "09")
+function compararValor(a,b){
+  const na = normalizarTexto(a), nb = normalizarTexto(b);
+  if(na === nb) return true;
+  const ia = parseInt(a,10), ib = parseInt(b,10);
+  if(!isNaN(ia) && !isNaN(ib)) return ia === ib;
+  return false;
+}
 
-  // Fallback: coordenada central da quadra
+function encontrarGPS(pacote){
+  const norm = s => normalizarTexto(s||'');
+
+  // 1) Camada exata: casa específica já registrada
+  const matchExato = registros.find(r =>
+    norm(r.quadra) === norm(pacote.quadra) &&
+    compararValor(r.conjunto, pacote.conjunto) &&
+    (compararValor(r.casa, pacote.casa) || !pacote.casa)
+  );
+  if(matchExato?.lat) return { lat: matchExato.lat, lng: matchExato.lng, tipo: 'gps' };
+
+  // 2) Camada intermediária: média das casas já registradas no MESMO conjunto
+  if(pacote.conjunto){
+    const doConjunto = registros.filter(r =>
+      norm(r.quadra) === norm(pacote.quadra) &&
+      compararValor(r.conjunto, pacote.conjunto) &&
+      r.lat
+    );
+    if(doConjunto.length){
+      const lat = doConjunto.reduce((s,r)=>s+r.lat,0) / doConjunto.length;
+      const lng = doConjunto.reduce((s,r)=>s+r.lng,0) / doConjunto.length;
+      return { lat, lng, tipo: 'estimado_conjunto' };
+    }
+  }
+
+  // 3) Fallback: coordenada central da quadra inteira (menos preciso)
   const coords = COORDS_QUADRA[pacote.quadra];
   if(coords) return { lat: coords[0], lng: coords[1], tipo: 'estimado' };
 
   return null;
+}
+
+// Helper visual: badge/classe conforme o tipo de localização encontrada
+function infoTipoGPS(tipo){
+  if(tipo === 'gps') return { cls:'gps', txt:'GPS', numCls:'' };
+  if(tipo === 'estimado_conjunto') return { cls:'estc', txt:'Aprox.', numCls:' estimado' };
+  if(tipo === 'estimado') return { cls:'est', txt:'Estimado', numCls:' estimado' };
+  return { cls:'nf', txt:'Não enc.', numCls:' sem-gps' };
 }
 
 // ─── Etapa 1: Analisar lista ────────────────────────────────────────────────
@@ -1094,7 +1127,8 @@ function renderAnalise(pacotes, naoReconhecidos){
   const lista = document.getElementById('rota-lista');
   lista.innerHTML = pacotes.map((p, i) => {
     const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
-    const gpsTxt = p.tipoGPS==='gps'?'<span class="rota-badge gps">GPS</span>':p.tipoGPS==='estimado'?'<span class="rota-badge est">Estimado</span>':'<span class="rota-badge nf">Sem loc.</span>';
+    const info = infoTipoGPS(p.tipoGPS);
+    const gpsTxt = `<span class="rota-badge ${info.cls}">${info.txt}</span>`;
     return `<div class="rota-item">
       <div class="rota-num${p.casaPendente?' sem-gps':''}">${i+1}</div>
       <div class="rota-info">
@@ -1166,13 +1200,15 @@ function renderRotaFinal(pacotes){
   document.getElementById('rota-fechar-wrap').style.display = 'none';
   document.getElementById('rota-nav-start-wrap').style.display = 'block';
 
-  const comGPS   = pacotes.filter(p => p.tipoGPS === 'gps').length;
-  const estimado = pacotes.filter(p => p.tipoGPS === 'estimado').length;
-  const naoAch   = pacotes.filter(p => p.tipoGPS === 'nao_encontrado').length;
+  const comGPS      = pacotes.filter(p => p.tipoGPS === 'gps').length;
+  const estConjunto = pacotes.filter(p => p.tipoGPS === 'estimado_conjunto').length;
+  const estimado    = pacotes.filter(p => p.tipoGPS === 'estimado').length;
+  const naoAch       = pacotes.filter(p => p.tipoGPS === 'nao_encontrado').length;
 
   document.getElementById('rota-stats').innerHTML =
     `<div class="rota-stat"><span class="n">${pacotes.length}</span>pacotes</div>
      <div class="rota-stat"><span class="n" style="color:#1D9E75">${comGPS}</span>com GPS</div>
+     <div class="rota-stat"><span class="n" style="color:#378ADD">${estConjunto}</span>aprox.</div>
      <div class="rota-stat"><span class="n" style="color:#EF9F27">${estimado}</span>estimados</div>
      <div class="rota-stat"><span class="n" style="color:#E24B4A">${naoAch}</span>sem loc.</div>`;
 
@@ -1186,9 +1222,8 @@ function renderRotaFinal(pacotes){
       sep = `<div class="rota-sep">── ${p.bairro} ──</div>`;
       prevBairro = p.bairro;
     }
-    const badgeCls = p.tipoGPS==='gps'?'gps':p.tipoGPS==='estimado'?'est':'nf';
-    const badgeTxt = p.tipoGPS==='gps'?'GPS':p.tipoGPS==='estimado'?'Est.':'Não enc.';
-    const numCls   = p.tipoGPS==='gps'?'':p.tipoGPS==='estimado'?' estimado':' sem-gps';
+    const info = infoTipoGPS(p.tipoGPS);
+    const badgeCls = info.cls, badgeTxt = info.txt, numCls = info.numCls;
     const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
     const clicavel = p.coords ? `onclick="iniciarNavegacaoNoIndicePacote(${i})" style="cursor:pointer;"` : '';
     return `${sep}<div class="rota-item" ${clicavel}>
@@ -1206,7 +1241,7 @@ function renderRotaFinal(pacotes){
 
 function copiarRota(){
   const texto = rotaAtual.map((p,i) =>
-    `${i+1}. ${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:' · Casa ?'} [${p.tipoGPS==='gps'?'GPS':p.tipoGPS==='estimado'?'Estimado':'Sem localização'}]`
+    `${i+1}. ${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:' · Casa ?'} [${infoTipoGPS(p.tipoGPS).txt}]`
   ).join('\n');
   navigator.clipboard?.writeText(texto).then(()=>showMsg('Rota copiada!','ok')).catch(()=>showMsg('Não foi possível copiar.','err'));
 }
