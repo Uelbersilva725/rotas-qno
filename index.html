@@ -117,30 +117,28 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 /* Navegação com bússola */
 .nav-overlay{position:fixed;inset:0;background:#fff;z-index:5000;display:none;flex-direction:column;max-width:480px;margin:0 auto}
 .nav-overlay.open{display:flex}
-.nav-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:.5px solid #e5e5e5}
+.nav-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:.5px solid #e5e5e5;background:#fff;position:relative;z-index:10}
 .nav-close{background:none;border:none;font-size:20px;color:#888;cursor:pointer;padding:4px 8px}
 .nav-progress{font-size:13px;font-weight:600;color:#555}
-.nav-compass-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;background:linear-gradient(180deg,#F4F9F7,#fff)}
-.nav-compass{width:200px;height:200px;border-radius:50%;background:#fff;border:3px solid #E1F5EE;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 4px 20px rgba(29,158,117,.15)}
-.nav-compass::before{content:'N';position:absolute;top:8px;font-size:11px;color:#bbb;font-weight:700}
-.nav-arrow{font-size:90px;color:#1D9E75;transition:transform .3s ease-out;line-height:1}
-.nav-distance{font-size:32px;font-weight:700;color:#111;margin-top:20px}
-.nav-distance-lbl{font-size:12px;color:#888;margin-top:2px}
-.nav-arrived-banner{background:#1D9E75;color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:700;margin-top:14px;display:none;animation:pulse-arr 1s infinite}
+#nav-map{flex:1;min-height:0;position:relative}
+.nav-distance-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#1D9E75;color:#fff}
+.nav-distance-bar .val{font-size:20px;font-weight:700}
+.nav-distance-bar .lbl{font-size:12px;opacity:.9}
+.nav-arrived-banner{background:#0F6E56;color:#fff;padding:8px 16px;font-size:13px;font-weight:700;text-align:center;display:none;animation:pulse-arr 1s infinite}
 @keyframes pulse-arr{0%,100%{opacity:1}50%{opacity:.7}}
-.nav-permission-btn{background:#EF9F27;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;margin-top:14px;display:none}
-.nav-info{padding:14px 16px;border-top:.5px solid #e5e5e5;background:#fafafa}
+.nav-info{padding:12px 16px;border-top:.5px solid #e5e5e5;background:#fafafa}
 .nav-addr{font-size:15px;font-weight:700;color:#111}
 .nav-obs{font-size:13px;color:#666;margin-top:4px;line-height:1.4}
 .nav-contato{font-size:12px;color:#1D9E75;margin-top:4px;font-weight:600}
 .nav-foto-wrap{margin-top:8px}
-.nav-foto-wrap img{width:100%;max-height:140px;object-fit:cover;border-radius:10px;border:.5px solid #eee}
+.nav-foto-wrap img{width:100%;max-height:120px;object-fit:cover;border-radius:10px;border:.5px solid #eee}
 .nav-buttons{display:flex;gap:8px;padding:12px 16px 16px;background:#fff}
 .nav-btn{flex:1;padding:13px;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;border:none}
 .nav-btn-skip{background:#f5f5f5;color:#666;border:.5px solid #ddd}
 .nav-btn-confirm{background:#1D9E75;color:#fff}
 .nav-btn-confirm.chegou{background:#0F6E56}
 .nav-start-btn{width:100%;padding:12px;background:#378ADD;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px}
+.nav-loading{position:absolute;inset:0;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;font-size:13px;color:#666;z-index:5}
 .rota-screen{padding:12px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px}
 .rota-textarea{width:100%;height:120px;font-size:12px;padding:10px;border:.5px solid #ddd;border-radius:8px;background:#fff;color:#111;resize:none;font-family:monospace}
 .rota-btn{width:100%;padding:11px;background:#1D9E75;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
@@ -436,22 +434,21 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
   </div>
 </div>
 
-<!-- Navegação com bússola -->
+<!-- Navegação no mapa -->
 <div class="nav-overlay" id="nav-overlay">
   <div class="nav-top">
     <button class="nav-close" onclick="sairNavegacao()">✕</button>
     <div class="nav-progress" id="nav-progress">Parada 1 de 1</div>
     <div style="width:28px;"></div>
   </div>
-  <div class="nav-compass-wrap">
-    <div class="nav-compass">
-      <div class="nav-arrow" id="nav-arrow">➤</div>
-    </div>
-    <div class="nav-distance" id="nav-distance">—</div>
-    <div class="nav-distance-lbl">distância até o destino</div>
-    <div class="nav-arrived-banner" id="nav-arrived-banner">🎉 Você chegou!</div>
-    <button class="nav-permission-btn" id="nav-permission-btn" onclick="pedirPermissaoBussola()">🧭 Ativar bússola do celular</button>
+  <div id="nav-map" style="position:relative;">
+    <div class="nav-loading" id="nav-loading" style="display:none;">⏳ Calculando rota...</div>
   </div>
+  <div class="nav-distance-bar">
+    <span class="val" id="nav-distance">—</span>
+    <span class="lbl">até o destino</span>
+  </div>
+  <div class="nav-arrived-banner" id="nav-arrived-banner">🎉 Você chegou!</div>
   <div class="nav-info">
     <div class="nav-addr" id="nav-addr">—</div>
     <div class="nav-obs" id="nav-obs"></div>
@@ -1214,13 +1211,16 @@ function copiarRota(){
   navigator.clipboard?.writeText(texto).then(()=>showMsg('Rota copiada!','ok')).catch(()=>showMsg('Não foi possível copiar.','err'));
 }
 
-// ─── Navegação guiada com bússola ─────────────────────────────────────────────
+// ─── Navegação guiada no mapa (rota real via OSRM) ────────────────────────────
 let rotaNavegacao = [];
 let navIndex = 0;
-let headingAtual = null;
 let jaAvisouChegada = false;
-let compassoAtivo = false;
 const DISTANCIA_CHEGADA = 30; // metros
+
+let navMap = null;
+let navUserMarker = null, navDestMarker = null, navRouteLine = null;
+let navMapReady = false;
+let ultimaRotaBuscada = null; // evita rebuscar a mesma rota repetidamente
 
 function distanciaMetros(a,b){
   const R = 6371000;
@@ -1229,21 +1229,6 @@ function distanciaMetros(a,b){
   const h = Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
   return 2*R*Math.asin(Math.sqrt(h));
 }
-function bearingGraus(a,b){
-  const la1 = a.lat*Math.PI/180, la2 = b.lat*Math.PI/180;
-  const dLng = (b.lng-a.lng)*Math.PI/180;
-  const y = Math.sin(dLng)*Math.cos(la2);
-  const x = Math.cos(la1)*Math.sin(la2) - Math.sin(la1)*Math.cos(la2)*Math.cos(dLng);
-  return (Math.atan2(y,x)*180/Math.PI + 360) % 360;
-}
-
-function iniciarNavegacaoNoIndicePacote(idxNaListaCompleta){
-  const pacoteAlvo = rotaAtual[idxNaListaCompleta];
-  if(!pacoteAlvo || !pacoteAlvo.coords) return;
-  rotaNavegacao = rotaAtual.filter(p => p.coords);
-  const idxNav = rotaNavegacao.indexOf(pacoteAlvo);
-  iniciarNavegacao(idxNav >= 0 ? idxNav : 0);
-}
 
 function iniciarNavegacao(idxInicial){
   if(!rotaAtual || !rotaAtual.length){ showMsg('Feche uma rota primeiro.','err'); return; }
@@ -1251,15 +1236,14 @@ function iniciarNavegacao(idxInicial){
   if(!rotaNavegacao.length){ showMsg('Nenhum endereço com localização disponível para navegar.','err'); return; }
   navIndex = typeof idxInicial === 'number' ? Math.max(0, Math.min(idxInicial, rotaNavegacao.length-1)) : 0;
   jaAvisouChegada = false;
+  ultimaRotaBuscada = null;
   $('nav-overlay').classList.add('open');
   atualizarParadaAtual();
-  iniciarCompasso();
-  atualizarSetaNav();
+  setTimeout(()=>{ inicializarNavMap(); carregarRotaAtePonto(); }, 100);
 }
 
 function sairNavegacao(){
   $('nav-overlay').classList.remove('open');
-  pararCompasso();
 }
 
 function atualizarParadaAtual(){
@@ -1271,13 +1255,9 @@ function atualizarParadaAtual(){
   const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
   $('nav-contato').textContent = contatoFmt ? '📞 '+contatoFmt : '';
   const fw = $('nav-foto-wrap');
-  if(p.fotoRegistro){ $('nav-foto').src = p.fotoRegistro; fw.style.display='block'; }
-  else {
-    // Tenta achar foto no banco pelo mesmo endereço
-    const match = registros.find(r => normalizarTextoNav(r.quadra)===normalizarTextoNav(p.quadra) && normalizarTextoNav(r.conjunto)===normalizarTextoNav(p.conjunto) && (r.casa==p.casa || !p.casa));
-    if(match?.foto){ $('nav-foto').src = match.foto; fw.style.display='block'; }
-    else fw.style.display='none';
-  }
+  const match = registros.find(r => normalizarTextoNav(r.quadra)===normalizarTextoNav(p.quadra) && normalizarTextoNav(r.conjunto)===normalizarTextoNav(p.conjunto) && (r.casa==p.casa || !p.casa));
+  if(match?.foto){ $('nav-foto').src = match.foto; fw.style.display='block'; }
+  else fw.style.display='none';
   $('nav-arrived-banner').style.display='none';
   $('nav-btn-confirm').textContent='✓ Cheguei';
   $('nav-btn-confirm').classList.remove('chegou');
@@ -1285,56 +1265,83 @@ function atualizarParadaAtual(){
 }
 function normalizarTextoNav(s){ return (s||'').toString().toLowerCase().trim(); }
 
-function iniciarCompasso(){
-  if(compassoAtivo) return;
-  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
-    // iOS exige permissão explícita via toque do usuário
-    $('nav-permission-btn').style.display = 'block';
-  } else {
-    window.addEventListener('deviceorientationabsolute', onOrientationNav, true);
-    window.addEventListener('deviceorientation', onOrientationNav, true);
-    compassoAtivo = true;
-  }
-}
-function pedirPermissaoBussola(){
-  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
-    DeviceOrientationEvent.requestPermission().then(state=>{
-      if(state === 'granted'){
-        window.addEventListener('deviceorientation', onOrientationNav, true);
-        compassoAtivo = true;
-        $('nav-permission-btn').style.display = 'none';
-      } else {
-        showMsg('Permissão de bússola negada. A seta usará direção aproximada.','err');
-      }
-    }).catch(()=>{});
-  }
-}
-function pararCompasso(){
-  window.removeEventListener('deviceorientationabsolute', onOrientationNav, true);
-  window.removeEventListener('deviceorientation', onOrientationNav, true);
-  compassoAtivo = false;
-  headingAtual = null;
-}
-function onOrientationNav(e){
-  let heading = null;
-  if(typeof e.webkitCompassHeading !== 'undefined' && e.webkitCompassHeading !== null){
-    heading = e.webkitCompassHeading; // iOS Safari
-  } else if(e.alpha !== null){
-    heading = 360 - e.alpha; // Android/outros
-  }
-  if(heading !== null){ headingAtual = heading; atualizarSetaNav(); }
+// ─── Mapa de navegação ─────────────────────────────────────────────────────────
+function inicializarNavMap(){
+  if(navMapReady){ setTimeout(()=>navMap.invalidateSize(),50); return; }
+  navMap = L.map('nav-map', { zoomControl: true }).setView(CENTER, 16);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(navMap);
+  navMapReady = true;
+  setTimeout(()=>navMap.invalidateSize(),100);
 }
 
-function atualizarSetaNav(){
+async function carregarRotaAtePonto(){
+  const destino = rotaNavegacao[navIndex]?.coords;
+  const origem = posicaoAtual;
+  if(!destino || !origem || !navMap) return;
+
+  const chave = origem.lat.toFixed(4)+','+origem.lng.toFixed(4)+'->'+destino.lat.toFixed(5)+','+destino.lng.toFixed(5);
+  if(chave === ultimaRotaBuscada) { atualizarMarcadoresNav(); return; }
+  ultimaRotaBuscada = chave;
+
+  $('nav-loading').style.display = 'flex';
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${origem.lng},${origem.lat};${destino.lng},${destino.lat}?overview=full&geometries=geojson`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if(data.code === 'Ok' && data.routes?.[0]){
+      const coordsRota = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]); // [lng,lat] -> [lat,lng]
+      desenharRotaNoMapa(coordsRota);
+    } else {
+      // Fallback: linha reta se OSRM não conseguir calcular
+      desenharRotaNoMapa([[origem.lat,origem.lng],[destino.lat,destino.lng]]);
+    }
+  } catch(e){
+    console.warn('[OSRM] Falha ao buscar rota, usando linha reta:', e);
+    desenharRotaNoMapa([[origem.lat,origem.lng],[destino.lat,destino.lng]]);
+  }
+  $('nav-loading').style.display = 'none';
+  atualizarMarcadoresNav();
+}
+
+function desenharRotaNoMapa(coords){
+  if(navRouteLine) navMap.removeLayer(navRouteLine);
+  navRouteLine = L.polyline(coords, { color:'#378ADD', weight:5, opacity:0.85 }).addTo(navMap);
+  navMap.fitBounds(navRouteLine.getBounds(), { padding:[40,40] });
+}
+
+function atualizarMarcadoresNav(){
+  if(!navMap) return;
+  const destino = rotaNavegacao[navIndex]?.coords;
+  if(!destino) return;
+
+  // Marcador do destino (pin vermelho)
+  if(!navDestMarker){
+    const iconDest = L.divIcon({ html:'<div style="width:26px;height:26px;background:#E24B4A;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.35);"></div>', className:'', iconSize:[26,26], iconAnchor:[13,13] });
+    navDestMarker = L.marker([destino.lat, destino.lng], { icon: iconDest }).addTo(navMap);
+  } else {
+    navDestMarker.setLatLng([destino.lat, destino.lng]);
+  }
+
+  // Marcador da posição atual (ponto azul)
+  if(posicaoAtual){
+    const ll = [posicaoAtual.lat, posicaoAtual.lng];
+    if(!navUserMarker){
+      const iconUser = L.divIcon({ html:'<div style="width:16px;height:16px;background:#1D9E75;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px rgba(29,158,117,.4);"></div>', className:'', iconSize:[16,16], iconAnchor:[8,8], zIndexOffset:1000 });
+      navUserMarker = L.marker(ll, { icon: iconUser, zIndexOffset:1000 }).addTo(navMap);
+    } else {
+      navUserMarker.setLatLng(ll);
+    }
+  }
+
+  atualizarDistanciaNav();
+}
+
+function atualizarDistanciaNav(){
   if(!$('nav-overlay').classList.contains('open')) return;
   const destino = rotaNavegacao[navIndex]?.coords;
   if(!destino || !posicaoAtual) return;
 
   const dist = distanciaMetros(posicaoAtual, destino);
-  const bearing = bearingGraus(posicaoAtual, destino);
-  const rotacao = headingAtual != null ? ((bearing - headingAtual + 360) % 360) : bearing;
-
-  $('nav-arrow').style.transform = 'rotate(' + rotacao + 'deg)';
   $('nav-distance').textContent = dist < 1000 ? Math.round(dist) + ' m' : (dist/1000).toFixed(1) + ' km';
 
   if(dist <= DISTANCIA_CHEGADA){
@@ -1353,8 +1360,20 @@ function atualizarSetaNav(){
   }
 }
 
+// Chamado a cada atualização do GPS contínuo (hook em ativarGPS)
+function atualizarSetaNav(){
+  if(!$('nav-overlay').classList.contains('open')) return;
+  if(navUserMarker && posicaoAtual){
+    navUserMarker.setLatLng([posicaoAtual.lat, posicaoAtual.lng]);
+  }
+  atualizarDistanciaNav();
+  // Recalcula a rota periodicamente se o usuário se afastar muito da rota traçada
+  carregarRotaAtePonto();
+}
+
 function confirmarEntrega(){
   navIndex++;
+  ultimaRotaBuscada = null;
   if(navIndex >= rotaNavegacao.length){
     if(navigator.vibrate) navigator.vibrate([100,50,100,50,200]);
     showMsg('🎉 Rota concluída!','ok');
@@ -1362,7 +1381,7 @@ function confirmarEntrega(){
     return;
   }
   atualizarParadaAtual();
-  atualizarSetaNav();
+  carregarRotaAtePonto();
 }
 function pularParada(){ confirmarEntrega(); }
 
@@ -1378,7 +1397,7 @@ window.previewFoto=previewFoto; window.removerFoto=removerFoto; window.iniciarSa
 window.buscarEndereco=buscarEndereco; window.verNoMapa=verNoMapa; window.editarPinEncontrado=editarPinEncontrado;
 window.moverPin=moverPin; window.resetarPin=resetarPin; window.confirmarPin=confirmarPin;
 window.iniciarNavegacao=iniciarNavegacao; window.iniciarNavegacaoNoIndicePacote=iniciarNavegacaoNoIndicePacote;
-window.sairNavegacao=sairNavegacao; window.pedirPermissaoBussola=pedirPermissaoBussola;
+window.sairNavegacao=sairNavegacao;
 window.confirmarEntrega=confirmarEntrega; window.pularParada=pularParada;
 window.fecharModal=fecharModal;
 esperarLeaflet();
