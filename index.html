@@ -1468,6 +1468,7 @@ const DISTANCIA_CHEGADA = 30; // metros
 
 let navMap = null;
 let navUserMarker = null, navDestMarker = null, navRouteLine = null;
+let navOutrasParadasLayer = null, navSequenciaLinha = null;
 let navMapReady = false;
 let ultimaRotaBuscada = null; // evita rebuscar a mesma rota repetidamente
 
@@ -1642,8 +1643,50 @@ function inicializarNavMap(){
   if(navMapReady){ setTimeout(()=>navMap.invalidateSize(),50); return; }
   navMap = L.map('nav-map', { zoomControl: true }).setView(CENTER, 16);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(navMap);
+  navOutrasParadasLayer = L.layerGroup().addTo(navMap);
   navMapReady = true;
   setTimeout(()=>navMap.invalidateSize(),100);
+}
+
+// Mostra todas as paradas restantes da rota (além da atual) como pins numerados
+// conectados por uma linha, permitindo pular direto pra qualquer uma delas.
+function renderOutrasParadasNav(){
+  if(!navMap || !navOutrasParadasLayer) return;
+  navOutrasParadasLayer.clearLayers();
+  if(navSequenciaLinha){ navMap.removeLayer(navSequenciaLinha); navSequenciaLinha = null; }
+
+  const restantes = rotaNavegacao.slice(navIndex).filter(p => p.coords);
+  if(restantes.length < 2) return; // só a atual (ou nenhuma) — nada a conectar
+
+  const corPorCls = { gps:'#1D9E75', estc:'#378ADD', est:'#EF9F27', nf:'#E24B4A' };
+
+  // Linha pontilhada conectando a sequência restante (visão geral do trajeto)
+  const pontosLinha = restantes.map(p => [p.coords.lat, p.coords.lng]);
+  navSequenciaLinha = L.polyline(pontosLinha, { color:'#999', weight:3, opacity:0.55, dashArray:'6,7' }).addTo(navMap);
+  navSequenciaLinha.bringToBack();
+
+  // Pins numerados das próximas paradas (exceto a atual, que já tem o pin vermelho grande)
+  rotaNavegacao.forEach((p, idx) => {
+    if(idx <= navIndex || !p.coords) return; // pula a atual e as já concluídas/puladas
+    const info = infoTipoGPS(p.tipoGPS);
+    const cor = corPorCls[info.cls] || '#1D9E75';
+    const icon = L.divIcon({
+      html: `<div style="background:${cor};border:2px solid white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;box-shadow:0 2px 6px rgba(0,0,0,.3);">${idx+1}</div>`,
+      className:'', iconSize:[24,24], iconAnchor:[12,12]
+    });
+    const marker = L.marker([p.coords.lat, p.coords.lng], { icon }).addTo(navOutrasParadasLayer);
+    marker.bindPopup(`<b>${idx+1}. ${p.quadra} · Cj.${p.conjunto||'?'} · Casa ${p.casa||'?'}</b><br><span style="font-size:11px;color:#888;">Toque em "Ir para esta parada" abaixo</span><br><button style="margin-top:6px;padding:5px 10px;background:#1D9E75;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;" onclick="pularParaParadaNav(${idx})">➡ Ir para esta parada</button>`);
+  });
+}
+
+// Pula a navegação diretamente para uma parada específica (fora de ordem)
+function pularParaParadaNav(idx){
+  if(idx < 0 || idx >= rotaNavegacao.length) return;
+  navMap?.closePopup();
+  navIndex = idx;
+  ultimaRotaBuscada = null;
+  atualizarParadaAtual();
+  carregarRotaAtePonto();
 }
 
 async function carregarRotaAtePonto(){
@@ -1672,13 +1715,24 @@ async function carregarRotaAtePonto(){
     desenharRotaNoMapa([[origem.lat,origem.lng],[destino.lat,destino.lng]]);
   }
   $('nav-loading').style.display = 'none';
+  renderOutrasParadasNav();
   atualizarMarcadoresNav();
+  ajustarZoomNavCompleto();
 }
 
 function desenharRotaNoMapa(coords){
   if(navRouteLine) navMap.removeLayer(navRouteLine);
   navRouteLine = L.polyline(coords, { color:'#378ADD', weight:5, opacity:0.85 }).addTo(navMap);
-  navMap.fitBounds(navRouteLine.getBounds(), { padding:[40,40] });
+}
+
+// Ajusta o zoom pra caber a rota até a parada atual + as próximas paradas visíveis
+function ajustarZoomNavCompleto(){
+  if(!navMap) return;
+  const pontos = [];
+  if(navRouteLine) pontos.push(...navRouteLine.getLatLngs());
+  rotaNavegacao.slice(navIndex, navIndex + 6).forEach(p => { if(p.coords) pontos.push([p.coords.lat, p.coords.lng]); });
+  if(!pontos.length) return;
+  navMap.fitBounds(L.latLngBounds(pontos), { padding:[40,40], maxZoom:17 });
 }
 
 function atualizarMarcadoresNav(){
@@ -1760,6 +1814,7 @@ window.previewFoto=previewFoto; window.removerFoto=removerFoto; window.iniciarSa
 window.buscarEndereco=buscarEndereco; window.verNoMapa=verNoMapa; window.editarPinEncontrado=editarPinEncontrado;
 window.moverPin=moverPin; window.resetarPin=resetarPin; window.confirmarPin=confirmarPin;
 window.iniciarNavegacao=iniciarNavegacao; window.iniciarNavegacaoNoIndicePacote=iniciarNavegacaoNoIndicePacote;
+window.pularParaParadaNav=pularParaParadaNav;
 window.sairNavegacao=sairNavegacao;
 window.confirmarEntrega=confirmarEntrega; window.pularParada=pularParada;
 window.fecharModal=fecharModal;
