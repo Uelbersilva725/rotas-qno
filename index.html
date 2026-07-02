@@ -322,15 +322,26 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
         <div class="section-label">Lista de pacotes do dia</div>
         <textarea class="rota-textarea" id="rota-input" placeholder='Cole aqui o CSV de pacotes. Exemplo:&#10;"QNO 18 Cj 25, 30, Ceilândia...",Brasília,DF,556199...&#10;"QNO 17 Cj 59, 03, Brasília...",Brasília,DF,556198...'></textarea>
       </div>
-      <button class="rota-btn" id="rota-btn" onclick="processarRota()">🛣 Calcular rota otimizada</button>
+      <button class="rota-btn" id="rota-btn" onclick="analisarLista()">🔍 Analisar lista</button>
       <div id="rota-resultado" style="display:none;">
         <div class="rota-stats" id="rota-stats"></div>
         <div class="rota-aviso" id="rota-aviso" style="display:none;"></div>
+
+        <!-- Etapa 1: revisão + preenchimento manual -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0;">
+          <span style="font-size:12px;font-weight:600;color:#555;">Revisão dos endereços</span>
+        </div>
+        <div id="rota-lista"></div>
+        <div id="rota-fechar-wrap" style="display:none;">
+          <button class="rota-btn" style="background:#378ADD;margin-top:10px;" onclick="fecharRota()">🛣 Fechar rota e otimizar</button>
+        </div>
+
+        <!-- Etapa 2: rota final otimizada -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 4px;">
           <span style="font-size:12px;font-weight:600;color:#555;">Sequência de entrega</span>
           <button class="rota-copy-btn" onclick="copiarRota()">📋 Copiar</button>
         </div>
-        <div id="rota-lista"></div>
+        <div id="rota-lista-final" style="display:none;"></div>
       </div>
     </div>
   </div>
@@ -872,12 +883,18 @@ function normalizarTexto(t){
     .trim();
 }
 
+function normalizarConjunto(val){
+  val = (val||'').trim();
+  if(!val) return '';
+  if(/^\d+$/.test(val)) return val.replace(/^0+/,'').padStart(2,'0') || '00';
+  return val.toUpperCase(); // conjuntos com letra (A, B, C...)
+}
+
 function parsearLinha(linha){
-  // Remove aspas externas e divide por vírgula respeitando aspas
   linha = linha.trim();
   if(!linha) return null;
 
-  // Extrai o campo Address (primeiro campo CSV)
+  // Extrai o campo Address (primeiro campo CSV, entre aspas)
   let address = '';
   if(linha.startsWith('"')){
     const fechaAspas = linha.indexOf('"', 1);
@@ -885,34 +902,50 @@ function parsearLinha(linha){
   } else {
     address = linha.split(',')[0];
   }
+  if(!address) return null;
 
-  // Extrai contato (último campo)
-  const partes = linha.split(',');
-  const contato = partes[partes.length - 1]?.trim().replace(/"/g,'') || '';
+  // Contato = último campo da linha
+  const partesLinha = linha.split(',');
+  const contato = partesLinha[partesLinha.length - 1]?.trim().replace(/"/g,'') || '';
 
-  // Tenta extrair do trecho entre parênteses primeiro (mais confiável)
-  const matchParens = address.match(/\(([^)]+)\)/);
-  const dentro = matchParens ? matchParens[1] : address;
+  // Trecho entre parênteses — pode haver mais de um grupo (ex: "(Ceilândia)" e
+  // depois a observação detalhada). Pega o ÚLTIMO grupo, que é o mais completo.
+  const todosParens = [...address.matchAll(/\(([^)]+)\)/g)];
+  const dentroParens = todosParens.length ? todosParens[todosParens.length - 1][1] : '';
+  // Prefixo = tudo antes do primeiro parêntese (contém "QNO X Cj Y, NUMERO, Cidade...")
+  const prefixo = address.split('(')[0];
 
   let quadra = '', conjunto = '', casa = '';
 
-  // Padrão: QNO XX Conjunto/Cj XX Casa/numero
   const reQNO = /(?:qno|qn[o0])\s*(\d+)/i;
-  const reCJ  = /(?:conjunto|conj\.?|cj\.?)\s*(\w+)/i;
+  const reCJ  = /(?:conjunto|conj\.?|cj\.?)\s*([a-z0-9]+)/i;
   const reCASA = /(?:casa|ca\.?)\s*(\d+)/i;
 
-  const mQ = dentro.match(reQNO) || address.match(reQNO);
+  const mQ = prefixo.match(reQNO) || dentroParens.match(reQNO);
   if(mQ) quadra = 'QNO ' + mQ[1];
 
-  const mCJ = dentro.match(reCJ) || address.match(reCJ);
-  if(mCJ) conjunto = mCJ[1].replace(/^0+/,'').padStart(2,'0');
+  const mCJ = prefixo.match(reCJ) || dentroParens.match(reCJ);
+  if(mCJ) conjunto = normalizarConjunto(mCJ[1]);
 
-  const mCASA = dentro.match(reCASA);
-  if(mCASA){ casa = mCASA[1]; }
-  else {
-    // Tenta pegar número após "Cj XX, NUMERO"
-    const mNum = address.match(/cj[^\d]*\d+[,\s]+(\d+)/i);
-    if(mNum && parseInt(mNum[1]) < 200) casa = mNum[1];
+  // ── Detecção do número da casa ──────────────────────────────────────────
+  // 1) Padrão mais confiável: "QNO 16 Cj C, 9, Brasília..." → token logo após
+  //    o trecho da quadra/conjunto, antes da cidade, sendo um número puro
+  const tokens = prefixo.split(',').map(t=>t.trim()).filter(Boolean);
+  if(tokens.length > 1 && /^\d{1,3}$/.test(tokens[1])){
+    casa = tokens[1].replace(/^0+/,'') || '0';
+  }
+
+  // 2) Fallback: "casa 09" dentro dos parênteses (número depois da palavra)
+  if(!casa){
+    const mCASA = dentroParens.match(reCASA);
+    if(mCASA) casa = mCASA[1].replace(/^0+/,'') || '0';
+  }
+
+  // 3) Fallback: "18 casa" ou "01,Casa" — número ANTES da palavra "casa"
+  if(!casa){
+    const reCASA_antes = /(\d{1,3})\s*,?\s*(?:casa|ca\.?)\b/i;
+    const mCASA2 = dentroParens.match(reCASA_antes);
+    if(mCASA2) casa = mCASA2[1].replace(/^0+/,'') || '0';
   }
 
   // Infere bairro pela quadra
@@ -921,7 +954,12 @@ function parsearLinha(linha){
 
   if(!quadra) return null;
 
-  return { quadra, conjunto, casa, bairro, cidade:'Ceilândia', contato, enderecoOriginal: address };
+  return {
+    quadra, conjunto, casa,
+    casaPendente: !casa,
+    bairro, cidade:'Ceilândia', contato,
+    enderecoOriginal: address
+  };
 }
 
 function encontrarGPS(pacote){
@@ -941,19 +979,94 @@ function encontrarGPS(pacote){
   return null;
 }
 
+// ─── Etapa 1: Analisar lista ────────────────────────────────────────────────
+let pacotesAnalisados = [];
+
+function analisarLista(){
+  const input = document.getElementById('rota-input').value.trim();
+  if(!input){ showMsg('Cole a lista de pacotes antes.','err'); return; }
+
+  const btn = document.getElementById('rota-btn');
+  btn.disabled = true; btn.textContent = 'Analisando...';
+
+  try {
+    const linhas = input.split('\n').filter(l => l.trim() && !l.startsWith('Address,'));
+    const pacotes = [];
+    let naoReconhecidos = 0;
+
+    linhas.forEach(linha => {
+      const p = parsearLinha(linha);
+      if(!p){ naoReconhecidos++; return; }
+      const gps = encontrarGPS(p);
+      pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo || 'nao_encontrado' });
+    });
+
+    pacotesAnalisados = pacotes;
+    renderAnalise(pacotes, naoReconhecidos);
+  } catch(e){
+    console.error('[Rota]', e);
+    showMsg('Erro ao analisar: ' + e.message, 'err');
+  }
+
+  btn.disabled = false; btn.textContent = '🔍 Analisar lista';
+}
+
+function renderAnalise(pacotes, naoReconhecidos){
+  const div = document.getElementById('rota-resultado');
+  div.style.display = 'block';
+  document.getElementById('rota-lista-final').style.display = 'none';
+  document.getElementById('rota-fechar-wrap').style.display = 'block';
+
+  const pendentes = pacotes.filter(p => p.casaPendente);
+  const prontos = pacotes.length - pendentes.length;
+
+  document.getElementById('rota-stats').innerHTML =
+    `<div class="rota-stat"><span class="n">${pacotes.length}</span>pacotes</div>
+     <div class="rota-stat"><span class="n" style="color:#1D9E75">${prontos}</span>casa ok</div>
+     <div class="rota-stat"><span class="n" style="color:#EF9F27">${pendentes.length}</span>sem nº casa</div>
+     ${naoReconhecidos>0?`<div class="rota-stat"><span class="n" style="color:#E24B4A">${naoReconhecidos}</span>não reconh.</div>`:''}`;
+
+  const aviso = document.getElementById('rota-aviso');
+  if(pendentes.length > 0){
+    aviso.style.display = 'block';
+    aviso.textContent = `⚠️ ${pendentes.length} endereço(s) sem número de casa identificado. Preencha manualmente abaixo antes de fechar a rota (ou deixe em branco para incluir mesmo assim).`;
+  } else {
+    aviso.style.display = 'block';
+    aviso.textContent = '✓ Todos os endereços tiveram o número da casa identificado automaticamente.';
+  }
+
+  const lista = document.getElementById('rota-lista');
+  lista.innerHTML = pacotes.map((p, i) => {
+    const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
+    const gpsTxt = p.tipoGPS==='gps'?'<span class="rota-badge gps">GPS</span>':p.tipoGPS==='estimado'?'<span class="rota-badge est">Estimado</span>':'<span class="rota-badge nf">Sem loc.</span>';
+    return `<div class="rota-item">
+      <div class="rota-num${p.casaPendente?' sem-gps':''}">${i+1}</div>
+      <div class="rota-info">
+        <div class="rota-addr">${p.quadra} · Cj. ${p.conjunto||'?'} ${gpsTxt}</div>
+        <div class="rota-detalhe">${p.enderecoOriginal.slice(0,55)}${p.enderecoOriginal.length>55?'...':''}</div>
+        ${contatoFmt?`<div class="rota-contato">📞 ${contatoFmt}</div>`:''}
+        ${p.casaPendente
+          ? `<div style="margin-top:6px;display:flex;align-items:center;gap:6px;">
+               <span style="font-size:11px;color:#856404;">Nº da casa:</span>
+               <input type="number" class="rota-casa-input" data-idx="${i}" placeholder="?" style="width:70px;padding:5px 8px;border:1px solid #EF9F27;border-radius:6px;font-size:12px;"/>
+             </div>`
+          : `<div style="font-size:11px;color:#1D9E75;margin-top:3px;">✓ Casa ${p.casa}</div>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Etapa 2: Fechar rota (aplica casas manuais + otimiza) ────────────────────
 function distancia(a, b){
-  // Distância euclidiana simples (suficiente para área pequena)
   const dlat = a.lat - b.lat, dlng = a.lng - b.lng;
   return Math.sqrt(dlat*dlat + dlng*dlng);
 }
-
 function otimizarRota(pacotes){
-  // Algoritmo do vizinho mais próximo partindo da posição atual (ou centro)
   const inicio = posicaoAtual || { lat: CENTER[0], lng: CENTER[1] };
   const restantes = [...pacotes];
   const ordenados = [];
   let posAtual = inicio;
-
   while(restantes.length > 0){
     let melhorIdx = 0, melhorDist = Infinity;
     restantes.forEach((p, i) => {
@@ -968,46 +1081,33 @@ function otimizarRota(pacotes){
   return ordenados;
 }
 
-function processarRota(){
-  const input = document.getElementById('rota-input').value.trim();
-  if(!input){ showMsg('Cole a lista de pacotes antes.','err'); return; }
-
-  const btn = document.getElementById('rota-btn');
-  btn.disabled = true; btn.textContent = 'Processando...';
-
-  try {
-    const linhas = input.split('\n').filter(l => l.trim() && !l.startsWith('Address,'));
-    const pacotes = [];
-    let naoReconhecidos = 0;
-
-    linhas.forEach(linha => {
-      const p = parsearLinha(linha);
-      if(!p){ naoReconhecidos++; return; }
-      const gps = encontrarGPS(p);
-      pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo || 'nao_encontrado' });
-    });
-
-    // Separa com e sem coords para otimizar só os com coords
-    const comCoords = pacotes.filter(p => p.coords);
-    const semCoords = pacotes.filter(p => !p.coords);
-
-    const rotaOtimizada = [...otimizarRota(comCoords), ...semCoords];
-
-    renderRota(rotaOtimizada, naoReconhecidos);
-  } catch(e){
-    console.error('[Rota]', e);
-    showMsg('Erro ao processar: ' + e.message, 'err');
-  }
-
-  btn.disabled = false; btn.textContent = '🛣 Calcular rota otimizada';
-}
-
 let rotaAtual = [];
 
-function renderRota(pacotes, naoReconhecidos){
-  rotaAtual = pacotes;
-  const div = document.getElementById('rota-resultado');
-  div.style.display = 'block';
+function fecharRota(){
+  // Aplica valores digitados manualmente para casas pendentes
+  document.querySelectorAll('.rota-casa-input').forEach(inp => {
+    const idx = parseInt(inp.getAttribute('data-idx'));
+    const val = inp.value.trim();
+    if(val && pacotesAnalisados[idx]){
+      pacotesAnalisados[idx].casa = val;
+      pacotesAnalisados[idx].casaPendente = false;
+      // Re-tenta achar GPS agora que tem casa
+      const gps = encontrarGPS(pacotesAnalisados[idx]);
+      pacotesAnalisados[idx].coords = gps;
+      pacotesAnalisados[idx].tipoGPS = gps?.tipo || 'nao_encontrado';
+    }
+  });
+
+  const comCoords = pacotesAnalisados.filter(p => p.coords);
+  const semCoords = pacotesAnalisados.filter(p => !p.coords);
+  rotaAtual = [...otimizarRota(comCoords), ...semCoords];
+
+  renderRotaFinal(rotaAtual);
+}
+
+function renderRotaFinal(pacotes){
+  document.getElementById('rota-lista-final').style.display = 'block';
+  document.getElementById('rota-fechar-wrap').style.display = 'none';
 
   const comGPS   = pacotes.filter(p => p.tipoGPS === 'gps').length;
   const estimado = pacotes.filter(p => p.tipoGPS === 'estimado').length;
@@ -1019,15 +1119,9 @@ function renderRota(pacotes, naoReconhecidos){
      <div class="rota-stat"><span class="n" style="color:#EF9F27">${estimado}</span>estimados</div>
      <div class="rota-stat"><span class="n" style="color:#E24B4A">${naoAch}</span>sem loc.</div>`;
 
-  const aviso = document.getElementById('rota-aviso');
-  if(estimado > 0 || naoAch > 0){
-    aviso.style.display = 'block';
-    aviso.textContent = '⚠️ Endereços com GPS confirmado têm prioridade na ordenação. ' +
-      (estimado > 0 ? `${estimado} usam posição estimada da quadra. ` : '') +
-      (naoAch > 0 ? `${naoAch} não encontrados foram listados por último.` : '');
-  } else { aviso.style.display = 'none'; }
+  document.getElementById('rota-aviso').style.display = 'none';
 
-  const lista = document.getElementById('rota-lista');
+  const lista = document.getElementById('rota-lista-final');
   let prevBairro = '';
   lista.innerHTML = pacotes.map((p, i) => {
     let sep = '';
@@ -1042,7 +1136,7 @@ function renderRota(pacotes, naoReconhecidos){
     return `${sep}<div class="rota-item">
       <div class="rota-num${numCls}">${i+1}</div>
       <div class="rota-info">
-        <div class="rota-addr">${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:''}
+        <div class="rota-addr">${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:' · Casa ?'}
           <span class="rota-badge ${badgeCls}">${badgeTxt}</span>
         </div>
         <div class="rota-detalhe">${p.enderecoOriginal.slice(0,60)}${p.enderecoOriginal.length>60?'...':''}</div>
@@ -1054,14 +1148,15 @@ function renderRota(pacotes, naoReconhecidos){
 
 function copiarRota(){
   const texto = rotaAtual.map((p,i) =>
-    `${i+1}. ${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:''} [${p.tipoGPS==='gps'?'GPS':p.tipoGPS==='estimado'?'Estimado':'Sem localização'}]`
+    `${i+1}. ${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:' · Casa ?'} [${p.tipoGPS==='gps'?'GPS':p.tipoGPS==='estimado'?'Estimado':'Sem localização'}]`
   ).join('\n');
   navigator.clipboard?.writeText(texto).then(()=>showMsg('Rota copiada!','ok')).catch(()=>showMsg('Não foi possível copiar.','err'));
 }
 
 // ─── Globais ───────────────────────────────────────────────────────────────────
 window.showTab=showTab; window.fazerLogin=fazerLogin;
-window.processarRota=processarRota; window.copiarRota=copiarRota; window.fazerLogout=fazerLogout; window.abrirCadastro=abrirCadastro;
+window.analisarLista=analisarLista; window.fecharRota=fecharRota; window.copiarRota=copiarRota;
+window.fazerLogout=fazerLogout; window.abrirCadastro=abrirCadastro;
 window.ativarGPS=ativarGPS; window.solicitarGPS=solicitarGPS;
 window.onCidadeChange=onCidadeChange; window.onBairroChange=onBairroChange; window.onQuadraChange=onQuadraChange;
 window.onFiltroCidadeChange=onFiltroCidadeChange; window.onFiltroBairroChange=onFiltroBairroChange;
