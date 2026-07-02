@@ -198,6 +198,11 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 .pin-btns button{flex:1;padding:10px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;border:.5px solid #ddd}
 .pin-confirm{background:#1D9E75;color:#fff;border-color:#0F6E56}
 .pin-reset{background:#f5f5f5;color:#555}
+.foto-zoom-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9000;display:none;align-items:center;justify-content:center;padding:20px;}
+.foto-zoom-bg.open{display:flex}
+.foto-zoom-bg img{max-width:100%;max-height:85vh;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+.foto-zoom-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.15);color:#fff;border:none;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.foto-clicavel{cursor:pointer;}
 </style>
 </head>
 <body>
@@ -270,7 +275,7 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
         <div id="busca-com" style="display:none;" class="busca-result" style="margin-top:6px;">
           <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;">
             <div id="busca-foto-wrap" style="display:none;flex-shrink:0;">
-              <img id="busca-foto" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:.5px solid #eee;"/>
+              <img id="busca-foto" class="foto-clicavel" onclick="abrirFotoZoom(this.src)" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:.5px solid #eee;"/>
             </div>
             <div style="flex:1;">
               <div id="busca-addr" style="font-size:13px;font-weight:600;color:#111;margin-bottom:3px;"></div>
@@ -437,6 +442,12 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
   </div>
 </div>
 
+<!-- Foto ampliada (lightbox) -->
+<div class="foto-zoom-bg" id="foto-zoom-bg" onclick="fecharFotoZoom()">
+  <button class="foto-zoom-close" onclick="fecharFotoZoom()">✕</button>
+  <img id="foto-zoom-img" src="" alt="Fachada ampliada" onclick="event.stopPropagation()"/>
+</div>
+
 <!-- Navegação no mapa -->
 <div class="nav-overlay" id="nav-overlay">
   <div class="nav-top">
@@ -456,7 +467,7 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
     <div class="nav-addr" id="nav-addr">—</div>
     <div class="nav-obs" id="nav-obs"></div>
     <div class="nav-contato" id="nav-contato"></div>
-    <div class="nav-foto-wrap" id="nav-foto-wrap" style="display:none;"><img id="nav-foto" src="" alt=""/></div>
+    <div class="nav-foto-wrap" id="nav-foto-wrap" style="display:none;"><img id="nav-foto" class="foto-clicavel" onclick="abrirFotoZoom(this.src)" src="" alt=""/></div>
   </div>
   <div class="nav-buttons">
     <button class="nav-btn nav-btn-skip" id="nav-btn-skip">⏭ Pular</button>
@@ -523,6 +534,16 @@ function corBairro(cidade,bairro){
 }
 function showMsg(t,c){ const m=$('toast-msg'); m.textContent=t; m.className='toast-msg '+c; m.style.display='block'; setTimeout(()=>m.style.display='none',3500); }
 function fecharModal(id){ $(id).classList.remove('open'); }
+
+// ─── Foto ampliada (lightbox) ──────────────────────────────────────────────────
+function abrirFotoZoom(src){
+  if(!src) return;
+  $('foto-zoom-img').src = src;
+  $('foto-zoom-bg').classList.add('open');
+}
+function fecharFotoZoom(){
+  $('foto-zoom-bg').classList.remove('open');
+}
 function abrirModal(id){ $(id).classList.add('open'); }
 
 const SESSAO_DURACAO_MS = 24 * 60 * 60 * 1000; // 24 horas
@@ -1704,6 +1725,7 @@ window.iniciarNavegacao=iniciarNavegacao; window.iniciarNavegacaoNoIndicePacote=
 window.sairNavegacao=sairNavegacao;
 window.confirmarEntrega=confirmarEntrega; window.pularParada=pularParada;
 window.fecharModal=fecharModal;
+window.abrirFotoZoom=abrirFotoZoom; window.fecharFotoZoom=fecharFotoZoom;
 esperarLeaflet();
 </script>
 </body>
