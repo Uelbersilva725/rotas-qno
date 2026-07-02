@@ -647,6 +647,7 @@ function mostrarApp(usuario){
   $('tab-registrar').style.display = ehAdmin ? 'block' : 'none';
   $('tab-lista').style.display = ehAdmin ? 'block' : 'none';
   if(mapReady) filtrarMapa(); // reaplica a regra de visibilidade dos pins se o mapa já estava carregado
+  else esperarLeaflet(); // primeira vez: app já está visível aqui, então o mapa nasce com o tamanho certo
   solicitarGPS();
 }
 async function fazerLogin(){
@@ -824,7 +825,7 @@ function adicionarPin(r){
   if(r.foto) p+=`<br><img src="${r.foto}" style="width:120px;margin-top:5px;border-radius:6px;">`;
   L.marker([r.lat,r.lng],{icon}).addTo(markersLayer).bindPopup(p);
 }
-function esperarLeaflet(){ if(typeof L!=='undefined'){ initMap(); } else setTimeout(esperarLeaflet,100); }
+function esperarLeaflet(){ if(mapReady) return; if(typeof L!=='undefined'){ initMap(); } else setTimeout(esperarLeaflet,100); }
 
 // ─── Modal Pin ─────────────────────────────────────────────────────────────────
 function abrirModalPin(lat,lng,titulo,sub,callback){
@@ -1824,7 +1825,6 @@ window.sairNavegacao=sairNavegacao;
 window.confirmarEntrega=confirmarEntrega; window.pularParada=pularParada;
 window.fecharModal=fecharModal;
 window.abrirFotoZoom=abrirFotoZoom; window.fecharFotoZoom=fecharFotoZoom;
-esperarLeaflet();
 </script>
 </body>
 </html>
