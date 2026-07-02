@@ -114,7 +114,33 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 /* Busca */
 .busca-result{background:#fff;border:.5px solid #eee;border-radius:10px;padding:12px;margin-top:12px}
 
-/* Roteirização */
+/* Navegação com bússola */
+.nav-overlay{position:fixed;inset:0;background:#fff;z-index:5000;display:none;flex-direction:column;max-width:480px;margin:0 auto}
+.nav-overlay.open{display:flex}
+.nav-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:.5px solid #e5e5e5}
+.nav-close{background:none;border:none;font-size:20px;color:#888;cursor:pointer;padding:4px 8px}
+.nav-progress{font-size:13px;font-weight:600;color:#555}
+.nav-compass-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;background:linear-gradient(180deg,#F4F9F7,#fff)}
+.nav-compass{width:200px;height:200px;border-radius:50%;background:#fff;border:3px solid #E1F5EE;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 4px 20px rgba(29,158,117,.15)}
+.nav-compass::before{content:'N';position:absolute;top:8px;font-size:11px;color:#bbb;font-weight:700}
+.nav-arrow{font-size:90px;color:#1D9E75;transition:transform .3s ease-out;line-height:1}
+.nav-distance{font-size:32px;font-weight:700;color:#111;margin-top:20px}
+.nav-distance-lbl{font-size:12px;color:#888;margin-top:2px}
+.nav-arrived-banner{background:#1D9E75;color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:700;margin-top:14px;display:none;animation:pulse-arr 1s infinite}
+@keyframes pulse-arr{0%,100%{opacity:1}50%{opacity:.7}}
+.nav-permission-btn{background:#EF9F27;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;margin-top:14px;display:none}
+.nav-info{padding:14px 16px;border-top:.5px solid #e5e5e5;background:#fafafa}
+.nav-addr{font-size:15px;font-weight:700;color:#111}
+.nav-obs{font-size:13px;color:#666;margin-top:4px;line-height:1.4}
+.nav-contato{font-size:12px;color:#1D9E75;margin-top:4px;font-weight:600}
+.nav-foto-wrap{margin-top:8px}
+.nav-foto-wrap img{width:100%;max-height:140px;object-fit:cover;border-radius:10px;border:.5px solid #eee}
+.nav-buttons{display:flex;gap:8px;padding:12px 16px 16px;background:#fff}
+.nav-btn{flex:1;padding:13px;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;border:none}
+.nav-btn-skip{background:#f5f5f5;color:#666;border:.5px solid #ddd}
+.nav-btn-confirm{background:#1D9E75;color:#fff}
+.nav-btn-confirm.chegou{background:#0F6E56}
+.nav-start-btn{width:100%;padding:12px;background:#378ADD;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px}
 .rota-screen{padding:12px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px}
 .rota-textarea{width:100%;height:120px;font-size:12px;padding:10px;border:.5px solid #ddd;border-radius:8px;background:#fff;color:#111;resize:none;font-family:monospace}
 .rota-btn{width:100%;padding:11px;background:#1D9E75;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
@@ -341,6 +367,9 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
           <span style="font-size:12px;font-weight:600;color:#555;">Sequência de entrega</span>
           <button class="rota-copy-btn" onclick="copiarRota()">📋 Copiar</button>
         </div>
+        <div id="rota-nav-start-wrap" style="display:none;">
+          <button class="nav-start-btn" onclick="iniciarNavegacao()">🧭 Iniciar navegação guiada</button>
+        </div>
         <div id="rota-lista-final" style="display:none;"></div>
       </div>
     </div>
@@ -404,6 +433,34 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
       <button class="pin-reset" onclick="resetarPin()">↺ GPS</button>
       <button class="pin-confirm" onclick="confirmarPin()">✓ Confirmar</button>
     </div>
+  </div>
+</div>
+
+<!-- Navegação com bússola -->
+<div class="nav-overlay" id="nav-overlay">
+  <div class="nav-top">
+    <button class="nav-close" onclick="sairNavegacao()">✕</button>
+    <div class="nav-progress" id="nav-progress">Parada 1 de 1</div>
+    <div style="width:28px;"></div>
+  </div>
+  <div class="nav-compass-wrap">
+    <div class="nav-compass">
+      <div class="nav-arrow" id="nav-arrow">➤</div>
+    </div>
+    <div class="nav-distance" id="nav-distance">—</div>
+    <div class="nav-distance-lbl">distância até o destino</div>
+    <div class="nav-arrived-banner" id="nav-arrived-banner">🎉 Você chegou!</div>
+    <button class="nav-permission-btn" id="nav-permission-btn" onclick="pedirPermissaoBussola()">🧭 Ativar bússola do celular</button>
+  </div>
+  <div class="nav-info">
+    <div class="nav-addr" id="nav-addr">—</div>
+    <div class="nav-obs" id="nav-obs"></div>
+    <div class="nav-contato" id="nav-contato"></div>
+    <div class="nav-foto-wrap" id="nav-foto-wrap" style="display:none;"><img id="nav-foto" src="" alt=""/></div>
+  </div>
+  <div class="nav-buttons">
+    <button class="nav-btn nav-btn-skip" onclick="pularParada()">⏭ Pular</button>
+    <button class="nav-btn nav-btn-confirm" id="nav-btn-confirm" onclick="confirmarEntrega()">✓ Cheguei</button>
   </div>
 </div>
 
@@ -651,6 +708,7 @@ function ativarGPS(){
     $('gps-dot').className='gps-dot ok';
     $('gps-text').textContent='✓ GPS ativo · ~'+Math.round(pos.coords.accuracy)+'m';
     atualizarPinMapa();
+    atualizarSetaNav();
     if(primeiraLoc&&map){ map.setView([posicaoAtual.lat,posicaoAtual.lng],17); primeiraLoc=false; }
   }, err=>{
     $('gps-text').textContent=err.code===1?'Permissão negada.':'Erro GPS.';
@@ -1016,6 +1074,7 @@ function renderAnalise(pacotes, naoReconhecidos){
   div.style.display = 'block';
   document.getElementById('rota-lista-final').style.display = 'none';
   document.getElementById('rota-fechar-wrap').style.display = 'block';
+  document.getElementById('rota-nav-start-wrap').style.display = 'none';
 
   const pendentes = pacotes.filter(p => p.casaPendente);
   const prontos = pacotes.length - pendentes.length;
@@ -1108,6 +1167,7 @@ function fecharRota(){
 function renderRotaFinal(pacotes){
   document.getElementById('rota-lista-final').style.display = 'block';
   document.getElementById('rota-fechar-wrap').style.display = 'none';
+  document.getElementById('rota-nav-start-wrap').style.display = 'block';
 
   const comGPS   = pacotes.filter(p => p.tipoGPS === 'gps').length;
   const estimado = pacotes.filter(p => p.tipoGPS === 'estimado').length;
@@ -1133,7 +1193,8 @@ function renderRotaFinal(pacotes){
     const badgeTxt = p.tipoGPS==='gps'?'GPS':p.tipoGPS==='estimado'?'Est.':'Não enc.';
     const numCls   = p.tipoGPS==='gps'?'':p.tipoGPS==='estimado'?' estimado':' sem-gps';
     const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
-    return `${sep}<div class="rota-item">
+    const clicavel = p.coords ? `onclick="iniciarNavegacaoNoIndicePacote(${i})" style="cursor:pointer;"` : '';
+    return `${sep}<div class="rota-item" ${clicavel}>
       <div class="rota-num${numCls}">${i+1}</div>
       <div class="rota-info">
         <div class="rota-addr">${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:' · Casa ?'}
@@ -1153,6 +1214,158 @@ function copiarRota(){
   navigator.clipboard?.writeText(texto).then(()=>showMsg('Rota copiada!','ok')).catch(()=>showMsg('Não foi possível copiar.','err'));
 }
 
+// ─── Navegação guiada com bússola ─────────────────────────────────────────────
+let rotaNavegacao = [];
+let navIndex = 0;
+let headingAtual = null;
+let jaAvisouChegada = false;
+let compassoAtivo = false;
+const DISTANCIA_CHEGADA = 30; // metros
+
+function distanciaMetros(a,b){
+  const R = 6371000;
+  const dLat = (b.lat-a.lat)*Math.PI/180, dLng = (b.lng-a.lng)*Math.PI/180;
+  const la1 = a.lat*Math.PI/180, la2 = b.lat*Math.PI/180;
+  const h = Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function bearingGraus(a,b){
+  const la1 = a.lat*Math.PI/180, la2 = b.lat*Math.PI/180;
+  const dLng = (b.lng-a.lng)*Math.PI/180;
+  const y = Math.sin(dLng)*Math.cos(la2);
+  const x = Math.cos(la1)*Math.sin(la2) - Math.sin(la1)*Math.cos(la2)*Math.cos(dLng);
+  return (Math.atan2(y,x)*180/Math.PI + 360) % 360;
+}
+
+function iniciarNavegacaoNoIndicePacote(idxNaListaCompleta){
+  const pacoteAlvo = rotaAtual[idxNaListaCompleta];
+  if(!pacoteAlvo || !pacoteAlvo.coords) return;
+  rotaNavegacao = rotaAtual.filter(p => p.coords);
+  const idxNav = rotaNavegacao.indexOf(pacoteAlvo);
+  iniciarNavegacao(idxNav >= 0 ? idxNav : 0);
+}
+
+function iniciarNavegacao(idxInicial){
+  if(!rotaAtual || !rotaAtual.length){ showMsg('Feche uma rota primeiro.','err'); return; }
+  rotaNavegacao = rotaAtual.filter(p => p.coords);
+  if(!rotaNavegacao.length){ showMsg('Nenhum endereço com localização disponível para navegar.','err'); return; }
+  navIndex = typeof idxInicial === 'number' ? Math.max(0, Math.min(idxInicial, rotaNavegacao.length-1)) : 0;
+  jaAvisouChegada = false;
+  $('nav-overlay').classList.add('open');
+  atualizarParadaAtual();
+  iniciarCompasso();
+  atualizarSetaNav();
+}
+
+function sairNavegacao(){
+  $('nav-overlay').classList.remove('open');
+  pararCompasso();
+}
+
+function atualizarParadaAtual(){
+  const p = rotaNavegacao[navIndex];
+  if(!p) return;
+  $('nav-progress').textContent = 'Parada ' + (navIndex+1) + ' de ' + rotaNavegacao.length;
+  $('nav-addr').textContent = p.quadra + ' · Cj. ' + (p.conjunto||'?') + (p.casa?' · Casa '+p.casa:' · Casa ?');
+  $('nav-obs').textContent = p.enderecoOriginal ? p.enderecoOriginal.slice(0,90) : '';
+  const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
+  $('nav-contato').textContent = contatoFmt ? '📞 '+contatoFmt : '';
+  const fw = $('nav-foto-wrap');
+  if(p.fotoRegistro){ $('nav-foto').src = p.fotoRegistro; fw.style.display='block'; }
+  else {
+    // Tenta achar foto no banco pelo mesmo endereço
+    const match = registros.find(r => normalizarTextoNav(r.quadra)===normalizarTextoNav(p.quadra) && normalizarTextoNav(r.conjunto)===normalizarTextoNav(p.conjunto) && (r.casa==p.casa || !p.casa));
+    if(match?.foto){ $('nav-foto').src = match.foto; fw.style.display='block'; }
+    else fw.style.display='none';
+  }
+  $('nav-arrived-banner').style.display='none';
+  $('nav-btn-confirm').textContent='✓ Cheguei';
+  $('nav-btn-confirm').classList.remove('chegou');
+  jaAvisouChegada = false;
+}
+function normalizarTextoNav(s){ return (s||'').toString().toLowerCase().trim(); }
+
+function iniciarCompasso(){
+  if(compassoAtivo) return;
+  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+    // iOS exige permissão explícita via toque do usuário
+    $('nav-permission-btn').style.display = 'block';
+  } else {
+    window.addEventListener('deviceorientationabsolute', onOrientationNav, true);
+    window.addEventListener('deviceorientation', onOrientationNav, true);
+    compassoAtivo = true;
+  }
+}
+function pedirPermissaoBussola(){
+  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+    DeviceOrientationEvent.requestPermission().then(state=>{
+      if(state === 'granted'){
+        window.addEventListener('deviceorientation', onOrientationNav, true);
+        compassoAtivo = true;
+        $('nav-permission-btn').style.display = 'none';
+      } else {
+        showMsg('Permissão de bússola negada. A seta usará direção aproximada.','err');
+      }
+    }).catch(()=>{});
+  }
+}
+function pararCompasso(){
+  window.removeEventListener('deviceorientationabsolute', onOrientationNav, true);
+  window.removeEventListener('deviceorientation', onOrientationNav, true);
+  compassoAtivo = false;
+  headingAtual = null;
+}
+function onOrientationNav(e){
+  let heading = null;
+  if(typeof e.webkitCompassHeading !== 'undefined' && e.webkitCompassHeading !== null){
+    heading = e.webkitCompassHeading; // iOS Safari
+  } else if(e.alpha !== null){
+    heading = 360 - e.alpha; // Android/outros
+  }
+  if(heading !== null){ headingAtual = heading; atualizarSetaNav(); }
+}
+
+function atualizarSetaNav(){
+  if(!$('nav-overlay').classList.contains('open')) return;
+  const destino = rotaNavegacao[navIndex]?.coords;
+  if(!destino || !posicaoAtual) return;
+
+  const dist = distanciaMetros(posicaoAtual, destino);
+  const bearing = bearingGraus(posicaoAtual, destino);
+  const rotacao = headingAtual != null ? ((bearing - headingAtual + 360) % 360) : bearing;
+
+  $('nav-arrow').style.transform = 'rotate(' + rotacao + 'deg)';
+  $('nav-distance').textContent = dist < 1000 ? Math.round(dist) + ' m' : (dist/1000).toFixed(1) + ' km';
+
+  if(dist <= DISTANCIA_CHEGADA){
+    $('nav-arrived-banner').style.display = 'block';
+    $('nav-btn-confirm').textContent = '✓ Confirmar entrega';
+    $('nav-btn-confirm').classList.add('chegou');
+    if(!jaAvisouChegada){
+      jaAvisouChegada = true;
+      if(navigator.vibrate) navigator.vibrate([200,100,200]);
+    }
+  } else {
+    $('nav-arrived-banner').style.display = 'none';
+    $('nav-btn-confirm').textContent = '✓ Cheguei';
+    $('nav-btn-confirm').classList.remove('chegou');
+    jaAvisouChegada = false;
+  }
+}
+
+function confirmarEntrega(){
+  navIndex++;
+  if(navIndex >= rotaNavegacao.length){
+    if(navigator.vibrate) navigator.vibrate([100,50,100,50,200]);
+    showMsg('🎉 Rota concluída!','ok');
+    sairNavegacao();
+    return;
+  }
+  atualizarParadaAtual();
+  atualizarSetaNav();
+}
+function pularParada(){ confirmarEntrega(); }
+
 // ─── Globais ───────────────────────────────────────────────────────────────────
 window.showTab=showTab; window.fazerLogin=fazerLogin;
 window.analisarLista=analisarLista; window.fecharRota=fecharRota; window.copiarRota=copiarRota;
@@ -1164,6 +1377,9 @@ window.centralizarMapa=centralizarMapa; window.filtrarMapa=filtrarMapa;
 window.previewFoto=previewFoto; window.removerFoto=removerFoto; window.iniciarSalvar=iniciarSalvar;
 window.buscarEndereco=buscarEndereco; window.verNoMapa=verNoMapa; window.editarPinEncontrado=editarPinEncontrado;
 window.moverPin=moverPin; window.resetarPin=resetarPin; window.confirmarPin=confirmarPin;
+window.iniciarNavegacao=iniciarNavegacao; window.iniciarNavegacaoNoIndicePacote=iniciarNavegacaoNoIndicePacote;
+window.sairNavegacao=sairNavegacao; window.pedirPermissaoBussola=pedirPermissaoBussola;
+window.confirmarEntrega=confirmarEntrega; window.pularParada=pularParada;
 window.fecharModal=fecharModal;
 esperarLeaflet();
 </script>
