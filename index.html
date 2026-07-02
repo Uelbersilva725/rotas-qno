@@ -248,10 +248,14 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
       <div class="stat"><div class="num" id="stat-gps">0</div><div class="lbl">com GPS</div></div>
       <div class="stat"><div class="num" id="stat-foto">0</div><div class="lbl">com foto</div></div>
     </div>
-    <div class="map-toolbar">
+    <div class="map-toolbar" id="map-toolbar-admin">
       <select id="filtro-cidade" onchange="onFiltroCidadeChange()"><option value="">Todas cidades</option></select>
       <select id="filtro-bairro" onchange="onFiltroBairroChange()"><option value="">Todos bairros</option></select>
       <select id="filtro-quadra" onchange="filtrarMapa()"><option value="">Todas quadras</option></select>
+      <button class="btn-icon btn-green" onclick="centralizarMapa()">📍</button>
+    </div>
+    <div class="map-toolbar" id="map-toolbar-visitante" style="display:none;">
+      <span style="font-size:11px;color:#888;flex:1;padding:4px 2px;">🔍 Use "Buscar" ou "Rota" para localizar endereços</span>
       <button class="btn-icon btn-green" onclick="centralizarMapa()">📍</button>
     </div>
     <div id="map" style="position:relative;"><div class="loading-overlay" id="map-loading">⏳ Carregando mapa...</div></div>
@@ -481,7 +485,7 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const cfg = {
   apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",
@@ -503,8 +507,12 @@ window.__fb = {
   colCidades:   collection(db,'cidades'),
   colFaixas:    collection(db,'faixas')
 };
-window.__fbReady = true;
-window.dispatchEvent(new Event('fb-ready'));
+
+// Garante persistência explícita (mantém login salvo no navegador entre acessos)
+setPersistence(auth, browserLocalPersistence).finally(()=>{
+  window.__fbReady = true;
+  window.dispatchEvent(new Event('fb-ready'));
+});
 </script>
 <script>
 const UID_ADMIN = "vepKTSZjEiVNtPyzXG9CcPagnk83";
@@ -534,12 +542,31 @@ function showMsg(t,c){ const m=$('toast-msg'); m.textContent=t; m.className='toa
 function fecharModal(id){ $(id).classList.remove('open'); }
 function abrirModal(id){ $(id).classList.add('open'); }
 
+const SESSAO_DURACAO_MS = 24 * 60 * 60 * 1000; // 24 horas
+const CHAVE_SESSAO = 'rotasqno_login_ts';
+
 // ─── Firebase Init ─────────────────────────────────────────────────────────────
 function initFirebase(){
   fb = window.__fb;
 
   // Observa estado de autenticação
   fb.onAuthStateChanged(fb.auth, usuario => {
+    if(usuario){
+      const inicio = parseInt(localStorage.getItem(CHAVE_SESSAO) || '0', 10);
+      const agora = Date.now();
+      if(!inicio){
+        // Primeira vez que vemos essa sessão (login novo ou sessão anterior à esta atualização) — inicia o cronômetro agora
+        localStorage.setItem(CHAVE_SESSAO, agora.toString());
+      } else if(agora - inicio > SESSAO_DURACAO_MS){
+        // Sessão expirada (mais de 24h) — força logout
+        localStorage.removeItem(CHAVE_SESSAO);
+        fb.signOut(fb.auth);
+        showMsg('Sessão expirada. Faça login novamente.', 'err');
+        return;
+      }
+    } else {
+      localStorage.removeItem(CHAVE_SESSAO);
+    }
     usuarioAtual = usuario;
     if(usuario){
       nivelAcesso = usuario.uid === UID_ADMIN ? 'admin' : 'entregador';
@@ -597,11 +624,15 @@ function mostrarApp(usuario){
   $('login-screen').style.display='none';
   $('app').style.display='flex';
   const badge = $('user-badge');
-  if(nivelAcesso==='admin'){
+  const ehAdmin = nivelAcesso === 'admin';
+  if(ehAdmin){
     badge.textContent='Admin'; badge.className='user-badge admin';
   } else {
     badge.textContent='Entregador'; badge.className='user-badge entregador';
   }
+  $('map-toolbar-admin').style.display = ehAdmin ? 'flex' : 'none';
+  $('map-toolbar-visitante').style.display = ehAdmin ? 'none' : 'flex';
+  if(mapReady) filtrarMapa(); // reaplica a regra de visibilidade dos pins se o mapa já estava carregado
   solicitarGPS();
 }
 async function fazerLogin(){
@@ -617,6 +648,7 @@ async function fazerLogin(){
     if(!f){ throw new Error('Firebase não carregado (window.__fb indefinido)'); }
     if(!f.auth){ throw new Error('Firebase Auth não inicializado (f.auth indefinido)'); }
     await f.signInWithEmailAndPassword(f.auth, email, senha);
+    localStorage.setItem(CHAVE_SESSAO, Date.now().toString());
   } catch(e){
     console.error('[Login] Erro completo:', e);
     const msgs = {
@@ -633,6 +665,7 @@ async function fazerLogin(){
 }
 async function fazerLogout(){
   if(!confirm('Deseja sair?')) return;
+  localStorage.removeItem(CHAVE_SESSAO);
   await fb.signOut(fb.auth);
 }
 function abrirCadastro(){ abrirModal('acesso-modal'); }
@@ -760,6 +793,7 @@ function centralizarMapa(){ if(!map)return; if(posicaoAtual) map.setView([posica
 function filtrarMapa(){
   if(!markersLayer)return;
   markersLayer.clearLayers();
+  if(nivelAcesso !== 'admin') return; // pins do mapa geral visíveis apenas para o administrador
   const cidade=$('filtro-cidade').value, bairro=$('filtro-bairro').value, quadra=$('filtro-quadra').value;
   let f=registros;
   if(cidade) f=f.filter(r=>r.cidade===cidade);

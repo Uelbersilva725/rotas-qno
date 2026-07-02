@@ -170,7 +170,10 @@ tr:hover td{background:#FAFBFC}
     <div class="nav-item" onclick="navTo('registros',this)"><span class="nav-icon">📋</span> Registros</div>
     <div class="nav-item" onclick="navTo('cidades',this)"><span class="nav-icon">🏙</span> Cidades</div>
     <div class="nav-item" onclick="navTo('faixas',this)"><span class="nav-icon">📏</span> Faixas</div>
+    <div class="nav-section" id="nav-section-admin" style="display:none;">Administração</div>
+    <div class="nav-item" id="nav-item-usuarios" onclick="navTo('usuarios',this)" style="display:none;"><span class="nav-icon">👥</span> Usuários</div>
     <div class="sidebar-footer">
+      <div id="papel-badge" style="font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;display:inline-block;margin-bottom:8px;background:rgba(29,158,117,.2);color:var(--green);"></div>
       <div class="sync-indicator">
         <div class="sync-dot" id="sync-dot"></div>
         <span id="sync-text">Conectando...</span>
@@ -248,7 +251,7 @@ tr:hover td{background:#FAFBFC}
         <div class="col-panel">
           <div class="col-panel-title">🏙 Cidades <span id="cidades-count" style="font-size:11px;color:var(--text-3);font-weight:400;"></span></div>
           <div id="cidades-list"></div>
-          <button class="add-btn" onclick="abrirModalNovaCidade()">＋ Nova cidade</button>
+          <button class="add-btn" id="btn-add-cidade" onclick="abrirModalNovaCidade()">＋ Nova cidade</button>
         </div>
         <!-- Bairros -->
         <div class="col-panel">
@@ -289,6 +292,42 @@ tr:hover td{background:#FAFBFC}
           </table>
         </div>
         <div class="pagination" id="faixas-paginacao"></div>
+      </div>
+    </div>
+
+    <!-- USUÁRIOS (apenas admin raiz) -->
+    <div class="page" id="page-usuarios">
+      <div class="page-title">Gerenciar Usuários</div>
+      <div class="page-sub">Adicione supervisores e escolha exatamente o que cada um pode ver e editar no painel.</div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-title">➕ Adicionar supervisor</div>
+        <p style="font-size:12px;color:var(--text-3);margin-bottom:14px;line-height:1.5;">
+          Primeiro crie o login dele em <b>Firebase Console → Authentication → Add user</b> (e-mail e senha).
+          Depois copie o <b>UID</b> gerado (aparece na tabela de usuários do Firebase) e cole abaixo.
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+          <div>
+            <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">UID do usuário (Firebase Auth)</label>
+            <input type="text" id="novo-sup-uid" placeholder="Ex: aZ8k3..." style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;"/>
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">E-mail (só identificação)</label>
+            <input type="email" id="novo-sup-email" placeholder="amigo@email.com" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;"/>
+          </div>
+        </div>
+        <div class="perm-grid" style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="novo-sup-p-editarReg"/> ✏️ Editar Registros</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="novo-sup-p-excluirReg"/> 🗑 Excluir Registros</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="novo-sup-p-editarCid"/> 🏙 Editar Cidades</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="novo-sup-p-editarFaixas"/> 📏 Editar Faixas</label>
+        </div>
+        <button class="btn-acao" style="background:var(--green);color:#fff;border-color:var(--green-dark);padding:9px 18px;" onclick="salvarNovoSupervisor()">💾 Adicionar supervisor</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">👥 Supervisores cadastrados</div>
+        <div id="lista-supervisores"></div>
       </div>
     </div>
   </div>
@@ -359,20 +398,24 @@ tr:hover td{background:#FAFBFC}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, doc, setDoc, addDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 const cfg={apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",authDomain:"app-rotas-68cf4.firebaseapp.com",projectId:"app-rotas-68cf4",storageBucket:"app-rotas-68cf4.firebasestorage.app",messagingSenderId:"400409767391",appId:"1:400409767391:web:0bcebe50738d6d3450a86a"};
 const fapp=initializeApp(cfg);
 const db=getFirestore(fapp);
 const auth=getAuth(fapp);
-window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas')};
-window.__fbReady=true;
-window.dispatchEvent(new Event('fb-ready'));
+window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas'),colUsuarios:collection(db,'usuarios')};
+setPersistence(auth, browserLocalPersistence).finally(()=>{
+  window.__fbReady=true;
+  window.dispatchEvent(new Event('fb-ready'));
+});
 </script>
 <script>
 const UID_ADMIN="vepKTSZjEiVNtPyzXG9CcPagnk83";
 const CENTER=[-15.8485,-48.1080];
 const POR_PAG=20;
 const CORES_PAD=['#1D9E75','#378ADD','#D85A30','#BA7517','#D4537E','#7B5EA7','#2D9CDB','#F2994A'];
+const SESSAO_DURACAO_MS = 24 * 60 * 60 * 1000; // 24 horas
+const CHAVE_SESSAO_ADMIN = 'rotasqno_admin_login_ts';
 
 let registros=[],CIDADES={},fb=null;
 let adminMap=null,adminLayer=null,adminMapReady=false;
@@ -380,11 +423,105 @@ let pag=1,editandoId=null;
 let cidSel=null,bairSel=null;
 let novaBairroParaCidade=null,novaQuadraParaBairro=null,novaQuadraParaCidade=null;
 
+// ─── Permissões ───────────────────────────────────────────────────────────────
+let ehAdminRaiz = false;
+let permissoesAtuais = { editarReg:false, excluirReg:false, editarCid:false, editarFaixas:false };
+let USUARIOS = {}; // supervisores cadastrados (para a página Usuários)
+let unsubUsuarioAtual = null;
+
+const PERMISSOES_PADRAO_ADMIN = { editarReg:true, excluirReg:true, editarCid:true, editarFaixas:true };
+
 function ordenar(keys){return [...keys].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));}
 function getCidadeByNome(nome){ return Object.values(CIDADES).find(c=>c.nome===nome); }
 function corBairro(cidade,bairro){
   const cid=getCidadeByNome(cidade);
   return cid?.bairros?.[bairro]?.cor||cid?.cor||'#888';
+}
+
+// ─── Sessão persistente do admin/supervisor (24h) ─────────────────────────────
+// Detecta automaticamente se já existe uma sessão válida ao carregar a página,
+// sem nunca deslogar sessões de outros papéis (ex: entregador logado no app principal).
+function iniciarObservadorSessao(){
+  fb = window.__fb;
+  fb.onAuthStateChanged(fb.auth, usuario => {
+    if(unsubUsuarioAtual){ unsubUsuarioAtual(); unsubUsuarioAtual = null; }
+
+    if(!usuario){
+      document.getElementById('login-screen').style.display='flex';
+      document.getElementById('admin-screen').style.display='none';
+      return;
+    }
+
+    if(usuario.uid === UID_ADMIN){
+      // Admin raiz — acesso total, sem depender de nenhum documento no Firestore
+      const inicio = parseInt(localStorage.getItem(CHAVE_SESSAO_ADMIN) || '0', 10);
+      const agora = Date.now();
+      if(!inicio){
+        localStorage.setItem(CHAVE_SESSAO_ADMIN, agora.toString());
+      } else if(agora - inicio > SESSAO_DURACAO_MS){
+        localStorage.removeItem(CHAVE_SESSAO_ADMIN);
+        fb.signOut(fb.auth);
+        return;
+      }
+      ehAdminRaiz = true;
+      permissoesAtuais = { ...PERMISSOES_PADRAO_ADMIN };
+      abrirPainelComPermissoes();
+      return;
+    }
+
+    // Não é o admin raiz — verifica se é um supervisor autorizado (escuta em tempo real
+    // para refletir mudanças de permissão imediatamente, sem precisar relogar)
+    unsubUsuarioAtual = fb.onSnapshot(fb.doc(fb.db,'usuarios',usuario.uid), snap => {
+      if(snap.exists() && snap.data().role === 'supervisor'){
+        const inicio = parseInt(localStorage.getItem(CHAVE_SESSAO_ADMIN) || '0', 10);
+        const agora = Date.now();
+        if(!inicio){
+          localStorage.setItem(CHAVE_SESSAO_ADMIN, agora.toString());
+        } else if(agora - inicio > SESSAO_DURACAO_MS){
+          localStorage.removeItem(CHAVE_SESSAO_ADMIN);
+          fb.signOut(fb.auth);
+          return;
+        }
+        ehAdminRaiz = false;
+        const p = snap.data().permissoes || {};
+        permissoesAtuais = {
+          editarReg: !!p.editarReg, excluirReg: !!p.excluirReg,
+          editarCid: !!p.editarCid, editarFaixas: !!p.editarFaixas
+        };
+        abrirPainelComPermissoes();
+      } else {
+        // Logado mas sem permissão de supervisor — nega acesso ao painel,
+        // sem deslogar (pode ser um entregador comum usando o mesmo navegador).
+        document.getElementById('login-screen').style.display='flex';
+        document.getElementById('admin-screen').style.display='none';
+        document.getElementById('login-err').textContent = 'Este usuário não tem acesso ao painel.';
+        document.getElementById('login-err').style.display = 'block';
+      }
+    });
+  });
+}
+if(window.__fbReady) iniciarObservadorSessao();
+else window.addEventListener('fb-ready', iniciarObservadorSessao);
+
+function abrirPainelComPermissoes(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('admin-screen').style.display='block';
+  atualizarUIPermissoes();
+  iniciarFb();
+}
+
+function atualizarUIPermissoes(){
+  const badge = document.getElementById('papel-badge');
+  badge.textContent = ehAdminRaiz ? '👑 Administrador' : '🛡 Supervisor';
+  badge.style.background = ehAdminRaiz ? 'rgba(29,158,117,.2)' : 'rgba(55,138,221,.2)';
+  badge.style.color = ehAdminRaiz ? 'var(--green)' : 'var(--blue)';
+  document.getElementById('nav-section-admin').style.display = ehAdminRaiz ? 'block' : 'none';
+  document.getElementById('nav-item-usuarios').style.display = ehAdminRaiz ? 'flex' : 'none';
+  // Re-renderiza páginas já visíveis para aplicar/remover botões de ação
+  if(document.getElementById('page-registros').classList.contains('active')) renderTabela();
+  if(document.getElementById('page-cidades').classList.contains('active') && cidSel) renderQuadrasCol();
+  if(document.getElementById('page-cidades').classList.contains('active')) renderCidadesList();
+  if(document.getElementById('page-faixas').classList.contains('active')) renderFaixasTabela();
 }
 
 async function entrar(){
@@ -396,16 +533,9 @@ async function entrar(){
   if(!window.__fbReady){ err.textContent='Aguarde o carregamento e tente novamente.'; err.style.display='block'; return; }
   fb=window.__fb;
   try {
-    const cred = await fb.signInWithEmailAndPassword(fb.auth, email, senha);
-    if(cred.user.uid !== UID_ADMIN){
-      await fb.signOut(fb.auth);
-      err.textContent='Este painel é exclusivo do administrador.';
-      err.style.display='block';
-      return;
-    }
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('admin-screen').style.display='block';
-    iniciarFb();
+    await fb.signInWithEmailAndPassword(fb.auth, email, senha);
+    // Login válido — o observador de sessão (iniciarObservadorSessao) verifica se é
+    // o admin raiz ou um supervisor autorizado, e libera (ou nega) o painel automaticamente.
   } catch(e){
     const msgs={'auth/user-not-found':'Usuário não encontrado.','auth/wrong-password':'Senha incorreta.','auth/invalid-credential':'E-mail ou senha incorretos.','auth/invalid-email':'E-mail inválido.'};
     err.textContent=msgs[e.code]||'Erro: '+e.code;
@@ -413,7 +543,10 @@ async function entrar(){
   }
 }
 
+let fbListenersIniciados = false;
 function iniciarFb(){
+  if(fbListenersIniciados) return; // evita duplicar listeners se as permissões mudarem em tempo real
+  fbListenersIniciados = true;
   atualizarSync('buscando','Conectando...');
   const go=()=>{
     fb=window.__fb;
@@ -435,6 +568,13 @@ function iniciarFb(){
       snap.docs.forEach(d=>{ FAIXAS[d.id]={id:d.id,...d.data()}; });
       if(document.getElementById('page-faixas').classList.contains('active')) renderFaixasTabela();
     },err=>console.error('[Faixas]',err));
+    if(ehAdminRaiz){
+      fb.onSnapshot(fb.query(fb.colUsuarios),snap=>{
+        USUARIOS={};
+        snap.docs.forEach(d=>{ USUARIOS[d.id]={id:d.id,...d.data()}; });
+        if(document.getElementById('page-usuarios').classList.contains('active')) renderListaSupervisores();
+      },err=>console.error('[Usuarios]',err));
+    }
   };
   if(window.__fbReady)go(); else window.addEventListener('fb-ready',go);
 }
@@ -451,6 +591,7 @@ function atualizarTudo(){
 }
 
 function navTo(page,el){
+  if(page==='usuarios' && !ehAdminRaiz) return; // proteção extra — só admin raiz acessa
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
@@ -459,6 +600,7 @@ function navTo(page,el){
   if(page==='registros')renderTabela();
   if(page==='cidades')renderCidadesList();
   if(page==='faixas')renderFaixasTabela();
+  if(page==='usuarios')renderListaSupervisores();
 }
 
 // ─── Selects ──────────────────────────────────────────────────────────────────
@@ -572,6 +714,7 @@ function renderFaixasTabela(){
   if(faixasPag > totalPags) faixasPag = 1;
   const pagina = lista.slice((faixasPag-1)*FAIXAS_POR_PAG, faixasPag*FAIXAS_POR_PAG);
 
+  const podeEditarFaixas = ehAdminRaiz || permissoesAtuais.editarFaixas;
   document.getElementById('faixas-body').innerHTML = pagina.map(x=>{
     const f = x.faixa;
     const cob = contarCoberturaConjunto(x.cidade,x.bairro,x.quadra,x.conjunto,f);
@@ -580,21 +723,22 @@ function renderFaixasTabela(){
       ? `<div style="font-size:11px;color:var(--text-2);">${cob.confirmadas}/${cob.esperado}</div>
          <div class="progress-bar" style="width:70px;"><div class="progress-fill" style="width:${cob.pct}%;background:${corBarra};"></div></div>`
       : `<span style="font-size:11px;color:var(--text-3);">${cob.confirmadas} confirmadas</span>`;
+    const dis = podeEditarFaixas ? '' : 'disabled';
     return `<tr>
       <td style="font-size:12px;">${x.bairro}</td>
       <td>${x.quadra}</td>
       <td><b>${x.conjunto}</b></td>
-      <td><input type="number" class="faixa-input" id="min-${x.id}" value="${f?.min ?? ''}" placeholder="—" style="width:60px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;"/></td>
-      <td><input type="number" class="faixa-input" id="max-${x.id}" value="${f?.max ?? ''}" placeholder="—" style="width:60px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;"/></td>
+      <td><input type="number" class="faixa-input" id="min-${x.id}" value="${f?.min ?? ''}" placeholder="—" ${dis} style="width:60px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;${podeEditarFaixas?'':'background:#f5f5f5;color:#999;'}"/></td>
+      <td><input type="number" class="faixa-input" id="max-${x.id}" value="${f?.max ?? ''}" placeholder="—" ${dis} style="width:60px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;${podeEditarFaixas?'':'background:#f5f5f5;color:#999;'}"/></td>
       <td>
-        <select id="tipo-${x.id}" style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+        <select id="tipo-${x.id}" ${dis} style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;${podeEditarFaixas?'':'background:#f5f5f5;color:#999;'}">
           <option value="todas" ${f?.tipo==='todas'||!f?.tipo?'selected':''}>Todas</option>
           <option value="pares" ${f?.tipo==='pares'?'selected':''}>Pares</option>
           <option value="impares" ${f?.tipo==='impares'?'selected':''}>Ímpares</option>
         </select>
       </td>
       <td>${coberturaHtml}</td>
-      <td><button class="btn-acao" onclick="salvarFaixa('${x.id}','${x.cidade}','${x.bairro}','${x.quadra}','${x.conjunto}')">💾 Salvar</button></td>
+      <td>${podeEditarFaixas?`<button class="btn-acao" onclick="salvarFaixa('${x.id}','${x.cidade}','${x.bairro}','${x.quadra}','${x.conjunto}')">💾 Salvar</button>`:'<span style="font-size:11px;color:var(--text-3);">Somente leitura</span>'}</td>
     </tr>`;
   }).join('');
 
@@ -605,6 +749,7 @@ function renderFaixasTabela(){
 function irParaFaixas(p){ faixasPag=p; renderFaixasTabela(); }
 
 async function salvarFaixa(id, cidade, bairro, quadra, conjunto){
+  if(!ehAdminRaiz && !permissoesAtuais.editarFaixas){ alert('Você não tem permissão para editar faixas.'); return; }
   const minVal = document.getElementById('min-'+id).value;
   const maxVal = document.getElementById('max-'+id).value;
   const tipo = document.getElementById('tipo-'+id).value;
@@ -696,8 +841,9 @@ function renderTabela(){
     <td>${r.lat?'<span class="badge badge-gps">✓</span>':'<span style="color:var(--text-3);">—</span>'}</td>
     <td style="font-size:11px;color:var(--text-3);">${r.ts||'—'}</td>
     <td><div class="td-acoes">
-      <button class="btn-acao" onclick="abrirEditModal('${r.id}')">✏️</button>
-      <button class="btn-acao del" onclick="excluir('${r.id}')">🗑</button>
+      ${(ehAdminRaiz||permissoesAtuais.editarReg)?`<button class="btn-acao" onclick="abrirEditModal('${r.id}')">✏️</button>`:''}
+      ${(ehAdminRaiz||permissoesAtuais.excluirReg)?`<button class="btn-acao del" onclick="excluir('${r.id}')">🗑</button>`:''}
+      ${(!ehAdminRaiz&&!permissoesAtuais.editarReg&&!permissoesAtuais.excluirReg)?`<span style="font-size:11px;color:var(--text-3);">Somente leitura</span>`:''}
     </div></td>
   </tr>`).join('');
   let pags=`<span>${total} registros</span>`;
@@ -748,6 +894,9 @@ function renderLegendaMapa(){
 
 // ─── Gerenciar Cidades ────────────────────────────────────────────────────────
 function renderCidadesList(){
+  const podeEditar = ehAdminRaiz || permissoesAtuais.editarCid;
+  const btnAddCidade = document.getElementById('btn-add-cidade');
+  if(btnAddCidade) btnAddCidade.style.display = podeEditar?'flex':'none';
   const div=document.getElementById('cidades-list');
   const lista=Object.values(CIDADES);
   document.getElementById('cidades-count').textContent=lista.length?`(${lista.length})`:'';
@@ -759,7 +908,7 @@ function renderCidadesList(){
       <div class="list-item-dot" style="background:${cid?.cor||'#888'}"></div>
       <div class="list-item-name">${nome}</div>
       <div class="list-item-count">${nBairros} bairros</div>
-      <button class="list-item-del" onclick="event.stopPropagation();excluirCidade('${cid?.id}')" title="Excluir">✕</button>
+      ${podeEditar?`<button class="list-item-del" onclick="event.stopPropagation();excluirCidade('${cid?.id}')" title="Excluir">✕</button>`:''}
     </div>`;
   }).join('');
 }
@@ -768,11 +917,12 @@ function selecionarCidade(id){
   cidSel=id; bairSel=null;
   renderCidadesList();
   renderBairrosList();
-  document.getElementById('btn-add-bairro').style.display='block';
+  document.getElementById('btn-add-bairro').style.display=(ehAdminRaiz||permissoesAtuais.editarCid)?'block':'none';
   document.getElementById('quadras-col').innerHTML='<div class="empty-panel"><span class="icon">👈</span>Selecione um bairro</div>';
 }
 
 function renderBairrosList(){
+  const podeEditar = ehAdminRaiz || permissoesAtuais.editarCid;
   const div=document.getElementById('bairros-list');
   if(!cidSel){ div.innerHTML='<div class="empty-panel"><span class="icon">👈</span>Selecione uma cidade</div>'; return; }
   const cid=CIDADES[cidSel];
@@ -785,7 +935,7 @@ function renderBairrosList(){
     <div class="list-item-dot" style="background:${bairros[b]?.cor||cid.cor||'#888'}"></div>
     <div class="list-item-name">${b}</div>
     <div class="list-item-count">${Object.keys(bairros[b]?.quadras||{}).length} quadras</div>
-    <button class="list-item-del" onclick="event.stopPropagation();excluirBairro('${b}')" title="Excluir">✕</button>
+    ${podeEditar?`<button class="list-item-del" onclick="event.stopPropagation();excluirBairro('${b}')" title="Excluir">✕</button>`:''}
   </div>`).join('');
 }
 
@@ -796,6 +946,7 @@ function selecionarBairro(bairro){
 }
 
 function renderQuadrasCol(){
+  const podeEditar = ehAdminRaiz || permissoesAtuais.editarCid;
   const col=document.getElementById('quadras-col');
   if(!cidSel||!bairSel){ col.innerHTML='<div class="empty-panel"><span class="icon">👈</span>Selecione um bairro</div>'; return; }
   const cid=CIDADES[cidSel];
@@ -809,20 +960,20 @@ function renderQuadrasCol(){
     return `<div class="quadra-row-edit">
       <div class="quadra-row-edit-header">
         <div class="quadra-row-edit-name">${q} <span style="font-size:11px;color:var(--text-3);font-weight:400;">(${cjs.length} conj.)</span></div>
-        <button class="btn-acao del" style="font-size:11px;padding:3px 8px;" onclick="excluirQuadra('${safeQ}')">🗑 Excluir</button>
+        ${podeEditar?`<button class="btn-acao del" style="font-size:11px;padding:3px 8px;" onclick="excluirQuadra('${safeQ}')">🗑 Excluir</button>`:''}
       </div>
       <div class="conjuntos-grid" id="cjs-${safeQ.replace(/\s/g,'_')}">
-        ${cjs.map(c=>`<div class="cj-tag">${c}<button class="cj-tag-del" onclick="excluirConjunto('${safeQ}','${c}')">✕</button></div>`).join('')}
+        ${cjs.map(c=>`<div class="cj-tag">${c}${podeEditar?`<button class="cj-tag-del" onclick="excluirConjunto('${safeQ}','${c}')">✕</button>`:''}</div>`).join('')}
         ${!cjs.length?'<span style="font-size:12px;color:var(--text-3);">Sem conjuntos.</span>':''}
       </div>
-      <div class="inline-add" style="margin-top:8px;">
+      ${podeEditar?`<div class="inline-add" style="margin-top:8px;">
         <input type="text" placeholder="Novo conjunto..." id="inp-${safeQ.replace(/\s/g,'_')}"
           onkeydown="if(event.key==='Enter')adicionarConjunto('${safeQ}')"/>
         <button onclick="adicionarConjunto('${safeQ}')">+ Add</button>
-      </div>
+      </div>`:''}
     </div>`;
   }).join('');
-  html+=`<button class="add-btn" style="margin-top:8px;" onclick="abrirModalNovaQuadra()">＋ Nova quadra/rua</button>`;
+  if(podeEditar) html+=`<button class="add-btn" style="margin-top:8px;" onclick="abrirModalNovaQuadra()">＋ Nova quadra/rua</button>`;
   col.innerHTML=html;
 }
 
@@ -833,6 +984,7 @@ function abrirModalNovaCidade(){
   abrirModal('modal-nova-cidade');
 }
 async function salvarNovaCidade(){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
   const nome=document.getElementById('nova-cidade-nome').value.trim();
   const cor=document.getElementById('nova-cidade-cor').value;
   if(!nome){alert('Digite o nome.');return;}
@@ -841,6 +993,7 @@ async function salvarNovaCidade(){
   catch(e){alert('Erro: '+(e.message||e.code));}
 }
 async function excluirCidade(id){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
   const cid=CIDADES[id];
   if(registros.some(r=>r.cidade===cid?.nome)){alert('Existem registros nesta cidade. Exclua-os primeiro.');return;}
   if(!confirm('Excluir "'+cid?.nome+'" e todos seus bairros?'))return;
@@ -857,6 +1010,7 @@ function abrirModalNovoBairro(){
   abrirModal('modal-novo-bairro');
 }
 async function salvarNovoBairro(){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
   const nome=document.getElementById('novo-bairro-nome').value.trim();
   const cor=document.getElementById('novo-bairro-cor').value;
   if(!nome){alert('Digite o nome.');return;}
@@ -867,6 +1021,7 @@ async function salvarNovoBairro(){
   catch(e){alert('Erro: '+e.message);}
 }
 async function excluirBairro(bairro){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
   const cid=CIDADES[cidSel];
   if(registros.some(r=>r.bairro===bairro)){alert('Existem registros neste bairro. Exclua-os primeiro.');return;}
   if(!confirm('Excluir bairro "'+bairro+'"?'))return;
@@ -884,6 +1039,7 @@ function abrirModalNovaQuadra(){
   abrirModal('modal-nova-quadra');
 }
 async function salvarNovaQuadra(){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
   const nome=document.getElementById('nova-quadra-nome').value.trim();
   if(!nome){alert('Digite o nome.');return;}
   const cid=CIDADES[novaQuadraParaCidade];
@@ -896,6 +1052,7 @@ async function salvarNovaQuadra(){
   catch(e){alert('Erro: '+e.message);}
 }
 async function excluirQuadra(quadra){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
   const cid=CIDADES[cidSel];
   if(registros.some(r=>r.quadra===quadra&&r.bairro===bairSel)){alert('Existem registros nesta quadra. Exclua-os primeiro.');return;}
   if(!confirm('Excluir quadra "'+quadra+'"?'))return;
@@ -907,6 +1064,7 @@ async function excluirQuadra(quadra){
   catch(e){alert('Erro: '+e.message);}
 }
 async function adicionarConjunto(quadra){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
   const key='inp-'+quadra.replace(/\s/g,'_');
   const inp=document.getElementById(key);
   const val=(inp?.value||'').trim();
@@ -923,6 +1081,7 @@ async function adicionarConjunto(quadra){
   catch(e){alert('Erro: '+e.message);}
 }
 async function excluirConjunto(quadra,cj){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
   if(!confirm('Remover "'+cj+'" de "'+quadra+'"?'))return;
   const cid=CIDADES[cidSel];
   const bairros={...(cid?.bairros||{})};
@@ -935,6 +1094,7 @@ async function excluirConjunto(quadra,cj){
 
 // ─── Editar / Excluir registros ───────────────────────────────────────────────
 function abrirEditModal(id){
+  if(!ehAdminRaiz && !permissoesAtuais.editarReg){ alert('Você não tem permissão para editar registros.'); return; }
   const r=registros.find(x=>x.id===id); if(!r) return;
   editandoId=id;
   document.getElementById('edit-modal-title').textContent='Editar · '+r.quadra+' Casa '+r.casa;
@@ -949,6 +1109,7 @@ async function salvarEditObs(){
   catch(e){alert('Erro: '+(e.code||e.message));}
 }
 async function excluir(id){
+  if(!ehAdminRaiz && !permissoesAtuais.excluirReg){ alert('Você não tem permissão para excluir registros.'); return; }
   if(!confirm('Excluir este registro?'))return;
   try{ await fb.deleteDoc(fb.doc(fb.db,'registros',id)); }
   catch(e){alert('Erro: '+(e.code||e.message));}
@@ -956,13 +1117,84 @@ async function excluir(id){
 function verFoto(url){ document.getElementById('foto-modal-img').src=url; document.getElementById('foto-modal').classList.add('open'); }
 function abrirModal(id){document.getElementById(id).classList.add('open');}
 function fecharModal(id){document.getElementById(id).classList.remove('open');}
+
+// ─── Gerenciar Usuários (supervisores) — apenas admin raiz ────────────────────
+async function salvarNovoSupervisor(){
+  const uid = document.getElementById('novo-sup-uid').value.trim();
+  const email = document.getElementById('novo-sup-email').value.trim();
+  if(!uid || !email){ alert('Preencha o UID e o e-mail.'); return; }
+  if(USUARIOS[uid]){ alert('Já existe um supervisor com esse UID.'); return; }
+  const permissoes = {
+    editarReg: document.getElementById('novo-sup-p-editarReg').checked,
+    excluirReg: document.getElementById('novo-sup-p-excluirReg').checked,
+    editarCid: document.getElementById('novo-sup-p-editarCid').checked,
+    editarFaixas: document.getElementById('novo-sup-p-editarFaixas').checked,
+  };
+  try{
+    await fb.setDoc(fb.doc(fb.db,'usuarios',uid), { email, role:'supervisor', permissoes, criadoEm: new Date().toISOString() });
+    document.getElementById('novo-sup-uid').value='';
+    document.getElementById('novo-sup-email').value='';
+    ['editarReg','excluirReg','editarCid','editarFaixas'].forEach(k=>{ document.getElementById('novo-sup-p-'+k).checked=false; });
+    alert('Supervisor adicionado com sucesso!');
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
+function renderListaSupervisores(){
+  const div = document.getElementById('lista-supervisores');
+  const lista = Object.values(USUARIOS).filter(u=>u.role==='supervisor');
+  if(!lista.length){ div.innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:10px 0;">Nenhum supervisor cadastrado ainda.</div>'; return; }
+  div.innerHTML = lista.map(u=>{
+    const p = u.permissoes||{};
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div>
+          <div style="font-size:13px;font-weight:600;">${u.email||u.id}</div>
+          <div style="font-size:10px;color:var(--text-3);">UID: ${u.id}</div>
+        </div>
+        <button class="btn-acao del" onclick="removerSupervisor('${u.id}')">🗑 Remover acesso</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="edit-sup-${u.id}-editarReg" ${p.editarReg?'checked':''}/> ✏️ Editar Registros</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="edit-sup-${u.id}-excluirReg" ${p.excluirReg?'checked':''}/> 🗑 Excluir Registros</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="edit-sup-${u.id}-editarCid" ${p.editarCid?'checked':''}/> 🏙 Editar Cidades</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="edit-sup-${u.id}-editarFaixas" ${p.editarFaixas?'checked':''}/> 📏 Editar Faixas</label>
+      </div>
+      <button class="btn-acao" style="margin-top:10px;background:var(--green);color:#fff;border-color:var(--green-dark);" onclick="salvarPermissoesSupervisor('${u.id}')">💾 Salvar permissões</button>
+    </div>`;
+  }).join('');
+}
+
+async function salvarPermissoesSupervisor(uid){
+  const u = USUARIOS[uid];
+  if(!u) return;
+  const permissoes = {
+    editarReg: document.getElementById('edit-sup-'+uid+'-editarReg').checked,
+    excluirReg: document.getElementById('edit-sup-'+uid+'-excluirReg').checked,
+    editarCid: document.getElementById('edit-sup-'+uid+'-editarCid').checked,
+    editarFaixas: document.getElementById('edit-sup-'+uid+'-editarFaixas').checked,
+  };
+  try{
+    await fb.setDoc(fb.doc(fb.db,'usuarios',uid), { ...u, permissoes });
+    alert('Permissões atualizadas!');
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
+async function removerSupervisor(uid){
+  if(!confirm('Remover o acesso deste supervisor ao painel? Ele continuará podendo usar o app de entregas normalmente.')) return;
+  try{ await fb.deleteDoc(fb.doc(fb.db,'usuarios',uid)); }
+  catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
 async function sairAdmin(){
   if(!confirm('Deseja sair do painel?')) return;
+  localStorage.removeItem(CHAVE_SESSAO_ADMIN);
   if(fb) await fb.signOut(fb.auth);
   location.reload();
 }
 
 window.entrar=entrar; window.navTo=navTo; window.irPara=irPara; window.sairAdmin=sairAdmin;
+window.salvarNovoSupervisor=salvarNovoSupervisor; window.salvarPermissoesSupervisor=salvarPermissoesSupervisor;
+window.removerSupervisor=removerSupervisor; window.renderListaSupervisores=renderListaSupervisores;
 window.onFaixasCidadeChange=onFaixasCidadeChange; window.renderFaixasTabela=renderFaixasTabela;
 window.salvarFaixa=salvarFaixa; window.irParaFaixas=irParaFaixas;
 window.renderTabela=renderTabela; window.onTabCidadeChange=onTabCidadeChange; window.onTabBairroChange=onTabBairroChange;
