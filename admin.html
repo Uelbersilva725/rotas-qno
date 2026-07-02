@@ -169,6 +169,7 @@ tr:hover td{background:#FAFBFC}
     <div class="nav-section">Dados</div>
     <div class="nav-item" onclick="navTo('registros',this)"><span class="nav-icon">📋</span> Registros</div>
     <div class="nav-item" onclick="navTo('cidades',this)"><span class="nav-icon">🏙</span> Cidades</div>
+    <div class="nav-item" onclick="navTo('faixas',this)"><span class="nav-icon">📏</span> Faixas</div>
     <div class="sidebar-footer">
       <div class="sync-indicator">
         <div class="sync-dot" id="sync-dot"></div>
@@ -261,6 +262,35 @@ tr:hover td{background:#FAFBFC}
         </div>
       </div>
     </div>
+
+    <!-- FAIXAS -->
+    <div class="page" id="page-faixas">
+      <div class="page-title">Faixas de Numeração</div>
+      <div class="page-sub">Cadastre a faixa de casas de cada conjunto (ex: 1 a 40). Isso permite validar CSVs importados e calcular a cobertura real de mapeamento — sem sobrecarregar o banco com um documento por casa.</div>
+      <div class="card">
+        <div class="table-toolbar">
+          <input type="text" id="faixas-busca" placeholder="🔍  Buscar conjunto..." oninput="renderFaixasTabela()"/>
+          <select id="faixas-cidade" onchange="onFaixasCidadeChange()"><option value="">Todas cidades</option></select>
+          <select id="faixas-bairro" onchange="renderFaixasTabela()"><option value="">Todos bairros</option></select>
+          <select id="faixas-status" onchange="renderFaixasTabela()">
+            <option value="">Todos</option>
+            <option value="sem_faixa">Sem faixa cadastrada</option>
+            <option value="com_faixa">Com faixa cadastrada</option>
+          </select>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Bairro</th><th>Quadra</th><th>Conjunto</th>
+              <th>Casa mín.</th><th>Casa máx.</th><th>Tipo</th>
+              <th>Cobertura</th><th>Ações</th>
+            </tr></thead>
+            <tbody id="faixas-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="faixas-paginacao"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -334,7 +364,7 @@ const cfg={apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",authDomain:"app-rota
 const fapp=initializeApp(cfg);
 const db=getFirestore(fapp);
 const auth=getAuth(fapp);
-window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades')};
+window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas')};
 window.__fbReady=true;
 window.dispatchEvent(new Event('fb-ready'));
 </script>
@@ -393,12 +423,18 @@ function iniciarFb(){
       renderSelectsCidades();
       renderCidadesList();
       renderLegendaMapa();
+      if(document.getElementById('page-faixas').classList.contains('active')) renderFaixasTabela();
     },err=>console.error('[Cidades]',err));
     fb.onSnapshot(fb.query(fb.colReg),snap=>{
       registros=snap.docs.map(d=>({id:d.id,...d.data()}));
       atualizarTudo();
       atualizarSync('ok',registros.length+' registros');
     },err=>atualizarSync('erro','Erro: '+err.code));
+    fb.onSnapshot(fb.query(fb.colFaixas),snap=>{
+      FAIXAS={};
+      snap.docs.forEach(d=>{ FAIXAS[d.id]={id:d.id,...d.data()}; });
+      if(document.getElementById('page-faixas').classList.contains('active')) renderFaixasTabela();
+    },err=>console.error('[Faixas]',err));
   };
   if(window.__fbReady)go(); else window.addEventListener('fb-ready',go);
 }
@@ -410,6 +446,7 @@ function atualizarSync(e,t){
 function atualizarTudo(){
   renderDashboard();
   if(document.getElementById('page-registros').classList.contains('active'))renderTabela();
+  if(document.getElementById('page-faixas').classList.contains('active'))renderFaixasTabela();
   if(adminMapReady)filtrarMapaAdmin();
 }
 
@@ -421,11 +458,12 @@ function navTo(page,el){
   if(page==='mapa')iniciarMapaAdmin();
   if(page==='registros')renderTabela();
   if(page==='cidades')renderCidadesList();
+  if(page==='faixas')renderFaixasTabela();
 }
 
 // ─── Selects ──────────────────────────────────────────────────────────────────
 function renderSelectsCidades(){
-  ['map-cidade','tab-cidade'].forEach(id=>{
+  ['map-cidade','tab-cidade','faixas-cidade'].forEach(id=>{
     const sel=document.getElementById(id); if(!sel) return;
     const val=sel.value;
     sel.innerHTML='<option value="">Todas cidades</option>';
@@ -468,6 +506,122 @@ function onTabBairroChange(){
   const cid=Object.values(CIDADES).find(c=>c.nome===cidade);
   if(cid?.bairros?.[bairro]?.quadras) ordenar(Object.keys(cid.bairros[bairro].quadras)).forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; selQ.appendChild(o); });
   renderTabela();
+}
+function onFaixasCidadeChange(){
+  const cidade=document.getElementById('faixas-cidade').value;
+  const selB=document.getElementById('faixas-bairro');
+  selB.innerHTML='<option value="">Todos bairros</option>';
+  const cid=Object.values(CIDADES).find(c=>c.nome===cidade);
+  if(cid?.bairros) ordenar(Object.keys(cid.bairros)).forEach(b=>{ const o=document.createElement('option'); o.value=b; o.textContent=b; selB.appendChild(o); });
+  renderFaixasTabela();
+}
+
+// ─── Faixas de numeração ────────────────────────────────────────────────────────
+let FAIXAS = {}; // { docId: {cidade,bairro,quadra,conjunto,min,max,tipo} }
+let faixasPag = 1;
+const FAIXAS_POR_PAG = 25;
+
+function idFaixa(cidade,bairro,quadra,conjunto){
+  return (cidade+'_'+bairro+'_'+quadra+'_'+conjunto).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+}
+
+// Monta lista de TODOS os conjuntos conhecidos (via Cidades) cruzando com faixas já cadastradas
+function listarTodosConjuntos(){
+  const lista = [];
+  Object.values(CIDADES).forEach(cid=>{
+    Object.entries(cid.bairros||{}).forEach(([bairroNome,bairroData])=>{
+      Object.entries(bairroData.quadras||{}).forEach(([quadraNome,conjuntos])=>{
+        (conjuntos||[]).forEach(cj=>{
+          const id = idFaixa(cid.nome,bairroNome,quadraNome,cj);
+          lista.push({ id, cidade:cid.nome, bairro:bairroNome, quadra:quadraNome, conjunto:cj, faixa: FAIXAS[id]||null });
+        });
+      });
+    });
+  });
+  return lista;
+}
+
+function contarCoberturaConjunto(cidade,bairro,quadra,conjunto,faixa){
+  const doConjunto = registros.filter(r => r.cidade===cidade && r.bairro===bairro && r.quadra===quadra && (''+r.conjunto)===(''+conjunto) && r.lat);
+  if(!faixa || faixa.min==null || faixa.max==null) return { confirmadas: doConjunto.length, esperado: null, pct: null };
+  let esperado;
+  if(faixa.tipo === 'pares' || faixa.tipo === 'impares') esperado = Math.floor((faixa.max - faixa.min)/2) + 1;
+  else esperado = faixa.max - faixa.min + 1;
+  esperado = Math.max(esperado, 1);
+  const pct = Math.min(100, Math.round(doConjunto.length / esperado * 100));
+  return { confirmadas: doConjunto.length, esperado, pct };
+}
+
+function renderFaixasTabela(){
+  const busca = (document.getElementById('faixas-busca').value||'').toLowerCase();
+  const cidade = document.getElementById('faixas-cidade').value;
+  const bairro = document.getElementById('faixas-bairro').value;
+  const status = document.getElementById('faixas-status').value;
+
+  let lista = listarTodosConjuntos();
+  if(cidade) lista = lista.filter(x=>x.cidade===cidade);
+  if(bairro) lista = lista.filter(x=>x.bairro===bairro);
+  if(status==='sem_faixa') lista = lista.filter(x=>!x.faixa);
+  if(status==='com_faixa') lista = lista.filter(x=>!!x.faixa);
+  if(busca) lista = lista.filter(x=> (x.bairro+' '+x.quadra+' '+x.conjunto).toLowerCase().includes(busca));
+
+  lista.sort((a,b)=> a.bairro.localeCompare(b.bairro) || a.quadra.localeCompare(b.quadra,undefined,{numeric:true}) || (''+a.conjunto).localeCompare(''+b.conjunto,undefined,{numeric:true}));
+
+  const total = lista.length;
+  const totalPags = Math.max(1, Math.ceil(total/FAIXAS_POR_PAG));
+  if(faixasPag > totalPags) faixasPag = 1;
+  const pagina = lista.slice((faixasPag-1)*FAIXAS_POR_PAG, faixasPag*FAIXAS_POR_PAG);
+
+  document.getElementById('faixas-body').innerHTML = pagina.map(x=>{
+    const f = x.faixa;
+    const cob = contarCoberturaConjunto(x.cidade,x.bairro,x.quadra,x.conjunto,f);
+    const corBarra = cob.pct==null ? '#ccc' : cob.pct>=80?'#1D9E75':cob.pct>=40?'#EF9F27':'#E24B4A';
+    const coberturaHtml = cob.esperado
+      ? `<div style="font-size:11px;color:var(--text-2);">${cob.confirmadas}/${cob.esperado}</div>
+         <div class="progress-bar" style="width:70px;"><div class="progress-fill" style="width:${cob.pct}%;background:${corBarra};"></div></div>`
+      : `<span style="font-size:11px;color:var(--text-3);">${cob.confirmadas} confirmadas</span>`;
+    return `<tr>
+      <td style="font-size:12px;">${x.bairro}</td>
+      <td>${x.quadra}</td>
+      <td><b>${x.conjunto}</b></td>
+      <td><input type="number" class="faixa-input" id="min-${x.id}" value="${f?.min ?? ''}" placeholder="—" style="width:60px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;"/></td>
+      <td><input type="number" class="faixa-input" id="max-${x.id}" value="${f?.max ?? ''}" placeholder="—" style="width:60px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;"/></td>
+      <td>
+        <select id="tipo-${x.id}" style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+          <option value="todas" ${f?.tipo==='todas'||!f?.tipo?'selected':''}>Todas</option>
+          <option value="pares" ${f?.tipo==='pares'?'selected':''}>Pares</option>
+          <option value="impares" ${f?.tipo==='impares'?'selected':''}>Ímpares</option>
+        </select>
+      </td>
+      <td>${coberturaHtml}</td>
+      <td><button class="btn-acao" onclick="salvarFaixa('${x.id}','${x.cidade}','${x.bairro}','${x.quadra}','${x.conjunto}')">💾 Salvar</button></td>
+    </tr>`;
+  }).join('');
+
+  let pags = `<span>${total} conjuntos</span>`;
+  if(totalPags>1) pags += Array.from({length:totalPags},(_,i)=>`<button class="page-btn ${i+1===faixasPag?'active':''}" onclick="irParaFaixas(${i+1})">${i+1}</button>`).join('');
+  document.getElementById('faixas-paginacao').innerHTML = pags;
+}
+function irParaFaixas(p){ faixasPag=p; renderFaixasTabela(); }
+
+async function salvarFaixa(id, cidade, bairro, quadra, conjunto){
+  const minVal = document.getElementById('min-'+id).value;
+  const maxVal = document.getElementById('max-'+id).value;
+  const tipo = document.getElementById('tipo-'+id).value;
+  if(minVal==='' || maxVal===''){ alert('Preencha casa mínima e máxima.'); return; }
+  const min = parseInt(minVal,10), max = parseInt(maxVal,10);
+  if(isNaN(min) || isNaN(max) || min>max){ alert('Faixa inválida.'); return; }
+  try{
+    await fb.setDoc(fb.doc(fb.db,'faixas',id), { cidade,bairro,quadra,conjunto,min,max,tipo,atualizadoEm:new Date().toISOString() });
+    showMsgAdmin('✓ Faixa salva: '+quadra+' Cj.'+conjunto);
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+function showMsgAdmin(txt){
+  // feedback simples via título temporário do botão de sync (sem modal extra)
+  const el = document.getElementById('sync-text');
+  const original = el.textContent;
+  el.textContent = txt;
+  setTimeout(()=>{ el.textContent = original; }, 2000);
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -809,6 +963,8 @@ async function sairAdmin(){
 }
 
 window.entrar=entrar; window.navTo=navTo; window.irPara=irPara; window.sairAdmin=sairAdmin;
+window.onFaixasCidadeChange=onFaixasCidadeChange; window.renderFaixasTabela=renderFaixasTabela;
+window.salvarFaixa=salvarFaixa; window.irParaFaixas=irParaFaixas;
 window.renderTabela=renderTabela; window.onTabCidadeChange=onTabCidadeChange; window.onTabBairroChange=onTabBairroChange;
 window.onMapCidadeChange=onMapCidadeChange; window.onMapBairroChange=onMapBairroChange; window.filtrarMapaAdmin=filtrarMapaAdmin;
 window.selecionarCidade=selecionarCidade; window.selecionarBairro=selecionarBairro;

@@ -472,8 +472,8 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
     <div class="nav-foto-wrap" id="nav-foto-wrap" style="display:none;"><img id="nav-foto" src="" alt=""/></div>
   </div>
   <div class="nav-buttons">
-    <button class="nav-btn nav-btn-skip" onclick="pularParada()">⏭ Pular</button>
-    <button class="nav-btn nav-btn-confirm" id="nav-btn-confirm" onclick="confirmarEntrega()">✓ Cheguei</button>
+    <button class="nav-btn nav-btn-skip" id="nav-btn-skip">⏭ Pular</button>
+    <button class="nav-btn nav-btn-confirm" id="nav-btn-confirm">✓ Cheguei</button>
   </div>
 </div>
 
@@ -500,7 +500,8 @@ window.__fb = {
   db, auth, collection, doc, setDoc, deleteDoc, onSnapshot, query,
   signInWithEmailAndPassword, signOut, onAuthStateChanged,
   colRegistros: collection(db,'registros'),
-  colCidades:   collection(db,'cidades')
+  colCidades:   collection(db,'cidades'),
+  colFaixas:    collection(db,'faixas')
 };
 window.__fbReady = true;
 window.dispatchEvent(new Event('fb-ready'));
@@ -514,7 +515,7 @@ const CENTER = [-15.8485, -48.1080];
 let fb = null;
 let usuarioAtual = null;   // objeto do Firebase Auth
 let nivelAcesso  = 'visitante'; // 'admin' | 'entregador' | 'visitante'
-let registros = [], CIDADES = {};
+let registros = [], CIDADES = {}, FAIXAS = {};
 let posicaoAtual = null, trackingAtivo = false, primeiraLoc = true;
 let map, markersLayer, meuPin, meuCirculo, mapReady = false;
 let fotoBase64 = null;
@@ -554,6 +555,12 @@ function initFirebase(){
     CIDADES = {};
     snap.docs.forEach(d=>{ CIDADES[d.id]={id:d.id,...d.data()}; });
     renderSelectsCidades();
+  });
+
+  // Escuta faixas de numeração (validação de rota)
+  fb.onSnapshot(fb.query(fb.colFaixas), snap=>{
+    FAIXAS = {};
+    snap.docs.forEach(d=>{ FAIXAS[d.id]={id:d.id,...d.data()}; });
   });
 
   // Escuta registros
@@ -885,7 +892,7 @@ function buscarEndereco(){
   $('busca-ts').textContent=reg.ts?'Registrado em '+reg.ts+(reg.registradoPor?' por '+reg.registradoPor:''):'';
   const fc=$('busca-foto-wrap');
   if(reg.foto){ $('busca-foto').src=reg.foto; fc.style.display='block'; } else fc.style.display='none';
-  $('busca-gps-info').textContent=reg.lat?'📍 GPS disponível':'⚠️ Sem GPS';
+  $('busca-gps-info').textContent=reg.lat?(reg.verificado?'✅ Endereço verificado ('+(reg.totalConfirmacoes||0)+' confirmações)':'📍 GPS disponível'+(reg.totalConfirmacoes?' · '+reg.totalConfirmacoes+'/3 confirmações':'')):'⚠️ Sem GPS';
   $('btn-editar-pin-busca').style.display=podeRegistrar()?'block':'none';
 }
 function verNoMapa(){
@@ -924,7 +931,7 @@ function renderLista(){
     '<div class="entry-card">'+
     (r.foto?`<img class="entry-thumb" src="${r.foto}">`:'<div class="entry-thumb-empty">📦</div>')+
     '<div class="entry-info">'+
-    `<div class="entry-addr">${r.bairro||''} · ${r.quadra||''} ${r.conjunto?'Cj.'+r.conjunto:''} · Casa ${r.casa}${r.lat?'<span class="badge-gps">GPS</span>':''}</div>`+
+    `<div class="entry-addr">${r.bairro||''} · ${r.quadra||''} ${r.conjunto?'Cj.'+r.conjunto:''} · Casa ${r.casa}${r.lat?'<span class="badge-gps">GPS</span>':''}${r.verificado?'<span class="badge-gps" style="background:#E1F5EE;color:#0F6E56;">✅ Verificado</span>':''}</div>`+
     `<div class="entry-obs">${r.obs||'Sem observação'}</div>`+
     `<div class="entry-ts">${r.ts||''}${r.registradoPor?' · '+r.registradoPor:''}</div></div>`+
     (podeRegistrar()?`<button class="action-btn" data-editid="${r.id}" title="Editar pin">✏️</button>`:'') +
@@ -1105,6 +1112,25 @@ function importarCSV(e){
   reader.readAsText(file, 'UTF-8');
 }
 
+// ─── Validação com faixas de numeração ────────────────────────────────────────
+function idFaixaApp(cidade,bairro,quadra,conjunto){
+  return (cidade+'_'+bairro+'_'+quadra+'_'+conjunto).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+}
+function validarCasaNaFaixa(pacote){
+  if(!pacote.casa) return null; // sem casa, não tem o que validar aqui
+  const id = idFaixaApp(pacote.cidade, pacote.bairro, pacote.quadra, pacote.conjunto);
+  const faixa = FAIXAS[id];
+  if(!faixa || faixa.min==null || faixa.max==null) return null; // sem faixa cadastrada, não valida
+  const casaNum = parseInt(pacote.casa, 10);
+  if(isNaN(casaNum)) return null;
+  const dentroRange = casaNum >= faixa.min && casaNum <= faixa.max;
+  const paridadeOk = faixa.tipo==='pares' ? casaNum%2===0 : faixa.tipo==='impares' ? casaNum%2===1 : true;
+  if(!dentroRange || !paridadeOk){
+    return `Fora da faixa esperada (${faixa.min}–${faixa.max}${faixa.tipo!=='todas'?', '+faixa.tipo:''})`;
+  }
+  return null; // ok
+}
+
 function analisarLista(){
   const input = document.getElementById('rota-input').value.trim();
   if(!input){ showMsg('Cole a lista de pacotes antes.','err'); return; }
@@ -1121,7 +1147,8 @@ function analisarLista(){
       const p = parsearLinha(linha);
       if(!p){ naoReconhecidos++; return; }
       const gps = encontrarGPS(p);
-      pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo || 'nao_encontrado' });
+      const avisoFaixa = validarCasaNaFaixa(p);
+      pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo || 'nao_encontrado', avisoFaixa });
     });
 
     pacotesAnalisados = pacotes;
@@ -1143,16 +1170,21 @@ function renderAnalise(pacotes, naoReconhecidos){
   document.getElementById('rota-mapa-wrap').style.display = 'none';
 
   const pendentes = pacotes.filter(p => p.casaPendente);
+  const forasDeFaixa = pacotes.filter(p => p.avisoFaixa);
   const prontos = pacotes.length - pendentes.length;
 
   document.getElementById('rota-stats').innerHTML =
     `<div class="rota-stat"><span class="n">${pacotes.length}</span>pacotes</div>
      <div class="rota-stat"><span class="n" style="color:#1D9E75">${prontos}</span>casa ok</div>
      <div class="rota-stat"><span class="n" style="color:#EF9F27">${pendentes.length}</span>sem nº casa</div>
+     ${forasDeFaixa.length>0?`<div class="rota-stat"><span class="n" style="color:#E24B4A">${forasDeFaixa.length}</span>fora da faixa</div>`:''}
      ${naoReconhecidos>0?`<div class="rota-stat"><span class="n" style="color:#E24B4A">${naoReconhecidos}</span>não reconh.</div>`:''}`;
 
   const aviso = document.getElementById('rota-aviso');
-  if(pendentes.length > 0){
+  if(forasDeFaixa.length > 0){
+    aviso.style.display = 'block';
+    aviso.textContent = `🚨 ${forasDeFaixa.length} endereço(s) com número de casa fora da faixa esperada pro conjunto — confira se não é erro de digitação/leitura do CSV antes de fechar a rota.`;
+  } else if(pendentes.length > 0){
     aviso.style.display = 'block';
     aviso.textContent = `⚠️ ${pendentes.length} endereço(s) sem número de casa identificado. Preencha manualmente abaixo antes de fechar a rota (ou deixe em branco para incluir mesmo assim).`;
   } else {
@@ -1165,7 +1197,7 @@ function renderAnalise(pacotes, naoReconhecidos){
     const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
     const info = infoTipoGPS(p.tipoGPS);
     const gpsTxt = `<span class="rota-badge ${info.cls}">${info.txt}</span>`;
-    return `<div class="rota-item">
+    return `<div class="rota-item" ${p.avisoFaixa?'style="border-color:#E24B4A;background:#FCEBEB;"':''}>
       <div class="rota-num${p.casaPendente?' sem-gps':''}">${i+1}</div>
       <div class="rota-info">
         <div class="rota-addr">${p.quadra} · Cj. ${p.conjunto||'?'} ${gpsTxt}</div>
@@ -1176,7 +1208,7 @@ function renderAnalise(pacotes, naoReconhecidos){
                <span style="font-size:11px;color:#856404;">Nº da casa:</span>
                <input type="number" class="rota-casa-input" data-idx="${i}" placeholder="?" style="width:70px;padding:5px 8px;border:1px solid #EF9F27;border-radius:6px;font-size:12px;"/>
              </div>`
-          : `<div style="font-size:11px;color:#1D9E75;margin-top:3px;">✓ Casa ${p.casa}</div>`
+          : `<div style="font-size:11px;color:${p.avisoFaixa?'#A32D2D':'#1D9E75'};margin-top:3px;font-weight:${p.avisoFaixa?'600':'400'};">${p.avisoFaixa?'🚨 Casa '+p.casa+' — '+p.avisoFaixa:'✓ Casa '+p.casa}</div>`
         }
       </div>
     </div>`;
@@ -1221,6 +1253,7 @@ function fecharRota(){
       const gps = encontrarGPS(pacotesAnalisados[idx]);
       pacotesAnalisados[idx].coords = gps;
       pacotesAnalisados[idx].tipoGPS = gps?.tipo || 'nao_encontrado';
+      pacotesAnalisados[idx].avisoFaixa = validarCasaNaFaixa(pacotesAnalisados[idx]);
     }
   });
 
@@ -1387,6 +1420,10 @@ function sairNavegacao(){
   $('nav-overlay').classList.remove('open');
 }
 
+let modoConfirmacaoAtivo = false;
+const LIMIAR_CONFIRMACAO = 40; // metros — dispersão máxima entre confirmações para considerar consistente
+const MIN_CONFIRMACOES_VERIFICAR = 3;
+
 function atualizarParadaAtual(){
   const p = rotaNavegacao[navIndex];
   if(!p) return;
@@ -1399,12 +1436,99 @@ function atualizarParadaAtual(){
   const match = registros.find(r => normalizarTextoNav(r.quadra)===normalizarTextoNav(p.quadra) && normalizarTextoNav(r.conjunto)===normalizarTextoNav(p.conjunto) && (r.casa==p.casa || !p.casa));
   if(match?.foto){ $('nav-foto').src = match.foto; fw.style.display='block'; }
   else fw.style.display='none';
-  $('nav-arrived-banner').style.display='none';
-  $('nav-btn-confirm').textContent='✓ Cheguei';
-  $('nav-btn-confirm').classList.remove('chegou');
   jaAvisouChegada = false;
+  resetBotoesNav();
 }
 function normalizarTextoNav(s){ return (s||'').toString().toLowerCase().trim(); }
+
+// ─── Botões de navegação (modo normal vs modo confirmação) ────────────────────
+function resetBotoesNav(){
+  modoConfirmacaoAtivo = false;
+  $('nav-arrived-banner').style.display = 'none';
+  const skipBtn = $('nav-btn-skip');
+  const confirmBtn = $('nav-btn-confirm');
+  skipBtn.textContent = '⏭ Pular';
+  skipBtn.onclick = pularParada;
+  confirmBtn.textContent = '✓ Cheguei';
+  confirmBtn.classList.remove('chegou');
+  confirmBtn.onclick = marcarCheguei;
+}
+
+function marcarCheguei(){ entrarModoConfirmacao(); }
+
+function entrarModoConfirmacao(){
+  if(modoConfirmacaoAtivo) return;
+  modoConfirmacaoAtivo = true;
+  const banner = $('nav-arrived-banner');
+  banner.style.display = 'block';
+  banner.textContent = '🎯 Chegou! É este o endereço correto?';
+  const skipBtn = $('nav-btn-skip');
+  const confirmBtn = $('nav-btn-confirm');
+  skipBtn.textContent = '❌ Não é aqui';
+  skipBtn.onclick = naoEhAqui;
+  confirmBtn.textContent = '✅ Sim, é aqui!';
+  confirmBtn.classList.add('chegou');
+  confirmBtn.onclick = simEhAqui;
+  if(navigator.vibrate) navigator.vibrate([200,100,200]);
+}
+
+async function simEhAqui(){
+  await registrarConfirmacaoLocal();
+  confirmarEntrega();
+}
+function naoEhAqui(){
+  showMsg('Endereço não confirmado — avançando sem registrar.','err');
+  confirmarEntrega();
+}
+
+// ─── Registro da confirmação de local (sistema de 3 confirmações) ────────────
+async function registrarConfirmacaoLocal(){
+  const p = rotaNavegacao[navIndex];
+  if(!p || !posicaoAtual || !fb) return;
+  const { cidade, bairro, quadra, conjunto, casa } = p;
+  if(!casa){ showMsg('Sem número de casa — confirmação não pôde ser vinculada.','err'); return; }
+
+  const docId = (cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+  const existente = registros.find(r => r.id === docId);
+
+  const novaConfirmacao = {
+    lat: posicaoAtual.lat, lng: posicaoAtual.lng,
+    uid: usuarioAtual?.uid || '', email: usuarioAtual?.email || '',
+    ts: new Date().toISOString()
+  };
+  const todasConfs = [...(existente?.confirmacoes || []), novaConfirmacao];
+
+  const latMedio = todasConfs.reduce((s,c)=>s+c.lat,0) / todasConfs.length;
+  const lngMedio = todasConfs.reduce((s,c)=>s+c.lng,0) / todasConfs.length;
+  const centroide = { lat: latMedio, lng: lngMedio };
+  const maxDist = Math.max(...todasConfs.map(c => distanciaMetros(c, centroide)));
+  const verificado = todasConfs.length >= MIN_CONFIRMACOES_VERIFICAR && maxDist <= LIMIAR_CONFIRMACAO;
+  const jaEstavaVerificado = !!existente?.verificado;
+
+  const dados = {
+    cidade, bairro, quadra, conjunto, casa,
+    obs: existente?.obs || '',
+    foto: existente?.foto || null,
+    lat: verificado ? centroide.lat : novaConfirmacao.lat,
+    lng: verificado ? centroide.lng : novaConfirmacao.lng,
+    confirmacoes: todasConfs,
+    totalConfirmacoes: todasConfs.length,
+    verificado,
+    ts: existente?.ts || (new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}))
+  };
+
+  try {
+    await fb.setDoc(fb.doc(fb.db,'registros',docId), dados, { merge:true });
+    if(verificado && !jaEstavaVerificado){
+      showMsg('🏅 3 confirmações! Endereço verificado.', 'ok');
+    } else {
+      showMsg('✓ Confirmação registrada ('+todasConfs.length+'/3).', 'ok');
+    }
+  } catch(e){
+    console.error('[Confirmação]', e);
+    showMsg('Erro ao registrar confirmação.', 'err');
+  }
+}
 
 // ─── Mapa de navegação ─────────────────────────────────────────────────────────
 function inicializarNavMap(){
@@ -1485,19 +1609,9 @@ function atualizarDistanciaNav(){
   const dist = distanciaMetros(posicaoAtual, destino);
   $('nav-distance').textContent = dist < 1000 ? Math.round(dist) + ' m' : (dist/1000).toFixed(1) + ' km';
 
-  if(dist <= DISTANCIA_CHEGADA){
-    $('nav-arrived-banner').style.display = 'block';
-    $('nav-btn-confirm').textContent = '✓ Confirmar entrega';
-    $('nav-btn-confirm').classList.add('chegou');
-    if(!jaAvisouChegada){
-      jaAvisouChegada = true;
-      if(navigator.vibrate) navigator.vibrate([200,100,200]);
-    }
-  } else {
-    $('nav-arrived-banner').style.display = 'none';
-    $('nav-btn-confirm').textContent = '✓ Cheguei';
-    $('nav-btn-confirm').classList.remove('chegou');
-    jaAvisouChegada = false;
+  if(dist <= DISTANCIA_CHEGADA && !jaAvisouChegada){
+    jaAvisouChegada = true;
+    entrarModoConfirmacao();
   }
 }
 
@@ -1525,6 +1639,7 @@ function confirmarEntrega(){
   carregarRotaAtePonto();
 }
 function pularParada(){ confirmarEntrega(); }
+
 
 // ─── Globais ───────────────────────────────────────────────────────────────────
 window.showTab=showTab; window.fazerLogin=fazerLogin;
