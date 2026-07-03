@@ -120,26 +120,55 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 /* Navegação com bússola */
 .nav-overlay{position:fixed;inset:0;background:#fff;z-index:5000;display:none;flex-direction:column;max-width:480px;margin:0 auto}
 .nav-overlay.open{display:flex}
-.nav-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:.5px solid #e5e5e5;background:#fff;position:relative;z-index:10}
-.nav-close{background:none;border:none;font-size:20px;color:#888;cursor:pointer;padding:4px 8px}
-.nav-progress{font-size:13px;font-weight:600;color:#555}
 #nav-map{flex:1;min-height:0;position:relative}
-.nav-distance-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#1D9E75;color:#fff}
-.nav-distance-bar .val{font-size:20px;font-weight:700}
-.nav-distance-bar .lbl{font-size:12px;opacity:.9}
+
+/* Faixa de instrução de manobra (topo, estilo Google) */
+.nav-instrucao{position:absolute;top:12px;left:12px;right:12px;z-index:20;background:#1A2332;border-radius:16px;padding:14px 16px;display:none;align-items:center;gap:14px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.nav-instrucao.show{display:flex}
+.nav-instrucao-icone{width:38px;height:38px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;transition:transform .25s}
+.nav-instrucao-textos{flex:1;min-width:0}
+.nav-instrucao-dist{font-size:19px;font-weight:800;color:#fff;line-height:1.1}
+.nav-instrucao-rua{font-size:13px;color:rgba(255,255,255,.75);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Botão fechar flutuante */
+.nav-close-fab{position:absolute;top:14px;right:14px;z-index:25;width:36px;height:36px;border-radius:50%;background:#fff;border:none;font-size:16px;color:#555;box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* Badge de horário previsto de chegada */
+.nav-eta-badge{position:absolute;top:66px;right:14px;z-index:20;background:#fff;border-radius:20px;padding:6px 12px;font-size:12px;font-weight:700;color:#111;box-shadow:0 2px 8px rgba(0,0,0,.2);display:none;align-items:center;gap:5px}
+.nav-eta-badge.show{display:flex}
+
+/* Velocímetro */
+.nav-speedometer{position:absolute;left:14px;bottom:14px;z-index:20;width:64px;height:64px;border-radius:50%;background:#fff;border:3px solid #eee;box-shadow:0 3px 10px rgba(0,0,0,.2);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.nav-speedometer #nav-speed-val{font-size:20px;font-weight:800;color:#111;line-height:1}
+.nav-speedometer small{font-size:9px;color:#999;font-weight:600}
+
+/* Botão flutuante de recentralizar */
+.nav-fab-recenter{position:absolute;right:14px;bottom:14px;z-index:20;width:44px;height:44px;border-radius:50%;background:#fff;border:none;font-size:18px;box-shadow:0 3px 10px rgba(0,0,0,.2);cursor:pointer;display:flex;align-items:center;justify-content:center}
+
 .nav-arrived-banner{background:#0F6E56;color:#fff;padding:8px 16px;font-size:13px;font-weight:700;text-align:center;display:none;animation:pulse-arr 1s infinite}
 @keyframes pulse-arr{0%,100%{opacity:1}50%{opacity:.7}}
-.nav-info{padding:12px 16px;border-top:.5px solid #e5e5e5;background:#fafafa}
-.nav-addr{font-size:15px;font-weight:700;color:#111}
-.nav-obs{font-size:13px;color:#666;margin-top:4px;line-height:1.4}
+
+/* Card branco inferior (endereço + ações) */
+.nav-card-inferior{background:#fff;border-radius:18px 18px 0 0;padding:14px 16px 10px;box-shadow:0 -4px 14px rgba(0,0,0,.08);position:relative;z-index:15;margin-top:-18px}
+.nav-card-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.nav-addr{font-size:15px;font-weight:700;color:#111;line-height:1.3}
+.nav-progress{font-size:12px;color:#888;margin-top:3px;font-weight:500}
+.nav-obs{font-size:13px;color:#666;margin-top:6px;line-height:1.4}
 .nav-contato{font-size:12px;color:#1D9E75;margin-top:4px;font-weight:600}
-.nav-foto-wrap{margin-top:8px}
-.nav-foto-wrap img{width:100%;max-height:120px;object-fit:cover;border-radius:10px;border:.5px solid #eee}
-.nav-buttons{display:flex;gap:8px;padding:12px 16px 16px;background:#fff}
-.nav-btn{flex:1;padding:13px;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;border:none}
-.nav-btn-skip{background:#f5f5f5;color:#666;border:.5px solid #ddd}
-.nav-btn-confirm{background:#1D9E75;color:#fff}
-.nav-btn-confirm.chegou{background:#0F6E56}
+.nav-foto-wrap{flex-shrink:0}
+.nav-foto-wrap img{width:52px;height:52px;object-fit:cover;border-radius:10px;border:.5px solid #eee}
+.nav-buttons{display:flex;gap:10px;padding:14px 0 6px}
+.nav-btn{flex:1;padding:14px;border-radius:14px;font-size:22px;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center}
+.nav-btn-skip{background:#F4F4F4;color:#888;border:1px solid #E5E5E5}
+.nav-btn-confirm{background:#E1F5EE;color:#1D9E75;border:1px solid #BEE8D6}
+.nav-btn-confirm.chegou{background:#1D9E75;color:#fff;border-color:#0F6E56}
+
+/* Barra preta inferior (tempo/distância totais) */
+.nav-barra-inferior{background:#1A2332;color:#fff;padding:12px 18px;display:flex;align-items:center;justify-content:space-between}
+.nav-barra-tempo{font-size:17px;font-weight:800}
+.nav-barra-dist{font-size:12px;color:rgba(255,255,255,.65)}
+.nav-barra-lista{background:rgba(255,255,255,.12);border:none;color:#fff;width:34px;height:34px;border-radius:10px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
 .nav-start-btn{width:100%;padding:12px;background:#378ADD;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px}
 #rota-mapa-overview{width:100%;height:260px;border-radius:12px;overflow:hidden;border:.5px solid #ddd;margin:10px 0}
 .nav-loading{position:absolute;inset:0;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;font-size:13px;color:#666;z-index:5}
@@ -457,28 +486,48 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 
 <!-- Navegação no mapa -->
 <div class="nav-overlay" id="nav-overlay">
-  <div class="nav-top">
-    <button class="nav-close" onclick="sairNavegacao()">✕</button>
-    <div class="nav-progress" id="nav-progress">Parada 1 de 1</div>
-    <div style="width:28px;"></div>
-  </div>
   <div id="nav-map" style="position:relative;">
     <div class="nav-loading" id="nav-loading" style="display:none;">⏳ Calculando rota...</div>
+
+    <div class="nav-instrucao" id="nav-instrucao">
+      <div class="nav-instrucao-icone" id="nav-instrucao-icone">⬆️</div>
+      <div class="nav-instrucao-textos">
+        <div class="nav-instrucao-dist" id="nav-instrucao-dist">—</div>
+        <div class="nav-instrucao-rua" id="nav-instrucao-rua">Calculando rota...</div>
+      </div>
+    </div>
+
+    <button class="nav-close-fab" onclick="sairNavegacao()">✕</button>
+    <div class="nav-eta-badge" id="nav-eta-badge">🏁 <span id="nav-eta-hora">—</span></div>
+
+    <div class="nav-speedometer"><span id="nav-speed-val">0</span><small>km/h</small></div>
+    <button class="nav-fab-recenter" onclick="recentralizarNavMap()">🧭</button>
   </div>
-  <div class="nav-distance-bar">
-    <span class="val" id="nav-distance">—</span>
-    <span class="lbl">até o destino</span>
-  </div>
+
   <div class="nav-arrived-banner" id="nav-arrived-banner">🎉 Você chegou!</div>
-  <div class="nav-info">
-    <div class="nav-addr" id="nav-addr">—</div>
-    <div class="nav-obs" id="nav-obs"></div>
-    <div class="nav-contato" id="nav-contato"></div>
-    <div class="nav-foto-wrap" id="nav-foto-wrap" style="display:none;"><img id="nav-foto" class="foto-clicavel" onclick="abrirFotoZoom(this.src)" src="" alt=""/></div>
+
+  <div class="nav-card-inferior">
+    <div class="nav-card-topo">
+      <div style="flex:1;min-width:0;">
+        <div class="nav-addr" id="nav-addr">—</div>
+        <div class="nav-progress" id="nav-progress">Parada 1 de 1</div>
+        <div class="nav-obs" id="nav-obs"></div>
+        <div class="nav-contato" id="nav-contato"></div>
+      </div>
+      <div class="nav-foto-wrap" id="nav-foto-wrap" style="display:none;"><img id="nav-foto" class="foto-clicavel" onclick="abrirFotoZoom(this.src)" src="" alt=""/></div>
+    </div>
+    <div class="nav-buttons">
+      <button class="nav-btn nav-btn-skip" id="nav-btn-skip">⏭</button>
+      <button class="nav-btn nav-btn-confirm" id="nav-btn-confirm">✓</button>
+    </div>
   </div>
-  <div class="nav-buttons">
-    <button class="nav-btn nav-btn-skip" id="nav-btn-skip">⏭ Pular</button>
-    <button class="nav-btn nav-btn-confirm" id="nav-btn-confirm">✓ Cheguei</button>
+
+  <div class="nav-barra-inferior">
+    <div>
+      <div class="nav-barra-tempo" id="nav-barra-tempo">— min</div>
+      <div class="nav-barra-dist" id="nav-distance">—</div>
+    </div>
+    <button class="nav-barra-lista" onclick="ajustarZoomNavCompleto()" title="Ver todas as paradas">☰</button>
   </div>
 </div>
 
@@ -777,11 +826,18 @@ function ativarGPS(){
     $('gps-dot').className='gps-dot ok';
     $('gps-text').textContent='✓ GPS ativo · ~'+Math.round(pos.coords.accuracy)+'m';
     atualizarPinMapa();
+    atualizarVelocimetro(pos.coords.speed);
     atualizarSetaNav();
     if(primeiraLoc&&map){ map.setView([posicaoAtual.lat,posicaoAtual.lng],17); primeiraLoc=false; }
   }, err=>{
     $('gps-text').textContent=err.code===1?'Permissão negada.':'Erro GPS.';
   },{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+}
+function atualizarVelocimetro(speedMs){
+  const el = document.getElementById('nav-speed-val');
+  if(!el) return;
+  const kmh = (speedMs!=null && speedMs>=0) ? Math.round(speedMs*3.6) : 0;
+  el.textContent = kmh;
 }
 function atualizarPinMapa(){
   if(!map||!posicaoAtual) return;
@@ -1591,9 +1647,9 @@ function resetBotoesNav(){
   $('nav-arrived-banner').style.display = 'none';
   const skipBtn = $('nav-btn-skip');
   const confirmBtn = $('nav-btn-confirm');
-  skipBtn.textContent = '⏭ Pular';
+  skipBtn.textContent = '⏭';
   skipBtn.onclick = pularParada;
-  confirmBtn.textContent = '✓ Cheguei';
+  confirmBtn.textContent = '✓';
   confirmBtn.classList.remove('chegou');
   confirmBtn.onclick = marcarCheguei;
 }
@@ -1608,9 +1664,9 @@ function entrarModoConfirmacao(){
   banner.textContent = '🎯 Chegou! É este o endereço correto?';
   const skipBtn = $('nav-btn-skip');
   const confirmBtn = $('nav-btn-confirm');
-  skipBtn.textContent = '❌ Não é aqui';
+  skipBtn.textContent = '❌';
   skipBtn.onclick = naoEhAqui;
-  confirmBtn.textContent = '✅ Sim, é aqui!';
+  confirmBtn.textContent = '✅';
   confirmBtn.classList.add('chegou');
   confirmBtn.onclick = simEhAqui;
   if(navigator.vibrate) navigator.vibrate([200,100,200]);
@@ -1627,9 +1683,9 @@ function naoEhAqui(){
   banner.textContent = '📍 Onde fica o endereço correto?';
   const skipBtn = $('nav-btn-skip');
   const confirmBtn = $('nav-btn-confirm');
-  skipBtn.textContent = '⏭ Pular sem marcar';
+  skipBtn.textContent = '⏭';
   skipBtn.onclick = pularSemMarcar;
-  confirmBtn.textContent = '📍 Marcar local correto';
+  confirmBtn.textContent = '📍';
   confirmBtn.classList.remove('chegou');
   confirmBtn.onclick = abrirMarcacaoLocalCorreto;
 }
@@ -1768,19 +1824,27 @@ async function carregarRotaAtePonto(){
 
   $('nav-loading').style.display = 'flex';
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${origem.lng},${origem.lat};${destino.lng},${destino.lat}?overview=full&geometries=geojson`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${origem.lng},${origem.lat};${destino.lng},${destino.lat}?overview=full&geometries=geojson&steps=true`;
     const resp = await fetch(url);
     const data = await resp.json();
     if(data.code === 'Ok' && data.routes?.[0]){
       const coordsRota = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]); // [lng,lat] -> [lat,lng]
       desenharRotaNoMapa(coordsRota);
+      navPassosRota = data.routes[0].legs?.[0]?.steps || [];
+      navPassoAtualIdx = 0;
+      atualizarTempoDistanciaTotais(data.routes[0].duration, data.routes[0].distance);
+      atualizarInstrucaoManobra();
     } else {
       // Fallback: linha reta se OSRM não conseguir calcular
       desenharRotaNoMapa([[origem.lat,origem.lng],[destino.lat,destino.lng]]);
+      navPassosRota = [];
+      esconderInstrucaoManobra();
     }
   } catch(e){
     console.warn('[OSRM] Falha ao buscar rota, usando linha reta:', e);
     desenharRotaNoMapa([[origem.lat,origem.lng],[destino.lat,destino.lng]]);
+    navPassosRota = [];
+    esconderInstrucaoManobra();
   }
   $('nav-loading').style.display = 'none';
   renderOutrasParadasNav();
@@ -1791,6 +1855,69 @@ async function carregarRotaAtePonto(){
 function desenharRotaNoMapa(coords){
   if(navRouteLine) navMap.removeLayer(navRouteLine);
   navRouteLine = L.polyline(coords, { color:'#378ADD', weight:5, opacity:0.85 }).addTo(navMap);
+}
+
+function recentralizarNavMap(){
+  if(!navMap || !posicaoAtual) return;
+  navMap.setView([posicaoAtual.lat, posicaoAtual.lng], 17);
+}
+
+// ─── Instrução de manobra (faixa estilo Google no topo) ───────────────────────
+let navPassosRota = [];   // steps do OSRM pra parada atual
+let navPassoAtualIdx = 0; // qual step estamos seguindo agora
+
+const ICONES_MANOBRA = {
+  'uturn':'↩️','sharp right':'↱','right':'➡️','slight right':'↗️',
+  'straight':'⬆️','slight left':'↖️','left':'⬅️','sharp left':'↰',
+  'depart':'📍','arrive':'🏁'
+};
+function iconeEGrauManobra(step){
+  if(!step) return { icone:'🏁', grau:0 };
+  const tipo = step.maneuver?.type;
+  const mod = step.maneuver?.modifier;
+  if(tipo === 'arrive') return { icone:'🏁', grau:0 };
+  if(tipo === 'depart') return { icone:'📍', grau:0 };
+  const graus = { 'uturn':180,'sharp right':120,'right':90,'slight right':45,'straight':0,'slight left':-45,'left':-90,'sharp left':-120 };
+  return { icone: ICONES_MANOBRA[mod] || '⬆️', grau: graus[mod] ?? 0 };
+}
+
+function atualizarInstrucaoManobra(){
+  if(!navPassosRota.length || !posicaoAtual) { esconderInstrucaoManobra(); return; }
+  // Avança o passo se já estamos muito perto do ponto de manobra atual
+  while(navPassoAtualIdx < navPassosRota.length - 1){
+    const passoAtual = navPassosRota[navPassoAtualIdx];
+    const loc = passoAtual.maneuver?.location; // [lng,lat]
+    if(!loc) break;
+    const d = distanciaMetros(posicaoAtual, { lat:loc[1], lng:loc[0] });
+    if(d < 20) navPassoAtualIdx++;
+    else break;
+  }
+  const proximoStep = navPassosRota[navPassoAtualIdx + 1] || navPassosRota[navPassoAtualIdx];
+  if(!proximoStep){ esconderInstrucaoManobra(); return; }
+  const loc = proximoStep.maneuver?.location;
+  const dist = loc ? distanciaMetros(posicaoAtual, { lat:loc[1], lng:loc[0] }) : 0;
+  const { icone, grau } = iconeEGrauManobra(proximoStep);
+  const nomeRua = proximoStep.name || (proximoStep.maneuver?.type==='arrive' ? 'Você chegou' : 'Continue em frente');
+
+  $('nav-instrucao-icone').textContent = icone;
+  $('nav-instrucao-icone').style.transform = 'rotate('+grau+'deg)';
+  $('nav-instrucao-dist').textContent = dist < 1000 ? Math.round(dist)+' m' : (dist/1000).toFixed(1)+' km';
+  $('nav-instrucao-rua').textContent = nomeRua;
+  $('nav-instrucao').classList.add('show');
+}
+function esconderInstrucaoManobra(){
+  $('nav-instrucao')?.classList.remove('show');
+}
+
+function atualizarTempoDistanciaTotais(duracaoSeg, distMetros){
+  const min = Math.max(1, Math.round(duracaoSeg/60));
+  $('nav-barra-tempo').textContent = min + ' min';
+  $('nav-distance').textContent = distMetros < 1000 ? Math.round(distMetros)+' m' : (distMetros/1000).toFixed(1)+' km';
+  const chegada = new Date(Date.now() + duracaoSeg*1000);
+  const hh = chegada.getHours().toString().padStart(2,'0');
+  const mm = chegada.getMinutes().toString().padStart(2,'0');
+  $('nav-eta-hora').textContent = hh+':'+mm;
+  $('nav-eta-badge').classList.add('show');
 }
 
 // Ajusta o zoom pra caber a rota até a parada atual + as próximas paradas visíveis
@@ -1835,8 +1962,10 @@ function atualizarDistanciaNav(){
   const destino = rotaNavegacao[navIndex]?.coords;
   if(!destino || !posicaoAtual) return;
 
+  // Obs: o campo de distância total exibido na barra inferior (#nav-distance) é
+  // atualizado por atualizarTempoDistanciaTotais() com o valor real da rota OSRM.
+  // Aqui usamos só a distância em linha reta pra detectar chegada.
   const dist = distanciaMetros(posicaoAtual, destino);
-  $('nav-distance').textContent = dist < 1000 ? Math.round(dist) + ' m' : (dist/1000).toFixed(1) + ' km';
 
   if(dist <= DISTANCIA_CHEGADA && !jaAvisouChegada){
     jaAvisouChegada = true;
@@ -1851,6 +1980,7 @@ function atualizarSetaNav(){
     navUserMarker.setLatLng([posicaoAtual.lat, posicaoAtual.lng]);
   }
   atualizarDistanciaNav();
+  atualizarInstrucaoManobra();
   // Recalcula a rota periodicamente se o usuário se afastar muito da rota traçada
   carregarRotaAtePonto();
 }
@@ -1883,6 +2013,8 @@ window.buscarEndereco=buscarEndereco; window.verNoMapa=verNoMapa; window.editarP
 window.moverPin=moverPin; window.resetarPin=resetarPin; window.confirmarPin=confirmarPin;
 window.iniciarNavegacao=iniciarNavegacao; window.iniciarNavegacaoNoIndicePacote=iniciarNavegacaoNoIndicePacote;
 window.pularParaParadaNav=pularParaParadaNav;
+window.recentralizarNavMap=recentralizarNavMap;
+window.ajustarZoomNavCompleto=ajustarZoomNavCompleto;
 window.sairNavegacao=sairNavegacao;
 window.confirmarEntrega=confirmarEntrega; window.pularParada=pularParada;
 window.fecharModal=fecharModal;
