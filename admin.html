@@ -172,6 +172,7 @@ tr:hover td{background:#FAFBFC}
     <div class="nav-item" onclick="navTo('faixas',this)"><span class="nav-icon">📏</span> Faixas</div>
     <div class="nav-section" id="nav-section-admin" style="display:none;">Administração</div>
     <div class="nav-item" id="nav-item-usuarios" onclick="navTo('usuarios',this)" style="display:none;"><span class="nav-icon">👥</span> Usuários</div>
+    <div class="nav-item" onclick="navTo('correcoes',this)"><span class="nav-icon">🛠</span> Correções</div>
     <div class="sidebar-footer">
       <div id="papel-badge" style="font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;display:inline-block;margin-bottom:8px;background:rgba(29,158,117,.2);color:var(--green);"></div>
       <div class="sync-indicator">
@@ -330,6 +331,33 @@ tr:hover td{background:#FAFBFC}
         <div id="lista-supervisores"></div>
       </div>
     </div>
+
+    <!-- CORREÇÕES DO PARSER -->
+    <div class="page" id="page-correcoes">
+      <div class="page-title">Correções do Parser de Endereços</div>
+      <div class="page-sub">Toda vez que um entregador completa manualmente o número de uma casa que o sistema não conseguiu identificar sozinho, fica registrado aqui. Revise periodicamente pra identificar padrões e ajustar as regras de leitura do CSV.</div>
+      <div class="card">
+        <div class="table-toolbar">
+          <input type="text" id="correcoes-busca" placeholder="🔍  Buscar no endereço original..." oninput="renderCorrecoes()"/>
+          <select id="correcoes-quadra" onchange="renderCorrecoes()">
+            <option value="">Todas quadras</option>
+          </select>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Endereço original (do CSV)</th>
+              <th>Quadra/Cj. reconhecidos</th>
+              <th>Casa digitada manualmente</th>
+              <th>Corrigido por</th>
+              <th>Quando</th>
+            </tr></thead>
+            <tbody id="correcoes-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="correcoes-paginacao"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -403,7 +431,7 @@ const cfg={apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",authDomain:"app-rota
 const fapp=initializeApp(cfg);
 const db=getFirestore(fapp);
 const auth=getAuth(fapp);
-window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas'),colUsuarios:collection(db,'usuarios')};
+window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas'),colUsuarios:collection(db,'usuarios'),colCorrecoes:collection(db,'correcoesParser')};
 setPersistence(auth, browserLocalPersistence).finally(()=>{
   window.__fbReady=true;
   window.dispatchEvent(new Event('fb-ready'));
@@ -568,6 +596,10 @@ function iniciarFb(){
       snap.docs.forEach(d=>{ FAIXAS[d.id]={id:d.id,...d.data()}; });
       if(document.getElementById('page-faixas').classList.contains('active')) renderFaixasTabela();
     },err=>console.error('[Faixas]',err));
+    fb.onSnapshot(fb.query(fb.colCorrecoes),snap=>{
+      CORRECOES=snap.docs.map(d=>({id:d.id,...d.data()}));
+      if(document.getElementById('page-correcoes').classList.contains('active')) renderCorrecoes();
+    },err=>console.error('[Correcoes]',err));
     if(ehAdminRaiz){
       fb.onSnapshot(fb.query(fb.colUsuarios),snap=>{
         USUARIOS={};
@@ -601,6 +633,7 @@ function navTo(page,el){
   if(page==='cidades')renderCidadesList();
   if(page==='faixas')renderFaixasTabela();
   if(page==='usuarios')renderListaSupervisores();
+  if(page==='correcoes')renderCorrecoes();
 }
 
 // ─── Selects ──────────────────────────────────────────────────────────────────
@@ -661,6 +694,9 @@ function onFaixasCidadeChange(){
 // ─── Faixas de numeração ────────────────────────────────────────────────────────
 let FAIXAS = {}; // { docId: {cidade,bairro,quadra,conjunto,min,max,tipo} }
 let faixasPag = 1;
+let CORRECOES = [];
+let correcoesPag = 1;
+const CORRECOES_POR_PAG = 25;
 const FAIXAS_POR_PAG = 25;
 
 function idFaixa(cidade,bairro,quadra,conjunto){
@@ -747,6 +783,52 @@ function renderFaixasTabela(){
   document.getElementById('faixas-paginacao').innerHTML = pags;
 }
 function irParaFaixas(p){ faixasPag=p; renderFaixasTabela(); }
+
+// ─── Correções do parser (log de casas preenchidas manualmente) ──────────────
+function renderCorrecoes(){
+  const busca = (document.getElementById('correcoes-busca').value||'').toLowerCase();
+  const quadraFiltro = document.getElementById('correcoes-quadra').value;
+
+  // Popula o select de quadras dinamicamente com base nos dados existentes
+  const selQuadra = document.getElementById('correcoes-quadra');
+  if(selQuadra.options.length <= 1){
+    const quadrasUnicas = [...new Set(CORRECOES.map(c=>c.quadra).filter(Boolean))].sort();
+    quadrasUnicas.forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; selQuadra.appendChild(o); });
+  }
+
+  let lista = [...CORRECOES];
+  if(quadraFiltro) lista = lista.filter(c=>c.quadra===quadraFiltro);
+  if(busca) lista = lista.filter(c=>(c.enderecoOriginal||'').toLowerCase().includes(busca));
+
+  lista.sort((a,b)=>(b.ts||'').localeCompare(a.ts||'')); // mais recentes primeiro
+
+  const total = lista.length;
+  const totalPags = Math.max(1, Math.ceil(total/CORRECOES_POR_PAG));
+  if(correcoesPag > totalPags) correcoesPag = 1;
+  const pagina = lista.slice((correcoesPag-1)*CORRECOES_POR_PAG, correcoesPag*CORRECOES_POR_PAG);
+
+  if(!total){
+    document.getElementById('correcoes-body').innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:24px;">Nenhuma correção registrada ainda.</td></tr>`;
+    document.getElementById('correcoes-paginacao').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('correcoes-body').innerHTML = pagina.map(c=>{
+    const dataFmt = c.ts ? new Date(c.ts).toLocaleDateString('pt-BR')+' '+new Date(c.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<tr>
+      <td style="max-width:280px;font-size:12px;color:var(--text-2);">${c.enderecoOriginal||'—'}</td>
+      <td style="font-size:12px;">${c.quadra||'—'} ${c.conjunto?'· Cj.'+c.conjunto:''}</td>
+      <td><b>${c.casaDigitadaManualmente||'—'}</b></td>
+      <td style="font-size:12px;color:var(--text-3);">${c.corrigidoPor||'—'}</td>
+      <td style="font-size:11px;color:var(--text-3);">${dataFmt}</td>
+    </tr>`;
+  }).join('');
+
+  let pags = `<span>${total} correções</span>`;
+  if(totalPags>1) pags += Array.from({length:totalPags},(_,i)=>`<button class="page-btn ${i+1===correcoesPag?'active':''}" onclick="irParaCorrecoes(${i+1})">${i+1}</button>`).join('');
+  document.getElementById('correcoes-paginacao').innerHTML = pags;
+}
+function irParaCorrecoes(p){ correcoesPag=p; renderCorrecoes(); }
 
 async function salvarFaixa(id, cidade, bairro, quadra, conjunto){
   if(!ehAdminRaiz && !permissoesAtuais.editarFaixas){ alert('Você não tem permissão para editar faixas.'); return; }
@@ -1197,6 +1279,7 @@ window.salvarNovoSupervisor=salvarNovoSupervisor; window.salvarPermissoesSupervi
 window.removerSupervisor=removerSupervisor; window.renderListaSupervisores=renderListaSupervisores;
 window.onFaixasCidadeChange=onFaixasCidadeChange; window.renderFaixasTabela=renderFaixasTabela;
 window.salvarFaixa=salvarFaixa; window.irParaFaixas=irParaFaixas;
+window.renderCorrecoes=renderCorrecoes; window.irParaCorrecoes=irParaCorrecoes;
 window.renderTabela=renderTabela; window.onTabCidadeChange=onTabCidadeChange; window.onTabBairroChange=onTabBairroChange;
 window.onMapCidadeChange=onMapCidadeChange; window.onMapBairroChange=onMapBairroChange; window.filtrarMapaAdmin=filtrarMapaAdmin;
 window.selecionarCidade=selecionarCidade; window.selecionarBairro=selecionarBairro;

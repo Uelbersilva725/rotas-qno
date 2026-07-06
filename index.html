@@ -1428,20 +1428,39 @@ async function otimizarRotaComOSRM(pacotesComCoords){
 let rotaAtual = [];
 
 async function fecharRota(){
-  // Aplica valores digitados manualmente para casas pendentes
+  // Aplica valores digitados manualmente para casas pendentes, e registra a
+  // correção pra análise futura de padrões que confundem o parser
+  const correcoesParaSalvar = [];
+
   document.querySelectorAll('.rota-casa-input').forEach(inp => {
     const idx = parseInt(inp.getAttribute('data-idx'));
     const val = inp.value.trim();
     if(val && pacotesAnalisados[idx]){
-      pacotesAnalisados[idx].casa = val;
-      pacotesAnalisados[idx].casaPendente = false;
+      const p = pacotesAnalisados[idx];
+      correcoesParaSalvar.push({
+        enderecoOriginal: p.enderecoOriginal || '',
+        cidade: p.cidade || '', bairro: p.bairro || '', quadra: p.quadra || '', conjunto: p.conjunto || '',
+        casaDigitadaManualmente: val,
+        corrigidoPor: usuarioAtual?.email || '', corrigidoPorUid: usuarioAtual?.uid || '',
+        ts: new Date().toISOString()
+      });
+      p.casa = val;
+      p.casaPendente = false;
       // Re-tenta achar GPS agora que tem casa
-      const gps = encontrarGPS(pacotesAnalisados[idx]);
-      pacotesAnalisados[idx].coords = gps;
-      pacotesAnalisados[idx].tipoGPS = gps?.tipo || 'nao_encontrado';
-      pacotesAnalisados[idx].avisoFaixa = validarCasaNaFaixa(pacotesAnalisados[idx]);
+      const gps = encontrarGPS(p);
+      p.coords = gps;
+      p.tipoGPS = gps?.tipo || 'nao_encontrado';
+      p.avisoFaixa = validarCasaNaFaixa(p);
     }
   });
+
+  // Salva os logs de correção em segundo plano, sem travar o fluxo de otimização
+  if(correcoesParaSalvar.length && fb){
+    correcoesParaSalvar.forEach(c => {
+      fb.setDoc(fb.doc(fb.db, 'correcoesParser', Date.now()+'_'+Math.random().toString(36).slice(2,8)), c)
+        .catch(e => console.warn('[Correções] Falha ao salvar log:', e));
+    });
+  }
 
   const comCoords = pacotesAnalisados.filter(p => p.coords);
   const semCoords = pacotesAnalisados.filter(p => !p.coords);
