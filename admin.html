@@ -234,6 +234,7 @@ tr:hover td{background:#FAFBFC}
             <option value="">Todos</option><option value="gps">Com GPS</option><option value="semgps">Sem GPS</option>
             <option value="foto">Com foto</option><option value="semfoto">Sem foto</option>
           </select>
+          <button class="btn-acao" onclick="exportarRegistrosCSV()">📥 Exportar CSV</button>
         </div>
         <div style="overflow-x:auto;">
           <table>
@@ -347,6 +348,7 @@ tr:hover td{background:#FAFBFC}
           <select id="correcoes-quadra" onchange="renderCorrecoes()">
             <option value="">Todas quadras</option>
           </select>
+          <button class="btn-acao" onclick="exportarCorrecoesCSV()">📥 Exportar CSV</button>
         </div>
         <div style="overflow-x:auto;">
           <table>
@@ -381,6 +383,7 @@ tr:hover td{background:#FAFBFC}
           <select id="tel-motorista" onchange="renderTelemetria()">
             <option value="">Todos motoristas</option>
           </select>
+          <button class="btn-acao" onclick="exportarTelemetriaCSV()">📥 Exportar CSV</button>
         </div>
         <div style="overflow-x:auto;">
           <table>
@@ -416,6 +419,7 @@ tr:hover td{background:#FAFBFC}
           <select id="hist-motorista" onchange="renderHistorico()">
             <option value="">Todos motoristas</option>
           </select>
+          <button class="btn-acao" onclick="exportarHistoricoCSV()">📥 Exportar CSV</button>
         </div>
         <div style="overflow-x:auto;">
           <table>
@@ -1085,6 +1089,72 @@ function showMsgAdmin(txt){
   setTimeout(()=>{ el.textContent = original; }, 2000);
 }
 
+// ─── Exportação genérica pra CSV (abre certinho no Excel/Google Sheets) ───────
+function exportarCSV(dados, colunas, nomeArquivo){
+  if(!dados || !dados.length){ alert('Nada para exportar.'); return; }
+  const cabecalho = colunas.map(c => c.titulo).join(',');
+  const linhas = dados.map(item =>
+    colunas.map(c => {
+      let valor = item[c.chave];
+      if(valor == null) valor = '';
+      valor = String(valor).replace(/"/g, '""');
+      return `"${valor}"`;
+    }).join(',')
+  );
+  // \uFEFF (BOM) garante que o Excel abra os acentos corretamente
+  const csv = '\uFEFF' + [cabecalho, ...linhas].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nomeArquivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showMsgAdmin('✓ Exportado: '+nomeArquivo);
+}
+
+function dataParaNomeArquivo(){
+  const d = new Date();
+  return d.toISOString().slice(0,10); // AAAA-MM-DD
+}
+
+function exportarRegistrosCSV(){
+  exportarCSV(registros, [
+    {chave:'cidade',titulo:'Cidade'}, {chave:'bairro',titulo:'Bairro'}, {chave:'quadra',titulo:'Quadra'},
+    {chave:'conjunto',titulo:'Conjunto'}, {chave:'casa',titulo:'Casa'}, {chave:'obs',titulo:'Observação'},
+    {chave:'lat',titulo:'Latitude'}, {chave:'lng',titulo:'Longitude'},
+    {chave:'verificado',titulo:'Verificado'}, {chave:'totalConfirmacoes',titulo:'Confirmações'},
+    {chave:'registradoPor',titulo:'Registrado por'}, {chave:'ts',titulo:'Data'}
+  ], `registros_${dataParaNomeArquivo()}.csv`);
+}
+
+function exportarTelemetriaCSV(){
+  exportarCSV(TELEMETRIA, [
+    {chave:'quadra',titulo:'Quadra'}, {chave:'conjunto',titulo:'Conjunto'}, {chave:'casa',titulo:'Casa'},
+    {chave:'tempoAteChegarSeg',titulo:'Tempo até chegar (s)'}, {chave:'tempoParadoSeg',titulo:'Tempo parado (s)'},
+    {chave:'velocidadeMediaKmh',titulo:'Velocidade (km/h)'}, {chave:'precisaoGpsM',titulo:'Precisão GPS (m)'},
+    {chave:'motoristaEmail',titulo:'Motorista'}, {chave:'ts',titulo:'Data'}
+  ], `telemetria_${dataParaNomeArquivo()}.csv`);
+}
+
+function exportarHistoricoCSV(){
+  exportarCSV(HISTORICO, [
+    {chave:'motoristaEmail',titulo:'Motorista'}, {chave:'totalEntregues',titulo:'Entregues'},
+    {chave:'totalPuladas',titulo:'Puladas'}, {chave:'duracaoTotalMin',titulo:'Duração (min)'},
+    {chave:'distanciaTotalKm',titulo:'Distância (km)'}, {chave:'dataInicio',titulo:'Início'}, {chave:'dataFim',titulo:'Fim'}
+  ], `historico_rotas_${dataParaNomeArquivo()}.csv`);
+}
+
+function exportarCorrecoesCSV(){
+  exportarCSV(CORRECOES, [
+    {chave:'enderecoOriginal',titulo:'Endereço original'}, {chave:'quadra',titulo:'Quadra'},
+    {chave:'conjunto',titulo:'Conjunto'}, {chave:'casaDigitadaManualmente',titulo:'Casa digitada'},
+    {chave:'corrigidoPor',titulo:'Corrigido por'}, {chave:'ts',titulo:'Data'}
+  ], `correcoes_parser_${dataParaNomeArquivo()}.csv`);
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 function renderDashboard(){
   const total=registros.length,comGps=registros.filter(r=>r.lat).length,comFoto=registros.filter(r=>r.foto).length;
@@ -1528,6 +1598,8 @@ window.renderCorrecoes=renderCorrecoes; window.irParaCorrecoes=irParaCorrecoes;
 window.renderTelemetria=renderTelemetria; window.irParaTelemetria=irParaTelemetria;
 window.salvarCoordQuadra=salvarCoordQuadra;
 window.renderHistorico=renderHistorico; window.irParaHistorico=irParaHistorico;
+window.exportarRegistrosCSV=exportarRegistrosCSV; window.exportarTelemetriaCSV=exportarTelemetriaCSV;
+window.exportarHistoricoCSV=exportarHistoricoCSV; window.exportarCorrecoesCSV=exportarCorrecoesCSV;
 window.renderTabela=renderTabela; window.onTabCidadeChange=onTabCidadeChange; window.onTabBairroChange=onTabBairroChange;
 window.onMapCidadeChange=onMapCidadeChange; window.onMapBairroChange=onMapBairroChange; window.filtrarMapaAdmin=filtrarMapaAdmin;
 window.selecionarCidade=selecionarCidade; window.selecionarBairro=selecionarBairro;
