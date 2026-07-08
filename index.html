@@ -393,7 +393,12 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
           </div>
           <div id="rota-lista"></div>
           <div id="rota-fechar-wrap" style="display:none;">
-            <button class="rota-btn" style="background:#378ADD;margin-top:10px;" onclick="fecharRota()">🛣 Otimizar a rota</button>
+            <div style="margin:10px 0 4px;font-size:12px;font-weight:600;color:#555;">📍 Ponto de partida</div>
+            <div style="display:flex;gap:6px;margin-bottom:6px;">
+              <button class="ponto-partida-btn ativo" id="pp-gps" onclick="selecionarPontoPartida('gps')" style="flex:1;padding:8px;font-size:11px;border-radius:8px;border:1.5px solid #1D9E75;background:#E1F5EE;color:#0F6E56;font-weight:600;">📡 GPS atual</button>
+              <button class="ponto-partida-btn" id="pp-ultima" onclick="selecionarPontoPartida('ultima')" style="flex:1;padding:8px;font-size:11px;border-radius:8px;border:1.5px solid #ddd;background:#fff;color:#666;">🏁 Última entrega</button>
+            </div>
+            <button class="rota-btn" style="background:#378ADD;margin-top:6px;" onclick="fecharRota()">🛣 Otimizar a rota</button>
           </div>
         </div>
 
@@ -1360,7 +1365,7 @@ function distancia(a, b){
 
 // Construção inicial por vizinho mais próximo (rápido, sem depender de internet)
 function otimizarRota(pacotes){
-  const inicio = posicaoAtual || { lat: CENTER[0], lng: CENTER[1] };
+  const inicio = obterPontoPartida();
   const restantes = [...pacotes];
   const ordenados = [];
   let posAtual = inicio;
@@ -1408,7 +1413,7 @@ function aplicar2opt(pontosComCoords, maxIteracoes){
 async function otimizarRotaComOSRM(pacotesComCoords){
   if(!pacotesComCoords.length) return [];
   if(pacotesComCoords.length === 1) return pacotesComCoords;
-  const origem = posicaoAtual || { lat: CENTER[0], lng: CENTER[1] };
+  const origem = obterPontoPartida();
   const todasCoords = [origem, ...pacotesComCoords.map(p=>p.coords)];
   const coordsStr = todasCoords.map(c=>c.lng+','+c.lat).join(';');
   const url = `https://router.project-osrm.org/trip/v1/driving/${coordsStr}?source=first&roundtrip=false&overview=false`;
@@ -1481,6 +1486,13 @@ async function fecharRota(){
   renderRotaFinal(rotaAtual);
 }
 
+function removerParadaDaRota(idx){
+  if(!confirm('Remover esta parada da rota de hoje?')) return;
+  rotaAtual.splice(idx, 1);
+  renderRotaFinal(rotaAtual);
+  showMsg('Parada removida.', 'ok');
+}
+
 function renderRotaFinal(pacotes){
   document.getElementById('rota-revisao-wrap').style.display = 'none';
   document.getElementById('rota-lista-final-wrap').style.display = 'block';
@@ -1522,6 +1534,7 @@ function renderRotaFinal(pacotes){
         <div class="rota-detalhe">${p.enderecoOriginal.slice(0,60)}${p.enderecoOriginal.length>60?'...':''}</div>
         ${contatoFmt?`<div class="rota-contato">📞 ${contatoFmt}</div>`:''}
       </div>
+      <button onclick="event.stopPropagation();removerParadaDaRota(${i})" title="Remover parada" style="background:none;border:none;color:#ccc;font-size:16px;padding:4px 8px;cursor:pointer;flex-shrink:0;">🗑</button>
     </div>`;
   }).join('');
 
@@ -1640,6 +1653,27 @@ function sairNavegacao(){
 }
 
 let modoConfirmacaoAtivo = false;
+let telemetriaInicioParadaTs = null, telemetriaChegadaTs = null;
+let ultimaEntregaConfirmadaCoord = null;
+let pontoPartidaEscolhido = 'gps'; // 'gps' | 'ultima'
+
+function selecionarPontoPartida(tipo){
+  if(tipo === 'ultima' && !ultimaEntregaConfirmadaCoord){
+    showMsg('Nenhuma entrega confirmada ainda hoje — usando GPS atual.', 'err');
+    tipo = 'gps';
+  }
+  pontoPartidaEscolhido = tipo;
+  const btnGps = document.getElementById('pp-gps'), btnUltima = document.getElementById('pp-ultima');
+  const ativo = 'border:1.5px solid #1D9E75;background:#E1F5EE;color:#0F6E56;font-weight:600;';
+  const inativo = 'border:1.5px solid #ddd;background:#fff;color:#666;';
+  btnGps.style.cssText = 'flex:1;padding:8px;font-size:11px;border-radius:8px;' + (tipo==='gps'?ativo:inativo);
+  btnUltima.style.cssText = 'flex:1;padding:8px;font-size:11px;border-radius:8px;' + (tipo==='ultima'?ativo:inativo);
+}
+
+function obterPontoPartida(){
+  if(pontoPartidaEscolhido === 'ultima' && ultimaEntregaConfirmadaCoord) return ultimaEntregaConfirmadaCoord;
+  return posicaoAtual || { lat: CENTER[0], lng: CENTER[1] };
+}
 const LIMIAR_CONFIRMACAO = 40; // metros — dispersão máxima entre confirmações para considerar consistente
 const MIN_CONFIRMACOES_VERIFICAR = 3;
 
@@ -1657,6 +1691,9 @@ function atualizarParadaAtual(){
   else fw.style.display='none';
   jaAvisouChegada = false;
   resetBotoesNav();
+  // Telemetria: marca o início desta parada
+  telemetriaInicioParadaTs = Date.now();
+  telemetriaChegadaTs = null;
 }
 function normalizarTextoNav(s){ return (s||'').toString().toLowerCase().trim(); }
 
@@ -1678,6 +1715,7 @@ function marcarCheguei(){ entrarModoConfirmacao(); }
 function entrarModoConfirmacao(){
   if(modoConfirmacaoAtivo) return;
   modoConfirmacaoAtivo = true;
+  telemetriaChegadaTs = Date.now();
   const banner = $('nav-arrived-banner');
   banner.style.display = 'block';
   banner.textContent = '🎯 Chegou! É este o endereço correto?';
@@ -1770,6 +1808,7 @@ async function registrarConfirmacaoLocal(coordOverride){
 
   try {
     await fb.setDoc(fb.doc(fb.db,'registros',docId), dados, { merge:true });
+    ultimaEntregaConfirmadaCoord = { lat: dados.lat, lng: dados.lng }; // ponto de partida alternativo
     if(verificado && !jaEstavaVerificado){
       showMsg('🏅 3 confirmações! Endereço verificado.', 'ok');
     } else {
@@ -2005,6 +2044,7 @@ function atualizarSetaNav(){
 }
 
 function confirmarEntrega(){
+  registrarTelemetriaParadaAtual();
   navIndex++;
   ultimaRotaBuscada = null;
   if(navIndex >= rotaNavegacao.length){
@@ -2018,10 +2058,37 @@ function confirmarEntrega(){
 }
 function pularParada(){ confirmarEntrega(); }
 
+// ─── Telemetria por entrega (log passivo, sem aprendizado automático) ────────
+function registrarTelemetriaParadaAtual(){
+  if(!fb || !telemetriaInicioParadaTs) return;
+  const p = rotaNavegacao[navIndex];
+  if(!p) return;
+
+  const agora = Date.now();
+  const tempoAteChegar = telemetriaChegadaTs ? Math.round((telemetriaChegadaTs - telemetriaInicioParadaTs)/1000) : null;
+  const tempoParado = telemetriaChegadaTs ? Math.round((agora - telemetriaChegadaTs)/1000) : null;
+
+  const dados = {
+    cidade: p.cidade||'', bairro: p.bairro||'', quadra: p.quadra||'', conjunto: p.conjunto||'', casa: p.casa||'',
+    tempoAteChegarSeg: tempoAteChegar,
+    tempoParadoSeg: tempoParado,
+    velocidadeMediaKmh: parseInt(document.getElementById('nav-speed-val')?.textContent||'0',10) || null,
+    precisaoGpsM: posicaoAtual?.acc ? Math.round(posicaoAtual.acc) : null,
+    horarioEntrega: new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
+    motoristaUid: usuarioAtual?.uid||'', motoristaEmail: usuarioAtual?.email||'',
+    ts: new Date().toISOString()
+  };
+
+  fb.setDoc(fb.doc(fb.db, 'telemetriaEntregas', Date.now()+'_'+Math.random().toString(36).slice(2,8)), dados)
+    .catch(e => console.warn('[Telemetria] Falha ao salvar:', e));
+}
+
 
 // ─── Globais ───────────────────────────────────────────────────────────────────
 window.showTab=showTab; window.fazerLogin=fazerLogin;
 window.analisarLista=analisarLista; window.importarCSV=importarCSV; window.fecharRota=fecharRota; window.copiarRota=copiarRota;
+window.selecionarPontoPartida=selecionarPontoPartida;
+window.removerParadaDaRota=removerParadaDaRota;
 window.fazerLogout=fazerLogout; window.abrirCadastro=abrirCadastro;
 window.ativarGPS=ativarGPS; window.solicitarGPS=solicitarGPS;
 window.onCidadeChange=onCidadeChange; window.onBairroChange=onBairroChange; window.onQuadraChange=onQuadraChange;

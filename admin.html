@@ -83,6 +83,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-2)}
 .legend-dot{width:10px;height:10px;border-radius:50%}
 .table-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.stat-mini{display:flex;flex-direction:column;}
+.stat-mini .num{font-size:22px;font-weight:700;color:var(--text);}
+.stat-mini .lbl{font-size:11px;color:var(--text-3);}
 .table-toolbar input,.table-toolbar select{padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);outline:none}
 .table-toolbar input{flex:1;min-width:200px}
 .table-toolbar input:focus,.table-toolbar select:focus{border-color:var(--green)}
@@ -173,6 +176,7 @@ tr:hover td{background:#FAFBFC}
     <div class="nav-section" id="nav-section-admin" style="display:none;">Administração</div>
     <div class="nav-item" id="nav-item-usuarios" onclick="navTo('usuarios',this)" style="display:none;"><span class="nav-icon">👥</span> Usuários</div>
     <div class="nav-item" onclick="navTo('correcoes',this)"><span class="nav-icon">🛠</span> Correções</div>
+    <div class="nav-item" onclick="navTo('telemetria',this)"><span class="nav-icon">📊</span> Telemetria</div>
     <div class="sidebar-footer">
       <div id="papel-badge" style="font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;display:inline-block;margin-bottom:8px;background:rgba(29,158,117,.2);color:var(--green);"></div>
       <div class="sync-indicator">
@@ -358,6 +362,42 @@ tr:hover td{background:#FAFBFC}
         <div class="pagination" id="correcoes-paginacao"></div>
       </div>
     </div>
+
+    <!-- TELEMETRIA DE ENTREGAS -->
+    <div class="page" id="page-telemetria">
+      <div class="page-title">Telemetria de Entregas</div>
+      <div class="page-sub">Dados brutos registrados automaticamente a cada parada concluída — tempo até chegar, tempo parado no local, velocidade e precisão do GPS. Puro log, sem processamento automático — revise periodicamente pra identificar padrões (ex: "esse conjunto sempre demora mais").</div>
+      <div class="card" style="margin-bottom:20px;">
+        <div class="table-toolbar" style="gap:16px;flex-wrap:wrap;">
+          <div class="stat-mini"><span class="num" id="tel-media-chegar">—</span><span class="lbl">média p/ chegar</span></div>
+          <div class="stat-mini"><span class="num" id="tel-media-parado">—</span><span class="lbl">média parado</span></div>
+          <div class="stat-mini"><span class="num" id="tel-total">0</span><span class="lbl">entregas registradas</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-toolbar">
+          <input type="text" id="tel-busca" placeholder="🔍  Buscar quadra/conjunto..." oninput="renderTelemetria()"/>
+          <select id="tel-motorista" onchange="renderTelemetria()">
+            <option value="">Todos motoristas</option>
+          </select>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Endereço</th>
+              <th>Tempo até chegar</th>
+              <th>Tempo parado</th>
+              <th>Velocidade</th>
+              <th>Precisão GPS</th>
+              <th>Motorista</th>
+              <th>Quando</th>
+            </tr></thead>
+            <tbody id="tel-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="tel-paginacao"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -431,7 +471,7 @@ const cfg={apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",authDomain:"app-rota
 const fapp=initializeApp(cfg);
 const db=getFirestore(fapp);
 const auth=getAuth(fapp);
-window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas'),colUsuarios:collection(db,'usuarios'),colCorrecoes:collection(db,'correcoesParser')};
+window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas'),colUsuarios:collection(db,'usuarios'),colCorrecoes:collection(db,'correcoesParser'),colTelemetria:collection(db,'telemetriaEntregas')};
 setPersistence(auth, browserLocalPersistence).finally(()=>{
   window.__fbReady=true;
   window.dispatchEvent(new Event('fb-ready'));
@@ -600,6 +640,10 @@ function iniciarFb(){
       CORRECOES=snap.docs.map(d=>({id:d.id,...d.data()}));
       if(document.getElementById('page-correcoes').classList.contains('active')) renderCorrecoes();
     },err=>console.error('[Correcoes]',err));
+    fb.onSnapshot(fb.query(fb.colTelemetria),snap=>{
+      TELEMETRIA=snap.docs.map(d=>({id:d.id,...d.data()}));
+      if(document.getElementById('page-telemetria').classList.contains('active')) renderTelemetria();
+    },err=>console.error('[Telemetria]',err));
     if(ehAdminRaiz){
       fb.onSnapshot(fb.query(fb.colUsuarios),snap=>{
         USUARIOS={};
@@ -634,6 +678,7 @@ function navTo(page,el){
   if(page==='faixas')renderFaixasTabela();
   if(page==='usuarios')renderListaSupervisores();
   if(page==='correcoes')renderCorrecoes();
+  if(page==='telemetria')renderTelemetria();
 }
 
 // ─── Selects ──────────────────────────────────────────────────────────────────
@@ -695,6 +740,9 @@ function onFaixasCidadeChange(){
 let FAIXAS = {}; // { docId: {cidade,bairro,quadra,conjunto,min,max,tipo} }
 let faixasPag = 1;
 let CORRECOES = [];
+let TELEMETRIA = [];
+let telemetriaPag = 1;
+const TELEMETRIA_POR_PAG = 25;
 let correcoesPag = 1;
 const CORRECOES_POR_PAG = 25;
 const FAIXAS_POR_PAG = 25;
@@ -829,6 +877,68 @@ function renderCorrecoes(){
   document.getElementById('correcoes-paginacao').innerHTML = pags;
 }
 function irParaCorrecoes(p){ correcoesPag=p; renderCorrecoes(); }
+
+// ─── Telemetria de entregas (log passivo de tempo/velocidade por parada) ──────
+function formatarSegundos(s){
+  if(s==null) return '—';
+  if(s<60) return s+'s';
+  return Math.round(s/60)+' min';
+}
+
+function renderTelemetria(){
+  const busca = (document.getElementById('tel-busca').value||'').toLowerCase();
+  const motoristaFiltro = document.getElementById('tel-motorista').value;
+
+  const selMot = document.getElementById('tel-motorista');
+  if(selMot.options.length <= 1){
+    const motoristasUnicos = [...new Set(TELEMETRIA.map(t=>t.motoristaEmail).filter(Boolean))].sort();
+    motoristasUnicos.forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; selMot.appendChild(o); });
+  }
+
+  let lista = [...TELEMETRIA];
+  if(motoristaFiltro) lista = lista.filter(t=>t.motoristaEmail===motoristaFiltro);
+  if(busca) lista = lista.filter(t=>((t.quadra||'')+' '+(t.conjunto||'')).toLowerCase().includes(busca));
+
+  // Estatísticas gerais (sobre a lista filtrada)
+  const comTempoChegar = lista.filter(t=>t.tempoAteChegarSeg!=null);
+  const comTempoParado = lista.filter(t=>t.tempoParadoSeg!=null);
+  const mediaChegar = comTempoChegar.length ? comTempoChegar.reduce((s,t)=>s+t.tempoAteChegarSeg,0)/comTempoChegar.length : null;
+  const mediaParado = comTempoParado.length ? comTempoParado.reduce((s,t)=>s+t.tempoParadoSeg,0)/comTempoParado.length : null;
+  document.getElementById('tel-media-chegar').textContent = formatarSegundos(mediaChegar!=null?Math.round(mediaChegar):null);
+  document.getElementById('tel-media-parado').textContent = formatarSegundos(mediaParado!=null?Math.round(mediaParado):null);
+  document.getElementById('tel-total').textContent = lista.length;
+
+  lista.sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
+
+  const total = lista.length;
+  const totalPags = Math.max(1, Math.ceil(total/TELEMETRIA_POR_PAG));
+  if(telemetriaPag > totalPags) telemetriaPag = 1;
+  const pagina = lista.slice((telemetriaPag-1)*TELEMETRIA_POR_PAG, telemetriaPag*TELEMETRIA_POR_PAG);
+
+  if(!total){
+    document.getElementById('tel-body').innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-3);padding:24px;">Nenhuma telemetria registrada ainda.</td></tr>`;
+    document.getElementById('tel-paginacao').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('tel-body').innerHTML = pagina.map(t=>{
+    const dataFmt = t.ts ? new Date(t.ts).toLocaleDateString('pt-BR')+' '+new Date(t.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<tr>
+      <td style="font-size:12px;">${t.quadra||'—'} ${t.conjunto?'· Cj.'+t.conjunto:''}${t.casa?' · Casa '+t.casa:''}</td>
+      <td>${formatarSegundos(t.tempoAteChegarSeg)}</td>
+      <td>${formatarSegundos(t.tempoParadoSeg)}</td>
+      <td style="font-size:12px;">${t.velocidadeMediaKmh!=null?t.velocidadeMediaKmh+' km/h':'—'}</td>
+      <td style="font-size:12px;">${t.precisaoGpsM!=null?'~'+t.precisaoGpsM+'m':'—'}</td>
+      <td style="font-size:12px;color:var(--text-3);">${t.motoristaEmail||'—'}</td>
+      <td style="font-size:11px;color:var(--text-3);">${dataFmt}</td>
+    </tr>`;
+  }).join('');
+
+  let pags = `<span>${total} registros</span>`;
+  if(totalPags>1) pags += Array.from({length:totalPags},(_,i)=>`<button class="page-btn ${i+1===telemetriaPag?'active':''}" onclick="irParaTelemetria(${i+1})">${i+1}</button>`).join('');
+  document.getElementById('tel-paginacao').innerHTML = pags;
+}
+function irParaTelemetria(p){ telemetriaPag=p; renderTelemetria(); }
 
 async function salvarFaixa(id, cidade, bairro, quadra, conjunto){
   if(!ehAdminRaiz && !permissoesAtuais.editarFaixas){ alert('Você não tem permissão para editar faixas.'); return; }
@@ -1280,6 +1390,7 @@ window.removerSupervisor=removerSupervisor; window.renderListaSupervisores=rende
 window.onFaixasCidadeChange=onFaixasCidadeChange; window.renderFaixasTabela=renderFaixasTabela;
 window.salvarFaixa=salvarFaixa; window.irParaFaixas=irParaFaixas;
 window.renderCorrecoes=renderCorrecoes; window.irParaCorrecoes=irParaCorrecoes;
+window.renderTelemetria=renderTelemetria; window.irParaTelemetria=irParaTelemetria;
 window.renderTabela=renderTabela; window.onTabCidadeChange=onTabCidadeChange; window.onTabBairroChange=onTabBairroChange;
 window.onMapCidadeChange=onMapCidadeChange; window.onMapBairroChange=onMapBairroChange; window.filtrarMapaAdmin=filtrarMapaAdmin;
 window.selecionarCidade=selecionarCidade; window.selecionarBairro=selecionarBairro;
