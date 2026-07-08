@@ -7,6 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#1D9E75"/>
 <title>Rotas QNO</title>
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#1D9E75"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -253,6 +255,9 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 <!-- APP -->
 <div id="app" style="display:none;">
   <div class="toast-msg" id="toast-msg"></div>
+  <div id="offline-banner" style="display:none;background:#EF9F27;color:#fff;text-align:center;font-size:12px;padding:7px 10px;font-weight:600;">
+    📡 Sem conexão — o app continua funcionando, os dados serão sincronizados automaticamente quando a internet voltar
+  </div>
   <div class="header">
     <div class="header-icon">📦</div>
     <div><div class="header-title">Rotas QNO</div><div class="header-sub">Ceilândia · DF</div></div>
@@ -539,7 +544,7 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const cfg = {
@@ -554,6 +559,17 @@ const cfg = {
 const fapp = initializeApp(cfg);
 const db   = getFirestore(fapp);
 const auth = getAuth(fapp);
+
+// Habilita persistência offline: leituras continuam funcionando com o último dado
+// sincronizado, e escritas feitas offline (confirmações, telemetria, etc.) ficam
+// guardadas localmente e sincronizam sozinhas assim que a internet voltar.
+enableIndexedDbPersistence(db).catch(err => {
+  if(err.code === 'failed-precondition'){
+    console.warn('[Offline] Persistência não ativada — provavelmente outra aba do app já está aberta.');
+  } else if(err.code === 'unimplemented'){
+    console.warn('[Offline] Este navegador não suporta persistência offline.');
+  }
+});
 
 window.__fb = {
   db, auth, collection, doc, setDoc, deleteDoc, onSnapshot, query,
@@ -2262,6 +2278,24 @@ window.sairNavegacao=sairNavegacao;
 window.confirmarEntrega=confirmarEntrega; window.pularParada=pularParada;
 window.fecharModal=fecharModal;
 window.abrirFotoZoom=abrirFotoZoom; window.fecharFotoZoom=fecharFotoZoom;
+
+// ─── Modo offline básico (PWA) ─────────────────────────────────────────────────
+function atualizarIndicadorConexao(){
+  const banner = document.getElementById('offline-banner');
+  if(!banner) return;
+  banner.style.display = navigator.onLine ? 'none' : 'block';
+}
+window.addEventListener('online', atualizarIndicadorConexao);
+window.addEventListener('offline', atualizarIndicadorConexao);
+atualizarIndicadorConexao();
+
+// Registra o Service Worker — cacheia o app em si e os tiles do mapa já visitados,
+// pra continuar funcionando (ver mapa, navegar, confirmar entregas) mesmo sem sinal.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(e => console.warn('[SW] Falha ao registrar:', e));
+  });
+}
 </script>
 </body>
 </html>
