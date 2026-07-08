@@ -233,6 +233,7 @@ tr:hover td{background:#FAFBFC}
           <select id="tab-extra" onchange="renderTabela()">
             <option value="">Todos</option><option value="gps">Com GPS</option><option value="semgps">Sem GPS</option>
             <option value="foto">Com foto</option><option value="semfoto">Sem foto</option>
+            <option value="suspeita">⚠️ Coordenada suspeita</option>
           </select>
           <button class="btn-acao" onclick="exportarRegistrosCSV()">📥 Exportar CSV</button>
         </div>
@@ -1217,6 +1218,17 @@ function renderDashboard(){
 }
 
 // ─── Tabela ───────────────────────────────────────────────────────────────────
+// Região aproximada de cobertura (Ceilândia/DF, com margem de folga) — fora disso é suspeito
+const LIMITES_REGIAO = { latMin:-16.2, latMax:-15.4, lngMin:-48.4, lngMax:-47.7 };
+
+function coordenadaSuspeita(r){
+  if(!r.lat && r.lat !== 0) return false; // sem GPS ainda — não é "suspeito", é só "sem GPS"
+  if(r.lat === 0 || r.lng === 0) return true; // coordenada zerada
+  if(r.lat < LIMITES_REGIAO.latMin || r.lat > LIMITES_REGIAO.latMax) return true;
+  if(r.lng < LIMITES_REGIAO.lngMin || r.lng > LIMITES_REGIAO.lngMax) return true;
+  return false;
+}
+
 function renderTabela(){
   const busca=document.getElementById('tabela-busca').value.toLowerCase();
   const cidade=document.getElementById('tab-cidade').value;
@@ -1231,12 +1243,15 @@ function renderTabela(){
   if(extra==='semgps')f=f.filter(r=>!r.lat);
   if(extra==='foto')f=f.filter(r=>r.foto);
   if(extra==='semfoto')f=f.filter(r=>!r.foto);
+  if(extra==='suspeita')f=f.filter(r=>coordenadaSuspeita(r));
   if(busca)f=f.filter(r=>(r.cidade||'').toLowerCase().includes(busca)||(r.bairro||'').toLowerCase().includes(busca)||(r.quadra||'').toLowerCase().includes(busca)||(r.conjunto||'').toLowerCase().includes(busca)||r.casa.toString().includes(busca)||(r.obs||'').toLowerCase().includes(busca));
   f.sort((a,b)=>(a.cidade||'').localeCompare(b.cidade||'')||(a.bairro||'').localeCompare(b.bairro||'')||(a.quadra||'').localeCompare(b.quadra||'',undefined,{numeric:true})||parseInt(a.casa)-parseInt(b.casa));
   const total=f.length,totalPags=Math.max(1,Math.ceil(total/POR_PAG));
   if(pag>totalPags)pag=1;
   const pagina=f.slice((pag-1)*POR_PAG,pag*POR_PAG);
-  document.getElementById('tabela-body').innerHTML=pagina.map(r=>`<tr>
+  document.getElementById('tabela-body').innerHTML=pagina.map(r=>{
+    const suspeita = coordenadaSuspeita(r);
+    return `<tr ${suspeita?'style="background:var(--red-light,#FCEBEB);"':''}>
     <td>${r.foto?`<img src="${r.foto}" onclick="verFoto('${r.foto}')" style="width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid var(--border);cursor:pointer;">`:'<span style="color:var(--text-3)">—</span>'}</td>
     <td style="font-size:12px;">${r.cidade||'—'}</td>
     <td><span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:50%;background:${corBairro(r.cidade,r.bairro)};flex-shrink:0;"></span>${r.bairro||'—'}</span></td>
@@ -1244,14 +1259,15 @@ function renderTabela(){
     <td>${r.conjunto||'—'}</td>
     <td>${r.casa}</td>
     <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-2);">${r.obs||'—'}</td>
-    <td>${r.lat?'<span class="badge badge-gps">✓</span>':'<span style="color:var(--text-3);">—</span>'}</td>
+    <td>${suspeita?'<span title="Coordenada fora da região esperada ou zerada" style="cursor:help;">⚠️</span>':(r.lat?'<span class="badge badge-gps">✓</span>':'<span style="color:var(--text-3);">—</span>')}</td>
     <td style="font-size:11px;color:var(--text-3);">${r.ts||'—'}</td>
     <td><div class="td-acoes">
       ${(ehAdminRaiz||permissoesAtuais.editarReg)?`<button class="btn-acao" onclick="abrirEditModal('${r.id}')">✏️</button>`:''}
       ${(ehAdminRaiz||permissoesAtuais.excluirReg)?`<button class="btn-acao del" onclick="excluir('${r.id}')">🗑</button>`:''}
       ${(!ehAdminRaiz&&!permissoesAtuais.editarReg&&!permissoesAtuais.excluirReg)?`<span style="font-size:11px;color:var(--text-3);">Somente leitura</span>`:''}
     </div></td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
   let pags=`<span>${total} registros</span>`;
   if(totalPags>1)pags+=Array.from({length:totalPags},(_,i)=>`<button class="page-btn ${i+1===pag?'active':''}" onclick="irPara(${i+1})">${i+1}</button>`).join('');
   document.getElementById('paginacao').innerHTML=pags;
