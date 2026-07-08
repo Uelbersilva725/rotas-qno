@@ -841,13 +841,32 @@ function listarTodosConjuntos(){
 
 function contarCoberturaConjunto(cidade,bairro,quadra,conjunto,faixa){
   const doConjunto = registros.filter(r => r.cidade===cidade && r.bairro===bairro && r.quadra===quadra && (''+r.conjunto)===(''+conjunto) && r.lat);
-  if(!faixa || faixa.min==null || faixa.max==null) return { confirmadas: doConjunto.length, esperado: null, pct: null };
+  if(!faixa || faixa.min==null || faixa.max==null) return { confirmadas: doConjunto.length, esperado: null, pct: null, maiorLacuna: null };
   let esperado;
   if(faixa.tipo === 'pares' || faixa.tipo === 'impares') esperado = Math.floor((faixa.max - faixa.min)/2) + 1;
   else esperado = faixa.max - faixa.min + 1;
   esperado = Math.max(esperado, 1);
   const pct = Math.min(100, Math.round(doConjunto.length / esperado * 100));
-  return { confirmadas: doConjunto.length, esperado, pct };
+
+  // Calcula a maior lacuna sem nenhuma casa confirmada — inclui as pontas (min/max da
+  // faixa) como referência, pra também detectar quando falta cobrir o início ou o fim.
+  const numeros = doConjunto
+    .map(r => parseInt(r.casa, 10))
+    .filter(n => !isNaN(n))
+    .sort((a,b) => a-b);
+  let maiorLacuna = null;
+  if(numeros.length){
+    const pontos = [faixa.min, ...numeros, faixa.max];
+    for(let i=0; i<pontos.length-1; i++){
+      const delta = pontos[i+1] - pontos[i];
+      if(!maiorLacuna || delta > maiorLacuna.delta){
+        maiorLacuna = { de: pontos[i], ate: pontos[i+1], delta };
+      }
+    }
+    if(maiorLacuna && maiorLacuna.delta <= 0) maiorLacuna = null; // sem lacuna real (tudo cadastrado)
+  }
+
+  return { confirmadas: doConjunto.length, esperado, pct, maiorLacuna };
 }
 
 function renderFaixasTabela(){
@@ -877,7 +896,8 @@ function renderFaixasTabela(){
     const corBarra = cob.pct==null ? '#ccc' : cob.pct>=80?'#1D9E75':cob.pct>=40?'#EF9F27':'#E24B4A';
     const coberturaHtml = cob.esperado
       ? `<div style="font-size:11px;color:var(--text-2);">${cob.confirmadas}/${cob.esperado}</div>
-         <div class="progress-bar" style="width:70px;"><div class="progress-fill" style="width:${cob.pct}%;background:${corBarra};"></div></div>`
+         <div class="progress-bar" style="width:70px;"><div class="progress-fill" style="width:${cob.pct}%;background:${corBarra};"></div></div>
+         ${cob.maiorLacuna?`<div style="font-size:10px;color:var(--amber-dark,#856404);margin-top:3px;white-space:nowrap;">🎯 maior lacuna: ${cob.maiorLacuna.de}→${cob.maiorLacuna.ate}</div>`:''}`
       : `<span style="font-size:11px;color:var(--text-3);">${cob.confirmadas} confirmadas</span>`;
     const dis = podeEditarFaixas ? '' : 'disabled';
     return `<tr>
