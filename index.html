@@ -1037,7 +1037,7 @@ function buscarEndereco(){
   $('busca-ts').textContent=reg.ts?'Registrado em '+reg.ts+(reg.registradoPor?' por '+reg.registradoPor:''):'';
   const fc=$('busca-foto-wrap');
   if(reg.foto){ $('busca-foto').src=reg.foto; fc.style.display='block'; } else fc.style.display='none';
-  $('busca-gps-info').textContent=reg.lat?(reg.verificado?'✅ Endereço verificado ('+(reg.totalConfirmacoes||0)+' confirmações)':'📍 GPS disponível'+(reg.totalConfirmacoes?' · '+reg.totalConfirmacoes+'/3 confirmações':'')):'⚠️ Sem GPS';
+  $('busca-gps-info').textContent=reg.lat?(reg.localizacaoTravada?'🔒 Localização travada pelo admin':reg.verificado?'✅ Endereço verificado ('+(reg.totalConfirmacoes||0)+' confirmações)':'📍 GPS disponível'+(reg.totalConfirmacoes?' · '+reg.totalConfirmacoes+'/3 confirmações':'')):'⚠️ Sem GPS';
   $('btn-editar-pin-busca').style.display=podeRegistrar()?'block':'none';
   if(reg.lat) mostrarPinBusca(reg); else removerPinBusca();
 }
@@ -1076,6 +1076,7 @@ function verNoMapa(){
 function editarPinEncontrado(){
   if(!resultadoBusca||!podeRegistrar())return;
   const r=resultadoBusca;
+  if(r.localizacaoTravada){ showMsg('🔒 Localização travada pelo admin — só pode ser alterada no painel administrativo.','err'); return; }
   abrirModalPin(r.lat||CENTER[0],r.lng||CENTER[1],'Editar pin · '+r.quadra+' Casa '+r.casa,'Reposicione e confirme.',
     async pp=>{ try{ await fb.setDoc(fb.doc(fb.db,'registros',r.id),{...r,lat:pp.lat,lng:pp.lng}); $('busca-gps-info').textContent='✓ Posição atualizada!'; mostrarPinBusca({...r,lat:pp.lat,lng:pp.lng}); }catch(e){alert('Erro: '+(e.code||e.message));} });
 }
@@ -1228,14 +1229,23 @@ let ultimaChamadaNominatim = 0;
 
 // Interpola a posição entre as duas casas registradas numericamente mais próximas
 // (uma pra baixo, uma pra cima) em vez de fazer média de todas as casas do conjunto.
-function interpolarEntreVizinhas(pacote, doConjunto){
+function interpolarEntreVizinhas(pacote, doConjunto, faixa){
   const casaNum = parseInt(pacote.casa, 10);
   if(isNaN(casaNum) || !doConjunto.length) return null;
 
-  const comNumero = doConjunto
+  let comNumero = doConjunto
     .map(r => ({ ...r, casaNum: parseInt(r.casa, 10) }))
     .filter(r => !isNaN(r.casaNum));
   if(!comNumero.length) return null;
+
+  // Se existe uma faixa cadastrada com paridade definida (só pares ou só ímpares),
+  // prioriza vizinhos do mesmo lado da rua — evita interpolar entre uma casa par
+  // e uma ímpar quando sabemos que aquele conjunto só tem um dos dois tipos.
+  if(faixa?.tipo === 'pares' || faixa?.tipo === 'impares'){
+    const alvo = faixa.tipo === 'pares' ? 0 : 1;
+    const filtrado = comNumero.filter(r => r.casaNum % 2 === alvo);
+    if(filtrado.length) comNumero = filtrado; // só aplica o filtro se sobrar candidato
+  }
 
   if(comNumero.length === 1){
     const unica = comNumero[0];
@@ -1302,7 +1312,9 @@ async function encontrarGPS(pacote){
       r.lat
     );
     if(doConjunto.length){
-      const interpolado = interpolarEntreVizinhas(pacote, doConjunto);
+      const idFaixaAtual = idFaixaApp(pacote.cidade, pacote.bairro, pacote.quadra, pacote.conjunto);
+      const faixaAtual = FAIXAS[idFaixaAtual];
+      const interpolado = interpolarEntreVizinhas(pacote, doConjunto, faixaAtual);
       if(interpolado) return interpolado;
     }
   }
@@ -1911,23 +1923,32 @@ async function registrarConfirmacaoLocal(coordOverride){
   const maxDist = Math.max(...todasConfs.map(c => distanciaMetros(c, centroide)));
   const verificado = todasConfs.length >= MIN_CONFIRMACOES_VERIFICAR && maxDist <= LIMIAR_CONFIRMACAO;
   const jaEstavaVerificado = !!existente?.verificado;
+  const travada = !!existente?.localizacaoTravada;
+
+  // Se a localização foi travada pelo admin, a confirmação ainda é registrada (fica no
+  // histórico), mas o GPS salvo NUNCA é alterado — só o admin destrava manualmente no painel.
+  const latFinal = travada ? existente.lat : (verificado ? centroide.lat : novaConfirmacao.lat);
+  const lngFinal = travada ? existente.lng : (verificado ? centroide.lng : novaConfirmacao.lng);
 
   const dados = {
     cidade, bairro, quadra, conjunto, casa,
     obs: existente?.obs || '',
     foto: existente?.foto || null,
-    lat: verificado ? centroide.lat : novaConfirmacao.lat,
-    lng: verificado ? centroide.lng : novaConfirmacao.lng,
+    lat: latFinal,
+    lng: lngFinal,
     confirmacoes: todasConfs,
     totalConfirmacoes: todasConfs.length,
     verificado,
+    localizacaoTravada: travada,
     ts: existente?.ts || (new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}))
   };
 
   try {
     await fb.setDoc(fb.doc(fb.db,'registros',docId), dados, { merge:true });
     ultimaEntregaConfirmadaCoord = { lat: dados.lat, lng: dados.lng }; // ponto de partida alternativo
-    if(verificado && !jaEstavaVerificado){
+    if(travada){
+      showMsg('📍 Confirmação registrada — localização travada pelo admin, não foi alterada.', 'ok');
+    } else if(verificado && !jaEstavaVerificado){
       showMsg('🏅 3 confirmações! Endereço verificado.', 'ok');
     } else {
       showMsg('✓ Confirmação registrada ('+todasConfs.length+'/3).', 'ok');

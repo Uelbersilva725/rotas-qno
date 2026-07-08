@@ -486,13 +486,39 @@ tr:hover td{background:#FAFBFC}
 
 <!-- Modal editar obs -->
 <div class="modal-bg" id="edit-modal">
-  <div class="modal">
-    <h3 id="edit-modal-title">Editar observação</h3>
+  <div class="modal" style="max-width:480px;text-align:left;">
+    <h3 id="edit-modal-title">Editar registro</h3>
+
+    <div id="edit-info-extra" style="font-size:11px;color:var(--text-3);margin-bottom:12px;line-height:1.6;"></div>
+
+    <label>Localização (arraste o pin pra reposicionar)</label>
+    <div id="edit-map" style="width:100%;height:220px;border-radius:10px;border:1px solid var(--border);margin-bottom:6px;"></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <input type="number" step="0.000001" id="edit-lat-input" placeholder="Latitude" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;"/>
+      <input type="number" step="0.000001" id="edit-lng-input" placeholder="Longitude" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;"/>
+    </div>
+
+    <label>Foto da fachada</label>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;">
+      <img id="edit-foto-preview" src="" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border);display:none;"/>
+      <div style="flex:1;">
+        <input type="file" id="edit-foto-input" accept="image/*" style="display:none;" onchange="previewFotoEdit(event)"/>
+        <button class="btn-acao" onclick="document.getElementById('edit-foto-input').click()">📷 Trocar foto</button>
+        <span id="edit-foto-status" style="font-size:11px;color:var(--text-3);margin-left:6px;"></span>
+      </div>
+    </div>
+
     <label>Observação</label>
-    <textarea id="edit-obs-input"></textarea>
+    <textarea id="edit-obs-input" style="margin-bottom:14px;"></textarea>
+
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--bg-alt,#f5f5f5);padding:10px 12px;border-radius:8px;">
+      <input type="checkbox" id="edit-travar-checkbox" style="width:16px;height:16px;"/>
+      <span style="font-size:12px;font-weight:600;">🔒 Travar esta localização (impede que o sistema de confirmações do app altere o GPS)</span>
+    </label>
+
     <div class="modal-btns">
       <button onclick="fecharModal('edit-modal')">Cancelar</button>
-      <button class="save" onclick="salvarEditObs()">Salvar</button>
+      <button class="save" onclick="salvarEdicaoCompleta()">Salvar</button>
     </div>
   </div>
 </div>
@@ -519,6 +545,8 @@ setPersistence(auth, browserLocalPersistence).finally(()=>{
 </script>
 <script>
 const UID_ADMIN="vepKTSZjEiVNtPyzXG9CcPagnk83";
+const CLOUDINARY_CLOUD  = "dxbxm3rpd";
+const CLOUDINARY_PRESET = "h90fdbtd";
 const CENTER=[-15.8485,-48.1080];
 const POR_PAG=20;
 const CORES_PAD=['#1D9E75','#378ADD','#D85A30','#BA7517','#D4537E','#7B5EA7','#2D9CDB','#F2994A'];
@@ -1259,7 +1287,7 @@ function renderTabela(){
     <td>${r.conjunto||'—'}</td>
     <td>${r.casa}</td>
     <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-2);">${r.obs||'—'}</td>
-    <td>${suspeita?'<span title="Coordenada fora da região esperada ou zerada" style="cursor:help;">⚠️</span>':(r.lat?'<span class="badge badge-gps">✓</span>':'<span style="color:var(--text-3);">—</span>')}</td>
+    <td>${r.localizacaoTravada?'<span title="Localização travada pelo admin" style="cursor:help;">🔒</span>':suspeita?'<span title="Coordenada fora da região esperada ou zerada" style="cursor:help;">⚠️</span>':(r.lat?'<span class="badge badge-gps">✓</span>':'<span style="color:var(--text-3);">—</span>')}</td>
     <td style="font-size:11px;color:var(--text-3);">${r.ts||'—'}</td>
     <td><div class="td-acoes">
       ${(ehAdminRaiz||permissoesAtuais.editarReg)?`<button class="btn-acao" onclick="abrirEditModal('${r.id}')">✏️</button>`:''}
@@ -1526,21 +1554,126 @@ async function excluirConjunto(quadra,cj){
 }
 
 // ─── Editar / Excluir registros ───────────────────────────────────────────────
+// ─── Modal de edição completo ──────────────────────────────────────────────────
+let editMap = null, editMarker = null, editFotoBase64Novo = null;
+
+function comprimirImagemAdmin(src, maxW, q){
+  return new Promise(res=>{
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if(w > maxW){ h = Math.round(h*maxW/w); w = maxW; }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      res(c.toDataURL('image/jpeg', q));
+    };
+    img.src = src;
+  });
+}
+
+function previewFotoEdit(e){
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ev => comprimirImagemAdmin(ev.target.result, 1024, .7).then(c => {
+    editFotoBase64Novo = c;
+    document.getElementById('edit-foto-preview').src = c;
+    document.getElementById('edit-foto-preview').style.display = 'block';
+    document.getElementById('edit-foto-status').textContent = 'Nova foto selecionada (salva ao confirmar)';
+  });
+  r.readAsDataURL(f);
+}
+
+async function uploadFotoAdmin(b64){
+  const fd = new FormData();
+  fd.append('file', b64);
+  fd.append('upload_preset', CLOUDINARY_PRESET);
+  const r = await fetch('https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/image/upload', { method:'POST', body:fd });
+  if(!r.ok) throw new Error('Cloudinary '+r.status);
+  return (await r.json()).secure_url;
+}
+
 function abrirEditModal(id){
   if(!ehAdminRaiz && !permissoesAtuais.editarReg){ alert('Você não tem permissão para editar registros.'); return; }
-  const r=registros.find(x=>x.id===id); if(!r) return;
-  editandoId=id;
-  document.getElementById('edit-modal-title').textContent='Editar · '+r.quadra+' Casa '+r.casa;
-  document.getElementById('edit-obs-input').value=r.obs||'';
+  const r = registros.find(x=>x.id===id); if(!r) return;
+  editandoId = id;
+  editFotoBase64Novo = null;
+
+  document.getElementById('edit-modal-title').textContent = 'Editar · '+r.quadra+' · Cj.'+(r.conjunto||'?')+' · Casa '+r.casa;
+  document.getElementById('edit-obs-input').value = r.obs || '';
+  document.getElementById('edit-lat-input').value = r.lat ?? '';
+  document.getElementById('edit-lng-input').value = r.lng ?? '';
+  document.getElementById('edit-travar-checkbox').checked = !!r.localizacaoTravada;
+  document.getElementById('edit-foto-status').textContent = '';
+
+  const fotoPreview = document.getElementById('edit-foto-preview');
+  if(r.foto){ fotoPreview.src = r.foto; fotoPreview.style.display = 'block'; }
+  else { fotoPreview.style.display = 'none'; fotoPreview.src=''; }
+
+  // Todos os dados do registro, pra visão geral
+  document.getElementById('edit-info-extra').innerHTML = `
+    Cidade: <b>${r.cidade||'—'}</b> · Bairro: <b>${r.bairro||'—'}</b><br>
+    Status: <b>${r.verificado?'✅ Verificado':'⏳ Não verificado'}</b> · Confirmações: <b>${r.totalConfirmacoes||0}</b><br>
+    Registrado por: <b>${r.registradoPor||'—'}</b> em <b>${r.ts||'—'}</b>
+    ${r.localizacaoTravada?'<br><span style="color:var(--green);font-weight:700;">🔒 Localização travada — só muda se destravar aqui</span>':''}
+  `;
+
   abrirModal('edit-modal');
+
+  // Inicializa (ou reaproveita) o mini-mapa com pin arrastável
+  setTimeout(() => {
+    const lat = r.lat || CENTER[0], lng = r.lng || CENTER[1];
+    if(!editMap){
+      editMap = L.map('edit-map').setView([lat,lng], 18);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(editMap);
+      editMarker = L.marker([lat,lng], { draggable:true }).addTo(editMap);
+      editMarker.on('dragend', () => {
+        const pos = editMarker.getLatLng();
+        document.getElementById('edit-lat-input').value = pos.lat.toFixed(6);
+        document.getElementById('edit-lng-input').value = pos.lng.toFixed(6);
+      });
+    } else {
+      editMap.setView([lat,lng], 18);
+      editMarker.setLatLng([lat,lng]);
+      editMap.invalidateSize();
+    }
+    // Também sincroniza o pin se o usuário digitar direto nos campos de lat/lng
+    ['edit-lat-input','edit-lng-input'].forEach(elId => {
+      document.getElementById(elId).oninput = () => {
+        const novaLat = parseFloat(document.getElementById('edit-lat-input').value);
+        const novaLng = parseFloat(document.getElementById('edit-lng-input').value);
+        if(!isNaN(novaLat) && !isNaN(novaLng)){ editMarker.setLatLng([novaLat,novaLng]); editMap.panTo([novaLat,novaLng]); }
+      };
+    });
+  }, 100);
 }
-async function salvarEditObs(){
-  if(!editandoId||!fb)return;
-  const r=registros.find(x=>x.id===editandoId); if(!r)return;
-  const obs=document.getElementById('edit-obs-input').value.trim();
-  try{ await fb.setDoc(fb.doc(fb.db,'registros',editandoId),{...r,obs}); fecharModal('edit-modal'); }
-  catch(e){alert('Erro: '+(e.code||e.message));}
+
+async function salvarEdicaoCompleta(){
+  if(!editandoId || !fb) return;
+  const r = registros.find(x=>x.id===editandoId); if(!r) return;
+
+  const obs = document.getElementById('edit-obs-input').value.trim();
+  const lat = parseFloat(document.getElementById('edit-lat-input').value);
+  const lng = parseFloat(document.getElementById('edit-lng-input').value);
+  const localizacaoTravada = document.getElementById('edit-travar-checkbox').checked;
+
+  if(isNaN(lat) || isNaN(lng)){ alert('Latitude/Longitude inválidas.'); return; }
+
+  const dados = { ...r, obs, lat, lng, localizacaoTravada };
+
+  try{
+    if(editFotoBase64Novo){
+      document.getElementById('edit-foto-status').textContent = 'Enviando foto...';
+      dados.foto = await uploadFotoAdmin(editFotoBase64Novo);
+    }
+    await fb.setDoc(fb.doc(fb.db,'registros',editandoId), dados);
+    fecharModal('edit-modal');
+    showMsgAdmin('✓ Registro atualizado');
+  } catch(e){
+    alert('Erro: '+(e.code||e.message));
+  }
 }
+
 async function excluir(id){
   if(!ehAdminRaiz && !permissoesAtuais.excluirReg){ alert('Você não tem permissão para excluir registros.'); return; }
   if(!confirm('Excluir este registro?'))return;
@@ -1643,7 +1776,8 @@ window.abrirModalNovaCidade=abrirModalNovaCidade; window.salvarNovaCidade=salvar
 window.abrirModalNovoBairro=abrirModalNovoBairro; window.salvarNovoBairro=salvarNovoBairro; window.excluirBairro=excluirBairro;
 window.abrirModalNovaQuadra=abrirModalNovaQuadra; window.salvarNovaQuadra=salvarNovaQuadra; window.excluirQuadra=excluirQuadra;
 window.adicionarConjunto=adicionarConjunto; window.excluirConjunto=excluirConjunto;
-window.abrirEditModal=abrirEditModal; window.salvarEditObs=salvarEditObs; window.excluir=excluir;
+window.abrirEditModal=abrirEditModal; window.salvarEdicaoCompleta=salvarEdicaoCompleta; window.excluir=excluir;
+window.previewFotoEdit=previewFotoEdit;
 window.verFoto=verFoto; window.fecharModal=fecharModal;
 </script>
 </body>
