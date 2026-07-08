@@ -471,7 +471,7 @@ const cfg={apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",authDomain:"app-rota
 const fapp=initializeApp(cfg);
 const db=getFirestore(fapp);
 const auth=getAuth(fapp);
-window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas'),colUsuarios:collection(db,'usuarios'),colCorrecoes:collection(db,'correcoesParser'),colTelemetria:collection(db,'telemetriaEntregas')};
+window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas'),colUsuarios:collection(db,'usuarios'),colCorrecoes:collection(db,'correcoesParser'),colTelemetria:collection(db,'telemetriaEntregas'),colCoordQuadra:collection(db,'coordenadasQuadra')};
 setPersistence(auth, browserLocalPersistence).finally(()=>{
   window.__fbReady=true;
   window.dispatchEvent(new Event('fb-ready'));
@@ -644,6 +644,11 @@ function iniciarFb(){
       TELEMETRIA=snap.docs.map(d=>({id:d.id,...d.data()}));
       if(document.getElementById('page-telemetria').classList.contains('active')) renderTelemetria();
     },err=>console.error('[Telemetria]',err));
+    fb.onSnapshot(fb.query(fb.colCoordQuadra),snap=>{
+      COORD_QUADRA={};
+      snap.docs.forEach(d=>{ COORD_QUADRA[d.id]={id:d.id,...d.data()}; });
+      if(document.getElementById('page-cidades').classList.contains('active') && bairSel) renderQuadrasCol();
+    },err=>console.error('[CoordQuadra]',err));
     if(ehAdminRaiz){
       fb.onSnapshot(fb.query(fb.colUsuarios),snap=>{
         USUARIOS={};
@@ -739,6 +744,26 @@ function onFaixasCidadeChange(){
 // ─── Faixas de numeração ────────────────────────────────────────────────────────
 let FAIXAS = {}; // { docId: {cidade,bairro,quadra,conjunto,min,max,tipo} }
 let faixasPag = 1;
+let COORD_QUADRA = {}; // { docId: {cidade,bairro,quadra,lat,lng} } — fallback de coordenada por quadra
+
+function idCoordQuadra(cidade,bairro,quadra){
+  return (cidade+'_'+bairro+'_'+quadra).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+}
+
+async function salvarCoordQuadra(cidade,bairro,quadra){
+  const safeId = quadra.replace(/\s/g,'_');
+  const latVal = document.getElementById('lat-'+safeId).value;
+  const lngVal = document.getElementById('lng-'+safeId).value;
+  if(latVal===''||lngVal===''){ alert('Preencha latitude e longitude.'); return; }
+  const lat = parseFloat(latVal), lng = parseFloat(lngVal);
+  if(isNaN(lat)||isNaN(lng)){ alert('Coordenada inválida.'); return; }
+  const id = idCoordQuadra(cidade,bairro,quadra);
+  try{
+    await fb.setDoc(fb.doc(fb.db,'coordenadasQuadra',id), { cidade,bairro,quadra,lat,lng,atualizadoEm:new Date().toISOString() });
+    showMsgAdmin('✓ Coordenada de fallback salva: '+quadra);
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
 let CORRECOES = [];
 let TELEMETRIA = [];
 let telemetriaPag = 1;
@@ -1149,6 +1174,8 @@ function renderQuadrasCol(){
   html+=lista.map(q=>{
     const cjs=quadras[q]||[];
     const safeQ=q.replace(/['"]/g,'');
+    const idCoord = idCoordQuadra(cid.nome, bairSel, q);
+    const coordAtual = COORD_QUADRA[idCoord];
     return `<div class="quadra-row-edit">
       <div class="quadra-row-edit-header">
         <div class="quadra-row-edit-name">${q} <span style="font-size:11px;color:var(--text-3);font-weight:400;">(${cjs.length} conj.)</span></div>
@@ -1163,6 +1190,15 @@ function renderQuadrasCol(){
           onkeydown="if(event.key==='Enter')adicionarConjunto('${safeQ}')"/>
         <button onclick="adicionarConjunto('${safeQ}')">+ Add</button>
       </div>`:''}
+      <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
+        <div style="font-size:11px;color:var(--text-3);margin-bottom:5px;">📍 Coordenada de fallback (usada quando não há endereço exato nem vizinho no conjunto)</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="number" step="0.000001" placeholder="Latitude" id="lat-${safeQ.replace(/\s/g,'_')}" value="${coordAtual?.lat ?? ''}" ${podeEditar?'':'disabled'} style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;"/>
+          <input type="number" step="0.000001" placeholder="Longitude" id="lng-${safeQ.replace(/\s/g,'_')}" value="${coordAtual?.lng ?? ''}" ${podeEditar?'':'disabled'} style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;"/>
+          ${podeEditar?`<button class="btn-acao" style="font-size:11px;padding:6px 10px;white-space:nowrap;" onclick="salvarCoordQuadra('${cid.nome}','${bairSel}','${safeQ}')">💾</button>`:''}
+        </div>
+        <div style="font-size:10px;color:var(--text-3);margin-top:4px;">Dica: abra o Google Maps, toque e segure no ponto desejado, copie as coordenadas mostradas.</div>
+      </div>
     </div>`;
   }).join('');
   if(podeEditar) html+=`<button class="add-btn" style="margin-top:8px;" onclick="abrirModalNovaQuadra()">＋ Nova quadra/rua</button>`;
@@ -1391,6 +1427,7 @@ window.onFaixasCidadeChange=onFaixasCidadeChange; window.renderFaixasTabela=rend
 window.salvarFaixa=salvarFaixa; window.irParaFaixas=irParaFaixas;
 window.renderCorrecoes=renderCorrecoes; window.irParaCorrecoes=irParaCorrecoes;
 window.renderTelemetria=renderTelemetria; window.irParaTelemetria=irParaTelemetria;
+window.salvarCoordQuadra=salvarCoordQuadra;
 window.renderTabela=renderTabela; window.onTabCidadeChange=onTabCidadeChange; window.onTabBairroChange=onTabBairroChange;
 window.onMapCidadeChange=onMapCidadeChange; window.onMapBairroChange=onMapBairroChange; window.filtrarMapaAdmin=filtrarMapaAdmin;
 window.selecionarCidade=selecionarCidade; window.selecionarBairro=selecionarBairro;

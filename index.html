@@ -560,7 +560,8 @@ window.__fb = {
   signInWithEmailAndPassword, signOut, onAuthStateChanged,
   colRegistros: collection(db,'registros'),
   colCidades:   collection(db,'cidades'),
-  colFaixas:    collection(db,'faixas')
+  colFaixas:    collection(db,'faixas'),
+  colCoordQuadra: collection(db,'coordenadasQuadra')
 };
 
 // Garante persistência explícita (mantém login salvo no navegador entre acessos)
@@ -578,7 +579,7 @@ const CENTER = [-15.8485, -48.1080];
 let fb = null;
 let usuarioAtual = null;   // objeto do Firebase Auth
 let nivelAcesso  = 'visitante'; // 'admin' | 'entregador' | 'visitante'
-let registros = [], CIDADES = {}, FAIXAS = {};
+let registros = [], CIDADES = {}, FAIXAS = {}, COORD_QUADRA_ADMIN = {};
 let posicaoAtual = null, trackingAtivo = false, primeiraLoc = true;
 let map, markersLayer, meuPin, meuCirculo, mapReady = false;
 let fotoBase64 = null;
@@ -653,6 +654,11 @@ function initFirebase(){
   fb.onSnapshot(fb.query(fb.colFaixas), snap=>{
     FAIXAS = {};
     snap.docs.forEach(d=>{ FAIXAS[d.id]={id:d.id,...d.data()}; });
+  });
+
+  fb.onSnapshot(fb.query(fb.colCoordQuadra), snap=>{
+    COORD_QUADRA_ADMIN = {};
+    snap.docs.forEach(d=>{ COORD_QUADRA_ADMIN[d.id]={id:d.id,...d.data()}; });
   });
 
   // Escuta registros
@@ -1275,11 +1281,16 @@ async function encontrarGPS(pacote){
     }
   }
 
-  // 3) Geocodificação via Nominatim (substitui o antigo ponto fixo por quadra)
+  // 3) Coordenada de fallback cadastrada pelo admin no painel (por quadra)
+  const idCoord = idCoordQuadra(pacote.cidade, pacote.bairro, pacote.quadra);
+  const coordAdmin = COORD_QUADRA_ADMIN[idCoord];
+  if(coordAdmin?.lat) return { lat: coordAdmin.lat, lng: coordAdmin.lng, tipo: 'estimado' };
+
+  // 4) Geocodificação via Nominatim (só se o admin não cadastrou nada pra essa quadra)
   const geocodificado = await geocodificarComNominatim(pacote);
   if(geocodificado) return geocodificado;
 
-  // 4) Último recurso — se nem o Nominatim respondeu (sem internet, fora do ar), usa o
+  // 5) Último recurso — se nem o Nominatim respondeu (sem internet, fora do ar), usa o
   // centro aproximado da quadra como fallback final, só pra não deixar o pacote sem nenhum ponto
   const coords = COORDS_QUADRA[pacote.quadra];
   if(coords) return { lat: coords[0], lng: coords[1], tipo: 'estimado' };
@@ -1321,6 +1332,9 @@ function importarCSV(e){
 // ─── Validação com faixas de numeração ────────────────────────────────────────
 function idFaixaApp(cidade,bairro,quadra,conjunto){
   return (cidade+'_'+bairro+'_'+quadra+'_'+conjunto).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+}
+function idCoordQuadra(cidade,bairro,quadra){
+  return (cidade+'_'+bairro+'_'+quadra).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
 }
 function validarCasaNaFaixa(pacote){
   if(!pacote.casa) return null; // sem casa, não tem o que validar aqui
