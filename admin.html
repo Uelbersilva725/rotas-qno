@@ -177,6 +177,7 @@ tr:hover td{background:#FAFBFC}
     <div class="nav-item" id="nav-item-usuarios" onclick="navTo('usuarios',this)" style="display:none;"><span class="nav-icon">👥</span> Usuários</div>
     <div class="nav-item" onclick="navTo('correcoes',this)"><span class="nav-icon">🛠</span> Correções</div>
     <div class="nav-item" onclick="navTo('telemetria',this)"><span class="nav-icon">📊</span> Telemetria</div>
+    <div class="nav-item" onclick="navTo('historico',this)"><span class="nav-icon">🏁</span> Histórico</div>
     <div class="sidebar-footer">
       <div id="papel-badge" style="font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;display:inline-block;margin-bottom:8px;background:rgba(29,158,117,.2);color:var(--green);"></div>
       <div class="sync-indicator">
@@ -398,6 +399,40 @@ tr:hover td{background:#FAFBFC}
         <div class="pagination" id="tel-paginacao"></div>
       </div>
     </div>
+
+    <!-- HISTÓRICO DE ROTAS CONCLUÍDAS -->
+    <div class="page" id="page-historico">
+      <div class="page-title">Histórico de Rotas Concluídas</div>
+      <div class="page-sub">Resumo de cada rota finalizada por cada entregador — total de entregas, tempo e distância percorrida.</div>
+      <div class="card" style="margin-bottom:20px;">
+        <div class="table-toolbar" style="gap:16px;flex-wrap:wrap;">
+          <div class="stat-mini"><span class="num" id="hist-total-rotas">0</span><span class="lbl">rotas concluídas</span></div>
+          <div class="stat-mini"><span class="num" id="hist-total-entregas">0</span><span class="lbl">total entregues</span></div>
+          <div class="stat-mini"><span class="num" id="hist-total-km">0</span><span class="lbl">km percorridos</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-toolbar">
+          <select id="hist-motorista" onchange="renderHistorico()">
+            <option value="">Todos motoristas</option>
+          </select>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Motorista</th>
+              <th>Entregues</th>
+              <th>Puladas</th>
+              <th>Duração</th>
+              <th>Distância</th>
+              <th>Data</th>
+            </tr></thead>
+            <tbody id="hist-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="hist-paginacao"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -471,7 +506,7 @@ const cfg={apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",authDomain:"app-rota
 const fapp=initializeApp(cfg);
 const db=getFirestore(fapp);
 const auth=getAuth(fapp);
-window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas'),colUsuarios:collection(db,'usuarios'),colCorrecoes:collection(db,'correcoesParser'),colTelemetria:collection(db,'telemetriaEntregas'),colCoordQuadra:collection(db,'coordenadasQuadra')};
+window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas'),colUsuarios:collection(db,'usuarios'),colCorrecoes:collection(db,'correcoesParser'),colTelemetria:collection(db,'telemetriaEntregas'),colCoordQuadra:collection(db,'coordenadasQuadra'),colHistorico:collection(db,'historicoRotas')};
 setPersistence(auth, browserLocalPersistence).finally(()=>{
   window.__fbReady=true;
   window.dispatchEvent(new Event('fb-ready'));
@@ -649,6 +684,10 @@ function iniciarFb(){
       snap.docs.forEach(d=>{ COORD_QUADRA[d.id]={id:d.id,...d.data()}; });
       if(document.getElementById('page-cidades').classList.contains('active') && bairSel) renderQuadrasCol();
     },err=>console.error('[CoordQuadra]',err));
+    fb.onSnapshot(fb.query(fb.colHistorico),snap=>{
+      HISTORICO=snap.docs.map(d=>({id:d.id,...d.data()}));
+      if(document.getElementById('page-historico').classList.contains('active')) renderHistorico();
+    },err=>console.error('[Historico]',err));
     if(ehAdminRaiz){
       fb.onSnapshot(fb.query(fb.colUsuarios),snap=>{
         USUARIOS={};
@@ -684,6 +723,7 @@ function navTo(page,el){
   if(page==='usuarios')renderListaSupervisores();
   if(page==='correcoes')renderCorrecoes();
   if(page==='telemetria')renderTelemetria();
+  if(page==='historico')renderHistorico();
 }
 
 // ─── Selects ──────────────────────────────────────────────────────────────────
@@ -766,6 +806,9 @@ async function salvarCoordQuadra(cidade,bairro,quadra){
 
 let CORRECOES = [];
 let TELEMETRIA = [];
+let HISTORICO = [];
+let historicoPag = 1;
+const HISTORICO_POR_PAG = 25;
 let telemetriaPag = 1;
 const TELEMETRIA_POR_PAG = 25;
 let correcoesPag = 1;
@@ -964,6 +1007,62 @@ function renderTelemetria(){
   document.getElementById('tel-paginacao').innerHTML = pags;
 }
 function irParaTelemetria(p){ telemetriaPag=p; renderTelemetria(); }
+
+// ─── Histórico de rotas concluídas ─────────────────────────────────────────────
+function formatarDuracaoMin(min){
+  if(min==null) return '—';
+  const h = Math.floor(min/60), m = min%60;
+  return h>0 ? `${h}h${m.toString().padStart(2,'0')}min` : `${m}min`;
+}
+
+function renderHistorico(){
+  const motoristaFiltro = document.getElementById('hist-motorista').value;
+
+  const selMot = document.getElementById('hist-motorista');
+  if(selMot.options.length <= 1){
+    const motoristasUnicos = [...new Set(HISTORICO.map(h=>h.motoristaEmail).filter(Boolean))].sort();
+    motoristasUnicos.forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; selMot.appendChild(o); });
+  }
+
+  let lista = [...HISTORICO];
+  if(motoristaFiltro) lista = lista.filter(h=>h.motoristaEmail===motoristaFiltro);
+
+  const totalEntregas = lista.reduce((s,h)=>s+(h.totalEntregues||0),0);
+  const totalKm = lista.reduce((s,h)=>s+(h.distanciaTotalKm||0),0);
+  document.getElementById('hist-total-rotas').textContent = lista.length;
+  document.getElementById('hist-total-entregas').textContent = totalEntregas;
+  document.getElementById('hist-total-km').textContent = totalKm.toFixed(1);
+
+  lista.sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
+
+  const total = lista.length;
+  const totalPags = Math.max(1, Math.ceil(total/HISTORICO_POR_PAG));
+  if(historicoPag > totalPags) historicoPag = 1;
+  const pagina = lista.slice((historicoPag-1)*HISTORICO_POR_PAG, historicoPag*HISTORICO_POR_PAG);
+
+  if(!total){
+    document.getElementById('hist-body').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:24px;">Nenhuma rota concluída ainda.</td></tr>`;
+    document.getElementById('hist-paginacao').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('hist-body').innerHTML = pagina.map(h=>{
+    const dataFmt = h.ts ? new Date(h.ts).toLocaleDateString('pt-BR')+' '+new Date(h.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<tr>
+      <td style="font-size:12px;">${h.motoristaEmail||'—'}</td>
+      <td><b style="color:var(--green);">${h.totalEntregues??'—'}</b></td>
+      <td style="color:var(--red);">${h.totalPuladas??'—'}</td>
+      <td style="font-size:12px;">${formatarDuracaoMin(h.duracaoTotalMin)}</td>
+      <td style="font-size:12px;">${h.distanciaTotalKm!=null?h.distanciaTotalKm+' km':'—'}</td>
+      <td style="font-size:11px;color:var(--text-3);">${dataFmt}</td>
+    </tr>`;
+  }).join('');
+
+  let pags = `<span>${total} rotas</span>`;
+  if(totalPags>1) pags += Array.from({length:totalPags},(_,i)=>`<button class="page-btn ${i+1===historicoPag?'active':''}" onclick="irParaHistorico(${i+1})">${i+1}</button>`).join('');
+  document.getElementById('hist-paginacao').innerHTML = pags;
+}
+function irParaHistorico(p){ historicoPag=p; renderHistorico(); }
 
 async function salvarFaixa(id, cidade, bairro, quadra, conjunto){
   if(!ehAdminRaiz && !permissoesAtuais.editarFaixas){ alert('Você não tem permissão para editar faixas.'); return; }
@@ -1428,6 +1527,7 @@ window.salvarFaixa=salvarFaixa; window.irParaFaixas=irParaFaixas;
 window.renderCorrecoes=renderCorrecoes; window.irParaCorrecoes=irParaCorrecoes;
 window.renderTelemetria=renderTelemetria; window.irParaTelemetria=irParaTelemetria;
 window.salvarCoordQuadra=salvarCoordQuadra;
+window.renderHistorico=renderHistorico; window.irParaHistorico=irParaHistorico;
 window.renderTabela=renderTabela; window.onTabCidadeChange=onTabCidadeChange; window.onTabBairroChange=onTabBairroChange;
 window.onMapCidadeChange=onMapCidadeChange; window.onMapBairroChange=onMapBairroChange; window.filtrarMapaAdmin=filtrarMapaAdmin;
 window.selecionarCidade=selecionarCidade; window.selecionarBairro=selecionarBairro;

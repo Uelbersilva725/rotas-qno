@@ -1723,6 +1723,12 @@ function iniciarNavegacao(idxInicial){
   navIndex = typeof idxInicial === 'number' ? Math.max(0, Math.min(idxInicial, rotaNavegacao.length-1)) : 0;
   jaAvisouChegada = false;
   ultimaRotaBuscada = null;
+  // Histórico da rota: reinicia o rastreamento a cada início de navegação
+  navInicioTs = Date.now();
+  distanciaPercorridaTotal = 0;
+  ultimaPosParaDistancia = posicaoAtual || null;
+  contadorEntregues = 0;
+  contadorPuladas = 0;
   $('nav-overlay').classList.add('open');
   atualizarParadaAtual();
   setTimeout(()=>{ inicializarNavMap(); carregarRotaAtePonto(); }, 100);
@@ -1731,6 +1737,9 @@ function iniciarNavegacao(idxInicial){
 function sairNavegacao(){
   $('nav-overlay').classList.remove('open');
 }
+
+let navInicioTs = null, distanciaPercorridaTotal = 0, ultimaPosParaDistancia = null;
+let contadorEntregues = 0, contadorPuladas = 0;
 
 let modoConfirmacaoAtivo = false;
 let telemetriaInicioParadaTs = null, telemetriaChegadaTs = null;
@@ -1811,6 +1820,7 @@ function entrarModoConfirmacao(){
 
 async function simEhAqui(){
   await registrarConfirmacaoLocal();
+  contadorEntregues++;
   confirmarEntrega();
 }
 
@@ -1829,6 +1839,7 @@ function naoEhAqui(){
 
 function pularSemMarcar(){
   showMsg('Endereço não confirmado — avançando sem registrar.','err');
+  contadorPuladas++;
   confirmarEntrega();
 }
 
@@ -1842,6 +1853,7 @@ function abrirMarcacaoLocalCorreto(){
     'Arraste o pin ou use o D-Pad até a posição exata da casa.',
     async (pinPos) => {
       await registrarConfirmacaoLocal(pinPos);
+      contadorEntregues++;
       confirmarEntrega();
     }
   );
@@ -2117,6 +2129,12 @@ function atualizarSetaNav(){
   if(navUserMarker && posicaoAtual){
     navUserMarker.setLatLng([posicaoAtual.lat, posicaoAtual.lng]);
   }
+  // Acumula distância percorrida (ignora saltos grandes — provável erro de GPS, não deslocamento real)
+  if(posicaoAtual && ultimaPosParaDistancia){
+    const d = distanciaMetros(ultimaPosParaDistancia, posicaoAtual);
+    if(d > 0 && d < 200) distanciaPercorridaTotal += d;
+  }
+  ultimaPosParaDistancia = posicaoAtual;
   atualizarDistanciaNav();
   atualizarInstrucaoManobra();
   // Recalcula a rota periodicamente se o usuário se afastar muito da rota traçada
@@ -2129,14 +2147,73 @@ function confirmarEntrega(){
   ultimaRotaBuscada = null;
   if(navIndex >= rotaNavegacao.length){
     if(navigator.vibrate) navigator.vibrate([100,50,100,50,200]);
-    showMsg('🎉 Rota concluída!','ok');
-    sairNavegacao();
+    finalizarRotaComResumo();
     return;
   }
   atualizarParadaAtual();
   carregarRotaAtePonto();
 }
-function pularParada(){ confirmarEntrega(); }
+function pularParada(){ contadorPuladas++; confirmarEntrega(); }
+
+// ─── Resumo final da rota (histórico) ─────────────────────────────────────────
+async function finalizarRotaComResumo(){
+  const duracaoMs = navInicioTs ? Date.now() - navInicioTs : 0;
+  const duracaoMin = Math.round(duracaoMs / 60000);
+  const horas = Math.floor(duracaoMin / 60), minutos = duracaoMin % 60;
+  const duracaoFmt = horas > 0 ? `${horas}h${minutos.toString().padStart(2,'0')}min` : `${minutos}min`;
+  const distanciaKm = (distanciaPercorridaTotal / 1000).toFixed(1);
+
+  const resumo = {
+    motoristaUid: usuarioAtual?.uid || '', motoristaEmail: usuarioAtual?.email || '',
+    totalParadas: rotaNavegacao.length,
+    totalEntregues: contadorEntregues,
+    totalPuladas: contadorPuladas,
+    duracaoTotalMin: duracaoMin,
+    distanciaTotalKm: parseFloat(distanciaKm),
+    dataInicio: navInicioTs ? new Date(navInicioTs).toISOString() : null,
+    dataFim: new Date().toISOString(),
+    ts: new Date().toISOString()
+  };
+
+  if(fb){
+    fb.setDoc(fb.doc(fb.db, 'historicoRotas', Date.now()+'_'+Math.random().toString(36).slice(2,8)), resumo)
+      .catch(e => console.warn('[Histórico] Falha ao salvar:', e));
+  }
+
+  mostrarModalResumoRota(resumo, duracaoFmt, distanciaKm);
+  sairNavegacao();
+}
+
+function mostrarModalResumoRota(resumo, duracaoFmt, distanciaKm){
+  const div = document.createElement('div');
+  div.className = 'modal-bg open';
+  div.innerHTML = `
+    <div class="modal" style="text-align:center;">
+      <div style="font-size:48px;margin-bottom:8px;">🎉</div>
+      <h3 style="margin-bottom:4px;">Rota concluída!</h3>
+      <p style="color:#888;font-size:13px;margin-bottom:20px;">Bom trabalho hoje!</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+        <div style="background:#E1F5EE;border-radius:12px;padding:14px;">
+          <div style="font-size:22px;font-weight:800;color:#0F6E56;">${resumo.totalEntregues}</div>
+          <div style="font-size:11px;color:#0F6E56;">entregues</div>
+        </div>
+        <div style="background:#FCEBEB;border-radius:12px;padding:14px;">
+          <div style="font-size:22px;font-weight:800;color:#A32D2D;">${resumo.totalPuladas}</div>
+          <div style="font-size:11px;color:#A32D2D;">puladas</div>
+        </div>
+        <div style="background:#EAF2FB;border-radius:12px;padding:14px;">
+          <div style="font-size:22px;font-weight:800;color:#1B5A8A;">${duracaoFmt}</div>
+          <div style="font-size:11px;color:#1B5A8A;">tempo total</div>
+        </div>
+        <div style="background:#FFF3CD;border-radius:12px;padding:14px;">
+          <div style="font-size:22px;font-weight:800;color:#856404;">${distanciaKm} km</div>
+          <div style="font-size:11px;color:#856404;">percorridos</div>
+        </div>
+      </div>
+      <button class="save-btn" style="width:100%;" onclick="this.closest('.modal-bg').remove()">Fechar</button>
+    </div>`;
+  document.body.appendChild(div);
+}
 
 // ─── Telemetria por entrega (log passivo, sem aprendizado automático) ────────
 function registrarTelemetriaParadaAtual(){
