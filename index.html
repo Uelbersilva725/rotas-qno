@@ -1190,7 +1190,68 @@ function compararValor(a,b){
   return false;
 }
 
-function encontrarGPS(pacote){
+// Cache simples pra não geocodificar o mesmo endereço duas vezes na mesma sessão
+const cacheGeocoding = {};
+let ultimaChamadaNominatim = 0;
+
+// Interpola a posição entre as duas casas registradas numericamente mais próximas
+// (uma pra baixo, uma pra cima) em vez de fazer média de todas as casas do conjunto.
+function interpolarEntreVizinhas(pacote, doConjunto){
+  const casaNum = parseInt(pacote.casa, 10);
+  if(isNaN(casaNum) || !doConjunto.length) return null;
+
+  const comNumero = doConjunto
+    .map(r => ({ ...r, casaNum: parseInt(r.casa, 10) }))
+    .filter(r => !isNaN(r.casaNum));
+  if(!comNumero.length) return null;
+
+  if(comNumero.length === 1){
+    const unica = comNumero[0];
+    return { lat: unica.lat, lng: unica.lng, tipo: 'estimado_conjunto' };
+  }
+
+  const inferior = comNumero.filter(r => r.casaNum <= casaNum).sort((a,b)=>b.casaNum-a.casaNum)[0];
+  const superior = comNumero.filter(r => r.casaNum >= casaNum).sort((a,b)=>a.casaNum-b.casaNum)[0];
+
+  if(inferior && superior && inferior.casaNum !== superior.casaNum){
+    const proporcao = (casaNum - inferior.casaNum) / (superior.casaNum - inferior.casaNum);
+    const lat = inferior.lat + (superior.lat - inferior.lat) * proporcao;
+    const lng = inferior.lng + (superior.lng - inferior.lng) * proporcao;
+    return { lat, lng, tipo: 'estimado_conjunto' };
+  }
+
+  // Casas só de um lado — usa a numericamente mais próxima
+  const maisProxima = comNumero.sort((a,b) => Math.abs(a.casaNum-casaNum) - Math.abs(b.casaNum-casaNum))[0];
+  return { lat: maisProxima.lat, lng: maisProxima.lng, tipo: 'estimado_conjunto' };
+}
+
+// Último recurso: geocodificação via Nominatim (OpenStreetMap, gratuito, sem chave de API).
+// Respeita o limite de 1 requisição/segundo exigido pela política de uso do servidor público.
+async function geocodificarComNominatim(pacote){
+  const enderecoTexto = `${pacote.quadra} Conjunto ${pacote.conjunto||''} Casa ${pacote.casa||''}, ${pacote.bairro}, ${pacote.cidade}, DF, Brasil`;
+  if(cacheGeocoding[enderecoTexto]) return cacheGeocoding[enderecoTexto];
+
+  const agora = Date.now();
+  const espera = Math.max(0, 1100 - (agora - ultimaChamadaNominatim));
+  if(espera > 0) await new Promise(r => setTimeout(r, espera));
+  ultimaChamadaNominatim = Date.now();
+
+  try{
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(enderecoTexto)}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if(data?.[0]?.lat){
+      const resultado = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), tipo: 'estimado' };
+      cacheGeocoding[enderecoTexto] = resultado;
+      return resultado;
+    }
+  } catch(e){
+    console.warn('[Nominatim] Falha ao geocodificar:', e);
+  }
+  return null;
+}
+
+async function encontrarGPS(pacote){
   const norm = s => normalizarTexto(s||'');
 
   // 1) Camada exata: casa específica já registrada
@@ -1201,7 +1262,7 @@ function encontrarGPS(pacote){
   );
   if(matchExato?.lat) return { lat: matchExato.lat, lng: matchExato.lng, tipo: 'gps' };
 
-  // 2) Camada intermediária: média das casas já registradas no MESMO conjunto
+  // 2) Camada intermediária: interpolação entre casas vizinhas do mesmo conjunto
   if(pacote.conjunto){
     const doConjunto = registros.filter(r =>
       norm(r.quadra) === norm(pacote.quadra) &&
@@ -1209,13 +1270,17 @@ function encontrarGPS(pacote){
       r.lat
     );
     if(doConjunto.length){
-      const lat = doConjunto.reduce((s,r)=>s+r.lat,0) / doConjunto.length;
-      const lng = doConjunto.reduce((s,r)=>s+r.lng,0) / doConjunto.length;
-      return { lat, lng, tipo: 'estimado_conjunto' };
+      const interpolado = interpolarEntreVizinhas(pacote, doConjunto);
+      if(interpolado) return interpolado;
     }
   }
 
-  // 3) Fallback: coordenada central da quadra inteira (menos preciso)
+  // 3) Geocodificação via Nominatim (substitui o antigo ponto fixo por quadra)
+  const geocodificado = await geocodificarComNominatim(pacote);
+  if(geocodificado) return geocodificado;
+
+  // 4) Último recurso — se nem o Nominatim respondeu (sem internet, fora do ar), usa o
+  // centro aproximado da quadra como fallback final, só pra não deixar o pacote sem nenhum ponto
   const coords = COORDS_QUADRA[pacote.quadra];
   if(coords) return { lat: coords[0], lng: coords[1], tipo: 'estimado' };
 
@@ -1272,7 +1337,7 @@ function validarCasaNaFaixa(pacote){
   return null; // ok
 }
 
-function analisarLista(){
+async function analisarLista(){
   const input = document.getElementById('rota-input').value.trim();
   if(!input){ showMsg('Cole a lista de pacotes antes.','err'); return; }
 
@@ -1284,13 +1349,14 @@ function analisarLista(){
     const pacotes = [];
     let naoReconhecidos = 0;
 
-    linhas.forEach(linha => {
+    for(const linha of linhas){
       const p = parsearLinha(linha);
-      if(!p){ naoReconhecidos++; return; }
-      const gps = encontrarGPS(p);
+      if(!p){ naoReconhecidos++; continue; }
+      btn.textContent = `Analisando... (${pacotes.length+1}/${linhas.length})`;
+      const gps = await encontrarGPS(p);
       const avisoFaixa = validarCasaNaFaixa(p);
       pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo || 'nao_encontrado', avisoFaixa });
-    });
+    }
 
     pacotesAnalisados = pacotes;
     renderAnalise(pacotes, naoReconhecidos);
@@ -1437,7 +1503,7 @@ async function fecharRota(){
   // correção pra análise futura de padrões que confundem o parser
   const correcoesParaSalvar = [];
 
-  document.querySelectorAll('.rota-casa-input').forEach(inp => {
+  for(const inp of document.querySelectorAll('.rota-casa-input')){
     const idx = parseInt(inp.getAttribute('data-idx'));
     const val = inp.value.trim();
     if(val && pacotesAnalisados[idx]){
@@ -1452,12 +1518,12 @@ async function fecharRota(){
       p.casa = val;
       p.casaPendente = false;
       // Re-tenta achar GPS agora que tem casa
-      const gps = encontrarGPS(p);
+      const gps = await encontrarGPS(p);
       p.coords = gps;
       p.tipoGPS = gps?.tipo || 'nao_encontrado';
       p.avisoFaixa = validarCasaNaFaixa(p);
     }
-  });
+  }
 
   // Salva os logs de correção em segundo plano, sem travar o fluxo de otimização
   if(correcoesParaSalvar.length && fb){
