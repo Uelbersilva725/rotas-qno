@@ -170,6 +170,10 @@ tr:hover td{background:#FAFBFC}
     <div class="nav-item active" onclick="navTo('dashboard',this)"><span class="nav-icon">📊</span> Dashboard</div>
     <div class="nav-item" onclick="navTo('mapa',this)"><span class="nav-icon">🗺</span> Mapa Geral</div>
     <div class="nav-section">Dados</div>
+    <div class="nav-item" id="nav-item-aprovacoes" onclick="navTo('aprovacoes',this)">
+      <span class="nav-icon">📥</span> Aprovações
+      <span id="badge-pendentes" style="display:none;background:#E24B4A;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 7px;margin-left:auto;">0</span>
+    </div>
     <div class="nav-item" onclick="navTo('registros',this)"><span class="nav-icon">📋</span> Registros</div>
     <div class="nav-item" onclick="navTo('cidades',this)"><span class="nav-icon">🏙</span> Cidades</div>
     <div class="nav-item" onclick="navTo('faixas',this)"><span class="nav-icon">📏</span> Faixas</div>
@@ -404,6 +408,13 @@ tr:hover td{background:#FAFBFC}
       </div>
     </div>
 
+    <!-- APROVAÇÕES DE ENDEREÇOS NOVOS -->
+    <div class="page" id="page-aprovacoes">
+      <div class="page-title">Aprovações de Endereços Novos</div>
+      <div class="page-sub">Endereços confirmados por entregadores que ainda não existiam no sistema ficam aqui até você aprovar. Endereços já cadastrados continuam recebendo confirmações normalmente, sem passar por essa fila.</div>
+      <div id="aprovacoes-lista"></div>
+    </div>
+
     <!-- HISTÓRICO DE ROTAS CONCLUÍDAS -->
     <div class="page" id="page-historico">
       <div class="page-title">Histórico de Rotas Concluídas</div>
@@ -537,7 +548,7 @@ const cfg={apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",authDomain:"app-rota
 const fapp=initializeApp(cfg);
 const db=getFirestore(fapp);
 const auth=getAuth(fapp);
-window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas'),colUsuarios:collection(db,'usuarios'),colCorrecoes:collection(db,'correcoesParser'),colTelemetria:collection(db,'telemetriaEntregas'),colCoordQuadra:collection(db,'coordenadasQuadra'),colHistorico:collection(db,'historicoRotas')};
+window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas'),colUsuarios:collection(db,'usuarios'),colCorrecoes:collection(db,'correcoesParser'),colTelemetria:collection(db,'telemetriaEntregas'),colCoordQuadra:collection(db,'coordenadasQuadra'),colHistorico:collection(db,'historicoRotas'),colPendentes:collection(db,'registrosPendentes')};
 setPersistence(auth, browserLocalPersistence).finally(()=>{
   window.__fbReady=true;
   window.dispatchEvent(new Event('fb-ready'));
@@ -653,6 +664,7 @@ function atualizarUIPermissoes(){
   badge.style.color = ehAdminRaiz ? 'var(--green)' : 'var(--blue)';
   document.getElementById('nav-section-admin').style.display = ehAdminRaiz ? 'block' : 'none';
   document.getElementById('nav-item-usuarios').style.display = ehAdminRaiz ? 'flex' : 'none';
+  document.getElementById('nav-item-aprovacoes').style.display = (ehAdminRaiz || permissoesAtuais.editarReg) ? 'flex' : 'none';
   // Re-renderiza páginas já visíveis para aplicar/remover botões de ação
   if(document.getElementById('page-registros').classList.contains('active')) renderTabela();
   if(document.getElementById('page-cidades').classList.contains('active') && cidSel) renderQuadrasCol();
@@ -721,6 +733,13 @@ function iniciarFb(){
       HISTORICO=snap.docs.map(d=>({id:d.id,...d.data()}));
       if(document.getElementById('page-historico').classList.contains('active')) renderHistorico();
     },err=>console.error('[Historico]',err));
+    fb.onSnapshot(fb.query(fb.colPendentes),snap=>{
+      PENDENTES=snap.docs.map(d=>({id:d.id,...d.data()}));
+      const badge = document.getElementById('badge-pendentes');
+      if(PENDENTES.length){ badge.style.display='inline-block'; badge.textContent=PENDENTES.length; }
+      else { badge.style.display='none'; }
+      if(document.getElementById('page-aprovacoes').classList.contains('active')) renderAprovacoes();
+    },err=>console.error('[Pendentes]',err));
     if(ehAdminRaiz){
       fb.onSnapshot(fb.query(fb.colUsuarios),snap=>{
         USUARIOS={};
@@ -745,6 +764,7 @@ function atualizarTudo(){
 
 function navTo(page,el){
   if(page==='usuarios' && !ehAdminRaiz) return; // proteção extra — só admin raiz acessa
+  if(page==='aprovacoes' && !ehAdminRaiz && !permissoesAtuais.editarReg) return;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
@@ -757,6 +777,7 @@ function navTo(page,el){
   if(page==='correcoes')renderCorrecoes();
   if(page==='telemetria')renderTelemetria();
   if(page==='historico')renderHistorico();
+  if(page==='aprovacoes')renderAprovacoes();
 }
 
 // ─── Selects ──────────────────────────────────────────────────────────────────
@@ -840,6 +861,7 @@ async function salvarCoordQuadra(cidade,bairro,quadra){
 let CORRECOES = [];
 let TELEMETRIA = [];
 let HISTORICO = [];
+let PENDENTES = [];
 let historicoPag = 1;
 const HISTORICO_POR_PAG = 25;
 let telemetriaPag = 1;
@@ -1116,6 +1138,54 @@ function renderHistorico(){
   document.getElementById('hist-paginacao').innerHTML = pags;
 }
 function irParaHistorico(p){ historicoPag=p; renderHistorico(); }
+
+// ─── Aprovações de endereços novos ─────────────────────────────────────────────
+function renderAprovacoes(){
+  const div = document.getElementById('aprovacoes-lista');
+  if(!PENDENTES.length){
+    div.innerHTML = '<div class="card" style="text-align:center;padding:40px 20px;color:var(--text-3);">✓ Nenhum endereço aguardando aprovação no momento.</div>';
+    return;
+  }
+  const lista = [...PENDENTES].sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
+  div.innerHTML = lista.map(p=>{
+    const dataFmt = p.ts ? new Date(p.ts).toLocaleDateString('pt-BR')+' '+new Date(p.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;gap:14px;">
+        ${p.foto?`<img src="${p.foto}" onclick="verFoto('${p.foto}')" style="width:76px;height:76px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer;flex-shrink:0;">`:`<div style="width:76px;height:76px;border-radius:10px;background:var(--bg-alt,#f5f5f5);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">📍</div>`}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:14px;">${p.bairro||'—'} · ${p.quadra||'—'} · Cj.${p.conjunto||'?'} · Casa ${p.casa||'?'}</div>
+          <div style="font-size:12px;color:var(--text-2);margin-top:3px;">${p.obs||'Sem observação'}</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px;">
+            📊 ${p.totalConfirmacoes||1} confirmação(ões) · 👤 ${p.criadoPor||'—'} · 🕐 ${dataFmt}
+          </div>
+          ${p.lat?`<div style="font-size:11px;color:var(--text-3);margin-top:2px;">📌 ${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</div>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn-acao" style="flex:1;background:var(--green);color:#fff;border-color:var(--green-dark);" onclick="aprovarPendente('${p.id}')">✅ Aprovar</button>
+        <button class="btn-acao del" style="flex:1;" onclick="rejeitarPendente('${p.id}')">🗑 Rejeitar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function aprovarPendente(id){
+  if(!ehAdminRaiz && !permissoesAtuais.editarReg){ alert('Você não tem permissão para aprovar registros.'); return; }
+  const p = PENDENTES.find(x=>x.id===id); if(!p) return;
+  try{
+    const { id: _id, ...dados } = p;
+    await fb.setDoc(fb.doc(fb.db,'registros',id), dados);
+    await fb.deleteDoc(fb.doc(fb.db,'registrosPendentes',id));
+    showMsgAdmin('✓ Endereço aprovado e adicionado ao sistema');
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
+async function rejeitarPendente(id){
+  if(!ehAdminRaiz && !permissoesAtuais.editarReg){ alert('Você não tem permissão para rejeitar registros.'); return; }
+  if(!confirm('Rejeitar este endereço? Ele será removido da fila sem entrar no sistema.')) return;
+  try{ await fb.deleteDoc(fb.doc(fb.db,'registrosPendentes',id)); }
+  catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
 
 async function salvarFaixa(id, cidade, bairro, quadra, conjunto){
   if(!ehAdminRaiz && !permissoesAtuais.editarFaixas){ alert('Você não tem permissão para editar faixas.'); return; }
@@ -1767,6 +1837,7 @@ window.renderCorrecoes=renderCorrecoes; window.irParaCorrecoes=irParaCorrecoes;
 window.renderTelemetria=renderTelemetria; window.irParaTelemetria=irParaTelemetria;
 window.salvarCoordQuadra=salvarCoordQuadra;
 window.renderHistorico=renderHistorico; window.irParaHistorico=irParaHistorico;
+window.renderAprovacoes=renderAprovacoes; window.aprovarPendente=aprovarPendente; window.rejeitarPendente=rejeitarPendente;
 window.exportarRegistrosCSV=exportarRegistrosCSV; window.exportarTelemetriaCSV=exportarTelemetriaCSV;
 window.exportarHistoricoCSV=exportarHistoricoCSV; window.exportarCorrecoesCSV=exportarCorrecoesCSV;
 window.renderTabela=renderTabela; window.onTabCidadeChange=onTabCidadeChange; window.onTabBairroChange=onTabBairroChange;

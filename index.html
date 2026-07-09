@@ -587,7 +587,8 @@ window.__fb = {
   colRegistros: collection(db,'registros'),
   colCidades:   collection(db,'cidades'),
   colFaixas:    collection(db,'faixas'),
-  colCoordQuadra: collection(db,'coordenadasQuadra')
+  colCoordQuadra: collection(db,'coordenadasQuadra'),
+  colRegistrosPendentes: collection(db,'registrosPendentes')
 };
 
 // Garante persistência explícita (mantém login salvo no navegador entre acessos)
@@ -605,7 +606,7 @@ const CENTER = [-15.8485, -48.1080];
 let fb = null;
 let usuarioAtual = null;   // objeto do Firebase Auth
 let nivelAcesso  = 'visitante'; // 'admin' | 'entregador' | 'visitante'
-let registros = [], CIDADES = {}, FAIXAS = {}, COORD_QUADRA_ADMIN = {};
+let registros = [], CIDADES = {}, FAIXAS = {}, COORD_QUADRA_ADMIN = {}, registrosPendentes = [];
 let posicaoAtual = null, trackingAtivo = false, primeiraLoc = true;
 let map, markersLayer, meuPin, meuCirculo, mapReady = false;
 let fotoBase64 = null;
@@ -685,6 +686,10 @@ function initFirebase(){
   fb.onSnapshot(fb.query(fb.colCoordQuadra), snap=>{
     COORD_QUADRA_ADMIN = {};
     snap.docs.forEach(d=>{ COORD_QUADRA_ADMIN[d.id]={id:d.id,...d.data()}; });
+  });
+
+  fb.onSnapshot(fb.query(fb.colRegistrosPendentes), snap=>{
+    registrosPendentes = snap.docs.map(d=>({id:d.id,...d.data()}));
   });
 
   // Escuta registros
@@ -1908,7 +1913,12 @@ async function registrarConfirmacaoLocal(coordOverride){
   if(!casa){ showMsg('Sem número de casa — confirmação não pôde ser vinculada.','err'); return; }
 
   const docId = (cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
-  const existente = registros.find(r => r.id === docId);
+
+  // Já existe como registro OFICIAL (aprovado)? Continua o fluxo normal, sem passar por aprovação.
+  const existenteOficial = registros.find(r => r.id === docId);
+  // Ou já existe como pendente (alguém já confirmou antes, ainda não aprovado)?
+  const existentePendente = registrosPendentes.find(r => r.id === docId);
+  const existente = existenteOficial || existentePendente;
 
   const novaConfirmacao = {
     lat: coordUsada.lat, lng: coordUsada.lng,
@@ -1922,13 +1932,13 @@ async function registrarConfirmacaoLocal(coordOverride){
   const centroide = { lat: latMedio, lng: lngMedio };
   const maxDist = Math.max(...todasConfs.map(c => distanciaMetros(c, centroide)));
   const verificado = todasConfs.length >= MIN_CONFIRMACOES_VERIFICAR && maxDist <= LIMIAR_CONFIRMACAO;
-  const jaEstavaVerificado = !!existente?.verificado;
-  const travada = !!existente?.localizacaoTravada;
+  const jaEstavaVerificado = !!existenteOficial?.verificado;
+  const travada = !!existenteOficial?.localizacaoTravada;
 
   // Se a localização foi travada pelo admin, a confirmação ainda é registrada (fica no
   // histórico), mas o GPS salvo NUNCA é alterado — só o admin destrava manualmente no painel.
-  const latFinal = travada ? existente.lat : (verificado ? centroide.lat : novaConfirmacao.lat);
-  const lngFinal = travada ? existente.lng : (verificado ? centroide.lng : novaConfirmacao.lng);
+  const latFinal = travada ? existenteOficial.lat : (verificado ? centroide.lat : novaConfirmacao.lat);
+  const lngFinal = travada ? existenteOficial.lng : (verificado ? centroide.lng : novaConfirmacao.lng);
 
   const dados = {
     cidade, bairro, quadra, conjunto, casa,
@@ -1940,13 +1950,26 @@ async function registrarConfirmacaoLocal(coordOverride){
     totalConfirmacoes: todasConfs.length,
     verificado,
     localizacaoTravada: travada,
+    criadoPor: existente?.criadoPor || usuarioAtual?.email || '',
     ts: existente?.ts || (new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}))
   };
 
+  // Endereço já é oficial (ou o próprio admin está confirmando) → segue no fluxo normal,
+  // direto na coleção de registros. Endereço totalmente novo, confirmado por entregador
+  // comum → fica pendente de aprovação, sem entrar na coleção oficial ainda.
+  const ehAdmin = usuarioAtual?.uid === UID_ADMIN;
+  const destino = (existenteOficial || ehAdmin) ? 'registros' : 'registrosPendentes';
+
   try {
-    await fb.setDoc(fb.doc(fb.db,'registros',docId), dados, { merge:true });
+    await fb.setDoc(fb.doc(fb.db, destino, docId), dados, { merge:true });
+    // Se estava pendente e o admin confirmou agora, promove de vez pra oficial
+    if(existentePendente && ehAdmin){
+      await fb.deleteDoc(fb.doc(fb.db,'registrosPendentes',docId)).catch(()=>{});
+    }
     ultimaEntregaConfirmadaCoord = { lat: dados.lat, lng: dados.lng }; // ponto de partida alternativo
-    if(travada){
+    if(destino === 'registrosPendentes'){
+      showMsg('📋 Endereço novo enviado para aprovação do admin.', 'ok');
+    } else if(travada){
       showMsg('📍 Confirmação registrada — localização travada pelo admin, não foi alterada.', 'ok');
     } else if(verificado && !jaEstavaVerificado){
       showMsg('🏅 3 confirmações! Endereço verificado.', 'ok');
