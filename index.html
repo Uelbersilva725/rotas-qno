@@ -986,7 +986,7 @@ function iniciarSalvar(){
   const quadra=$('reg-quadra').value;
   const cjRaw=$('reg-cj').value;
   const conjunto=(cjRaw==='—'||cjRaw==='N/A')?'':cjRaw;
-  const casa=$('reg-casa').value;
+  const casa=normalizarCasa($('reg-casa').value);
   if(!cidade||!bairro||!quadra||!casa){ showMsg('Preencha cidade, bairro, quadra e casa.','err'); return; }
   const lat=posicaoAtual?posicaoAtual.lat:CENTER[0];
   const lng=posicaoAtual?posicaoAtual.lng:CENTER[1];
@@ -1029,7 +1029,7 @@ function buscarEndereco(){
   const quadra=$('busca-quadra').value;
   const cjRaw=$('busca-cj').value;
   const conjunto=(cjRaw==='—'||cjRaw==='N/A')?'':cjRaw;
-  const casa=$('busca-casa').value;
+  const casa=normalizarCasa($('busca-casa').value);
   const divRes=$('busca-resultado'), divSem=$('busca-sem'), divCom=$('busca-com');
   if(!cidade||!bairro||!quadra||!casa){ divRes.style.display='none'; removerPinBusca(); return; }
   const docId=(cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
@@ -1189,20 +1189,20 @@ function parsearLinha(linha){
   //    o trecho da quadra/conjunto, antes da cidade, sendo um número (+ letra opcional)
   const tokens = prefixo.split(',').map(t=>t.trim()).filter(Boolean);
   if(tokens.length > 1 && /^\d{1,3}[a-z]?$/i.test(tokens[1])){
-    casa = tokens[1].replace(/^0+(?=\d)/,'') || '0';
+    casa = normalizarCasa(tokens[1]);
   }
 
   // 2) Fallback: "casa 09" ou "casa 11A" dentro dos parênteses (número depois da palavra)
   if(!casa){
     const mCASA = dentroParens.match(reCASA);
-    if(mCASA) casa = mCASA[1].replace(/^0+(?=\d)/,'') || '0';
+    if(mCASA) casa = normalizarCasa(mCASA[1]);
   }
 
   // 3) Fallback: "18 casa" ou "11A casa" — número (+ letra opcional) ANTES da palavra "casa"
   if(!casa){
     const reCASA_antes = /(\d{1,3}[a-z]?)\s*,?\s*(?:casa|ca\.?)\b/i;
     const mCASA2 = dentroParens.match(reCASA_antes);
-    if(mCASA2) casa = mCASA2[1].replace(/^0+(?=\d)/,'') || '0';
+    if(mCASA2) casa = normalizarCasa(mCASA2[1]);
   }
 
   // Infere bairro pela quadra
@@ -1226,6 +1226,17 @@ function compararValor(a,b){
   const ia = parseInt(a,10), ib = parseInt(b,10);
   if(!isNaN(ia) && !isNaN(ib)) return ia === ib;
   return false;
+}
+
+// Normaliza o valor da casa pra uma forma canônica (sem zero à esquerda, letra em
+// maiúscula) — garante que "2", "02" e "002" sempre gerem o MESMO ID de documento
+// no Firestore, em vez de criar registros duplicados pra mesma casa física.
+function normalizarCasa(valor){
+  if(!valor) return valor;
+  const str = String(valor).trim();
+  const m = str.match(/^0*(\d+)([a-zA-Z]*)$/);
+  if(m) return m[1] + m[2].toUpperCase();
+  return str; // não é número(+letra) puro — devolve como veio, sem mexer
 }
 
 // Cache simples pra não geocodificar o mesmo endereço duas vezes na mesma sessão
@@ -1572,7 +1583,7 @@ async function fecharRota(){
         corrigidoPor: usuarioAtual?.email || '', corrigidoPorUid: usuarioAtual?.uid || '',
         ts: new Date().toISOString()
       });
-      p.casa = val;
+      p.casa = normalizarCasa(val);
       p.casaPendente = false;
       // Re-tenta achar GPS agora que tem casa
       const gps = await encontrarGPS(p);
@@ -1909,7 +1920,8 @@ async function registrarConfirmacaoLocal(coordOverride){
   const p = rotaNavegacao[navIndex];
   const coordUsada = coordOverride || posicaoAtual;
   if(!p || !coordUsada || !fb) return;
-  const { cidade, bairro, quadra, conjunto, casa } = p;
+  const { cidade, bairro, quadra, conjunto } = p;
+  const casa = normalizarCasa(p.casa);
   if(!casa){ showMsg('Sem número de casa — confirmação não pôde ser vinculada.','err'); return; }
 
   const docId = (cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
