@@ -428,6 +428,9 @@ html,body{height:100%;background:var(--bg-alt);font-family:-apple-system,BlinkMa
           <div id="rota-mapa-overview" style="position:relative;">
             <div class="nav-loading" id="rota-mapa-loading" style="display:none;">⏳ Traçando rota no mapa...</div>
           </div>
+          <div id="rota-reotimizar-wrap" style="display:none;margin-top:8px;">
+            <button id="rota-reotimizar-btn" class="rota-btn" style="background:#378ADD;" onclick="reotimizarComCorrecoes()">🔄 Reotimizar rota com correções</button>
+          </div>
         </div>
         <div id="rota-lista-final-wrap" style="display:none;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 4px;">
@@ -1462,6 +1465,7 @@ function renderAnalise(pacotes, naoReconhecidos){
   document.getElementById('rota-fechar-wrap').style.display = 'block';
   document.getElementById('rota-nav-start-wrap').style.display = 'none';
   document.getElementById('rota-mapa-wrap').style.display = 'none';
+  document.getElementById('rota-reotimizar-wrap').style.display = 'none';
 
   const pendentes = pacotes.filter(p => p.casaPendente);
   const forasDeFaixa = pacotes.filter(p => p.avisoFaixa);
@@ -1746,17 +1750,81 @@ function renderRotaMapaVisao(pacotes){
       className:'', iconSize:[27,27], iconAnchor:[13,13]
     });
     const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
-    let popup = `<b>${numeroExibido}. ${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:''}</b>`;
-    if(contatoFmt) popup += `<br>📞 ${contatoFmt}`;
-    popup += `<br><span style="font-size:11px;color:#888;">Toque para navegar até aqui</span>`;
-    const marker = L.marker([p.coords.lat, p.coords.lng], { icon }).addTo(rotaOverviewMarkers).bindPopup(popup);
-    marker.on('click', () => { if(idxCompleto >= 0) iniciarNavegacaoNoIndicePacote(idxCompleto); });
+    const montarPopup = () => `<b>${numeroExibido}. ${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:''}</b>`
+      + (contatoFmt ? `<br>📞 ${contatoFmt}` : '')
+      + `<br><span style="font-size:11px;color:#888;">🖐 Arraste o pin se a posição estiver errada</span>`
+      + `<br><button style="margin-top:6px;padding:5px 10px;background:#1D9E75;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;" onclick="iniciarNavegacaoNoIndicePacote(${idxCompleto})">➡ Ir para esta parada</button>`;
+
+    const marker = L.marker([p.coords.lat, p.coords.lng], { icon, draggable:true }).addTo(rotaOverviewMarkers).bindPopup(montarPopup());
+    marker.on('dragend', () => {
+      const pos = marker.getLatLng();
+      corrigirPosicaoPacoteOverview(idxCompleto, pos.lat, pos.lng);
+    });
   });
 
   const bounds = L.latLngBounds(comCoords.map(p => [p.coords.lat, p.coords.lng]));
   rotaOverviewMap.fitBounds(bounds, { padding:[30,30] });
 
   desenharTrajetoOverview(comCoords);
+}
+
+// Chamado quando o usuário arrasta um pin no mapa de visão geral pra corrigir a posição.
+// Salva a correção como confirmação real no banco e libera o botão de reotimizar.
+async function corrigirPosicaoPacoteOverview(idxCompleto, lat, lng){
+  const p = rotaAtual[idxCompleto];
+  if(!p) return;
+  p.coords = { lat, lng, tipo: 'gps' };
+  p.tipoGPS = 'gps';
+
+  if(fb && p.casa){
+    try{
+      const nCidade=normalizarTexto(p.cidade), nBairro=normalizarTexto(p.bairro), nQuadra=normalizarTexto(p.quadra);
+      const bateEndereco = r => normalizarTexto(r.cidade)===nCidade && normalizarTexto(r.bairro)===nBairro &&
+        normalizarTexto(r.quadra)===nQuadra && compararValor(r.conjunto, p.conjunto) && compararValor(r.casa, p.casa);
+      const existente = registros.find(bateEndereco);
+      if(existente?.localizacaoTravada){
+        showMsg('🔒 Essa localização está travada pelo admin — corrigida só na rota de hoje, não salva no banco.', 'err');
+      } else {
+        const novaConfirmacao = { lat, lng, uid: usuarioAtual?.uid||'', email: usuarioAtual?.email||'', ts: new Date().toISOString() };
+        const todasConfs = [...(existente?.confirmacoes||[]), novaConfirmacao];
+        const docId = existente?.id || (p.cidade+'_'+p.bairro+'_'+p.quadra+'_'+p.conjunto+'_'+p.casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+        await fb.setDoc(fb.doc(fb.db,'registros',docId), {
+          cidade:p.cidade, bairro:p.bairro, quadra:p.quadra, conjunto:p.conjunto, casa:p.casa,
+          obs: existente?.obs||'', foto: existente?.foto||null,
+          lat, lng, confirmacoes: todasConfs, totalConfirmacoes: todasConfs.length,
+          verificado: existente?.verificado||false,
+          ts: existente?.ts || (new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}))
+        }, { merge:true });
+        showMsg('✓ Posição corrigida e salva no banco.', 'ok');
+      }
+    } catch(e){ console.warn('[Correção pin overview]', e); }
+  }
+
+  document.getElementById('rota-reotimizar-wrap').style.display = 'block';
+  renderRotaMapaVisao(rotaAtual); // redesenha com a cor atualizada (agora GPS confirmado)
+}
+
+// Reotimiza a rota usando as posições já corrigidas manualmente
+async function reotimizarComCorrecoes(){
+  const btn = document.getElementById('rota-reotimizar-btn');
+  btn.disabled = true; btn.textContent = '🔄 Recalculando...';
+
+  const comCoords = rotaAtual.filter(p => p.coords);
+  const semCoords = rotaAtual.filter(p => !p.coords);
+
+  let otimizados;
+  try {
+    otimizados = await otimizarRotaComOSRM(comCoords);
+  } catch(e){
+    console.warn('[Rota] OSRM Trip indisponível, usando otimização local:', e);
+    otimizados = aplicar2opt(otimizarRota(comCoords));
+  }
+
+  rotaAtual = [...otimizados, ...semCoords];
+  document.getElementById('rota-reotimizar-wrap').style.display = 'none';
+  btn.disabled = false; btn.textContent = '🔄 Reotimizar rota com correções';
+  renderRotaFinal(rotaAtual);
+  showMsg('🔄 Rota recalculada com as correções feitas.', 'ok');
 }
 
 async function desenharTrajetoOverview(comCoords){
@@ -2397,6 +2465,7 @@ window.showTab=showTab; window.fazerLogin=fazerLogin;
 window.analisarLista=analisarLista; window.importarCSV=importarCSV; window.fecharRota=fecharRota; window.copiarRota=copiarRota;
 window.selecionarPontoPartida=selecionarPontoPartida;
 window.removerParadaDaRota=removerParadaDaRota;
+window.reotimizarComCorrecoes=reotimizarComCorrecoes;
 window.fazerLogout=fazerLogout; window.abrirCadastro=abrirCadastro;
 window.ativarGPS=ativarGPS; window.solicitarGPS=solicitarGPS;
 window.onCidadeChange=onCidadeChange; window.onBairroChange=onBairroChange; window.onQuadraChange=onQuadraChange;
