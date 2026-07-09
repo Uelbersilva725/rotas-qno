@@ -249,10 +249,13 @@ tr:hover td{background:#FAFBFC}
         </div>
 
         <div class="card" id="radm-mapa-card" style="display:none;margin-bottom:16px;">
-          <div class="card-title">3. Mapa — arraste pins pra corrigir</div>
+          <div class="card-title">3. Mapa — arraste os pins pra corrigir a posição, ou digite a ordem de entrega no popup de cada um</div>
           <div id="radm-mapa" style="width:100%;height:340px;border-radius:10px;border:1px solid var(--border);position:relative;"></div>
           <div id="radm-reotimizar-wrap" style="display:none;margin-top:10px;">
             <button class="btn-acao" style="background:#378ADD;color:#fff;border-color:#2b6cb0;" onclick="admReotimizarComCorrecoes()">🔄 Reotimizar com correções</button>
+          </div>
+          <div id="radm-fechar-wrap" style="display:none;margin-top:10px;">
+            <button class="btn-acao" style="background:var(--green);color:#fff;border-color:var(--green-dark);width:100%;padding:10px;" onclick="admFecharRota()">🔒 Fechar rota (trava a ordem definida)</button>
           </div>
         </div>
 
@@ -1435,6 +1438,7 @@ function infoTipoGPSAdmin(tipo){
 let radmPacotesAnalisados = [];
 let radmRotaAtual = [];
 let radmMap = null, radmMarkers = null, radmLinha = null, radmMapReady = false;
+let radmBoundsAjustados = false, radmOrdemTravada = false;
 let radmDuracaoOSRM = null;
 
 function admImportarCSV(e){
@@ -1459,7 +1463,8 @@ async function admAnalisarLista(){
     btn.textContent = `Analisando... (${pacotes.length+1}/${linhas.length})`;
     const gps = await encontrarGPSAdmin(p);
     const avisoFaixa = validarCasaNaFaixaAdmin(p);
-    pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo||'nao_encontrado', avisoFaixa });
+    const idPacote = 'p'+Date.now()+'_'+pacotes.length+'_'+Math.random().toString(36).slice(2,6);
+    pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo||'nao_encontrado', avisoFaixa, idPacote });
   }
   radmPacotesAnalisados = pacotes;
   btn.disabled = false; btn.textContent = '🔍 Analisar lista';
@@ -1470,6 +1475,9 @@ function admRenderRevisao(pacotes, naoReconhecidos){
   document.getElementById('radm-resultado').style.display = 'block';
   document.getElementById('radm-mapa-card').style.display = 'none';
   document.getElementById('radm-envio-card').style.display = 'none';
+  document.getElementById('radm-fechar-wrap').style.display = 'none';
+  document.getElementById('radm-reotimizar-wrap').style.display = 'none';
+  radmOrdemTravada = false;
 
   const pendentes = pacotes.filter(p=>p.casaPendente);
   const forasFaixa = pacotes.filter(p=>p.avisoFaixa);
@@ -1566,12 +1574,27 @@ async function admOtimizarRota(){
   try{ otimizados = await admOtimizarRotaComOSRM(comCoords); }
   catch(e){ console.warn('[Rota admin] fallback local', e); radmDuracaoOSRM=null; otimizados = admAplicar2opt(admOtimizarVizinhoProximo(comCoords[0]?.coords||CENTER, comCoords)); }
   radmRotaAtual = [...otimizados, ...semCoords];
+  radmBoundsAjustados = false;
+  radmOrdemTravada = false;
   btn.disabled=false; btn.textContent='🛣 Otimizar rota';
   admRenderMapaRota();
   admRenderListaFinal();
   admPopularSelectEntregadores();
   document.getElementById('radm-mapa-card').style.display='block';
-  document.getElementById('radm-envio-card').style.display='block';
+  document.getElementById('radm-fechar-wrap').style.display='block';
+  document.getElementById('radm-envio-card').style.display='none';
+}
+
+// Trava a ordem atual — a partir daqui, reotimizar automaticamente fica bloqueado,
+// evitando que o sistema embaralhe de novo o que já foi ajustado manualmente com cuidado.
+function admFecharRota(){
+  if(!radmRotaAtual.length){ alert('Otimize a rota antes de fechar.'); return; }
+  radmOrdemTravada = true;
+  document.getElementById('radm-reotimizar-wrap').style.display = 'none';
+  document.getElementById('radm-fechar-wrap').style.display = 'none';
+  document.getElementById('radm-envio-card').style.display = 'block';
+  admRenderListaFinal();
+  showMsgAdmin('🔒 Ordem da rota travada — pronta pra enviar.');
 }
 
 function admRenderMapaRota(){
@@ -1591,13 +1614,24 @@ function admRenderMapaRota(){
     const info = infoTipoGPSAdmin(p.tipoGPS);
     const idx = radmRotaAtual.indexOf(p);
     const icon = L.divIcon({ html:`<div style="background:${info.cor};border:2px solid white;border-radius:50%;width:27px;height:27px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;box-shadow:0 2px 6px rgba(0,0,0,.3);">${idx+1}</div>`, className:'', iconSize:[27,27], iconAnchor:[13,13] });
-    const marker = L.marker([p.coords.lat,p.coords.lng],{icon,draggable:true}).addTo(radmMarkers)
-      .bindPopup(`<b>${idx+1}. ${p.quadra} · Cj.${p.conjunto||'?'} · Casa ${p.casa||'?'}</b><br><span style="font-size:11px;color:#888;">🖐 Arraste pra corrigir</span>`);
+    const popupHtml = `<b>${idx+1}. ${p.quadra} · Cj.${p.conjunto||'?'} · Casa ${p.casa||'?'}</b>`
+      + `<br><span style="font-size:11px;color:#888;">🖐 Arraste pra corrigir a posição</span>`
+      + `<div style="margin-top:8px;display:flex;align-items:center;gap:6px;">
+           <label style="font-size:11px;">Ordem de entrega:</label>
+           <input type="number" min="1" max="${radmRotaAtual.length}" value="${idx+1}" id="pos-input-${p.idPacote}" style="width:50px;padding:4px 6px;font-size:12px;border:1px solid #ddd;border-radius:5px;"/>
+           <button onclick="admMoverParaPosicao('${p.idPacote}')" style="padding:4px 10px;background:#1D9E75;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">✓</button>
+         </div>`;
+    const marker = L.marker([p.coords.lat,p.coords.lng],{icon,draggable:true}).addTo(radmMarkers).bindPopup(popupHtml);
     marker.on('dragend', ()=>{ const pos=marker.getLatLng(); admCorrigirPosicao(idx,pos.lat,pos.lng); });
   });
 
-  const bounds = L.latLngBounds(comCoords.map(p=>[p.coords.lat,p.coords.lng]));
-  radmMap.fitBounds(bounds,{padding:[30,30]});
+  // Só reajusta o zoom/centro na primeira vez — evita o mapa "pulando" a cada pequena
+  // correção manual (arrastar pin, mudar posição), o que atrapalharia o trabalho fino.
+  if(!radmBoundsAjustados){
+    const bounds = L.latLngBounds(comCoords.map(p=>[p.coords.lat,p.coords.lng]));
+    radmMap.fitBounds(bounds,{padding:[30,30]});
+    radmBoundsAjustados = true;
+  }
 
   const coordsStr = comCoords.map(p=>p.coords.lng+','+p.coords.lat).join(';');
   fetch(`https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`)
@@ -1606,6 +1640,21 @@ function admRenderMapaRota(){
       radmLinha = L.polyline(pontos,{color:'#378ADD',weight:4,opacity:0.75}).addTo(radmMap);
       radmLinha.bringToBack();
     }).catch(()=>{});
+}
+
+// Move um pacote pra uma posição específica na sequência, digitada manualmente no popup do pin
+function admMoverParaPosicao(idPacote){
+  const input = document.getElementById('pos-input-'+idPacote);
+  if(!input) return;
+  const novaPos = parseInt(input.value, 10);
+  if(isNaN(novaPos) || novaPos<1 || novaPos>radmRotaAtual.length){ alert('Posição inválida — use um número entre 1 e '+radmRotaAtual.length+'.'); return; }
+  const idxAtual = radmRotaAtual.findIndex(p=>p.idPacote===idPacote);
+  if(idxAtual===-1) return;
+  const [pacote] = radmRotaAtual.splice(idxAtual,1);
+  radmRotaAtual.splice(novaPos-1, 0, pacote);
+  admRenderMapaRota();
+  admRenderListaFinal();
+  showMsgAdmin('✓ '+pacote.quadra+' · Casa '+(pacote.casa||'?')+' agora é a entrega nº '+novaPos);
 }
 
 async function admCorrigirPosicao(idx, lat, lng){
@@ -1630,11 +1679,12 @@ async function admCorrigirPosicao(idx, lat, lng){
       }
     } catch(e){ console.warn(e); }
   }
-  document.getElementById('radm-reotimizar-wrap').style.display='block';
+  if(!radmOrdemTravada) document.getElementById('radm-reotimizar-wrap').style.display='block';
   admRenderMapaRota();
 }
 
 async function admReotimizarComCorrecoes(){
+  if(radmOrdemTravada){ showMsgAdmin('🔒 Ordem travada — não reotimiza mais automaticamente.'); return; }
   const comCoords = radmRotaAtual.filter(p=>p.coords);
   const semCoords = radmRotaAtual.filter(p=>!p.coords);
   let otimizados;
@@ -2418,6 +2468,7 @@ window.salvarNovoSupervisor=salvarNovoSupervisor; window.salvarPermissoesSupervi
 window.onNovoUsuarioRoleChange=onNovoUsuarioRoleChange; window.renderListaEntregadores=renderListaEntregadores;
 window.admImportarCSV=admImportarCSV; window.admAnalisarLista=admAnalisarLista; window.admOtimizarRota=admOtimizarRota;
 window.admReotimizarComCorrecoes=admReotimizarComCorrecoes; window.admEnviarRota=admEnviarRota;
+window.admMoverParaPosicao=admMoverParaPosicao; window.admFecharRota=admFecharRota;
 window.removerSupervisor=removerSupervisor; window.renderListaSupervisores=renderListaSupervisores;
 window.onFaixasCidadeChange=onFaixasCidadeChange; window.renderFaixasTabela=renderFaixasTabela;
 window.salvarFaixa=salvarFaixa; window.irParaFaixas=irParaFaixas;
