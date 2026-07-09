@@ -168,6 +168,7 @@ tr:hover td{background:#FAFBFC}
     </div>
     <div class="nav-section">Principal</div>
     <div class="nav-item active" onclick="navTo('dashboard',this)"><span class="nav-icon">📊</span> Dashboard</div>
+    <div class="nav-item" onclick="navTo('rotas',this)"><span class="nav-icon">🛣</span> Rotas</div>
     <div class="nav-item" onclick="navTo('mapa',this)"><span class="nav-icon">🗺</span> Mapa Geral</div>
     <div class="nav-section">Dados</div>
     <div class="nav-item" id="nav-item-aprovacoes" onclick="navTo('aprovacoes',this)">
@@ -221,6 +222,53 @@ tr:hover td{background:#FAFBFC}
           <div class="map-legend" id="map-legend"></div>
         </div>
         <div id="admin-map"></div>
+      </div>
+    </div>
+
+    <!-- ROTAS (montar e enviar pro entregador) -->
+    <div class="page" id="page-rotas">
+      <div class="page-title">Montar Rota</div>
+      <div class="page-sub">Importe o CSV, revise/corrija manualmente com calma na tela grande, otimize, e envie a rota pronta pra um entregador iniciar direto.</div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">1. Importar pacotes</div>
+        <button class="btn-acao" style="margin-bottom:10px;" onclick="document.getElementById('radm-csv-input').click()">📁 Importar arquivo CSV</button>
+        <input type="file" id="radm-csv-input" accept=".csv,text/csv" style="display:none;" onchange="admImportarCSV(event)"/>
+        <div style="text-align:center;font-size:11px;color:var(--text-3);margin:6px 0;">ou cole o conteúdo manualmente abaixo</div>
+        <textarea id="radm-input" placeholder='Cole aqui o CSV de pacotes...' style="width:100%;height:100px;font-family:monospace;font-size:12px;padding:10px;border:1px solid var(--border);border-radius:8px;"></textarea>
+        <button class="btn-acao" style="margin-top:10px;background:var(--green);color:#fff;border-color:var(--green-dark);" onclick="admAnalisarLista()" id="radm-analisar-btn">🔍 Analisar lista</button>
+      </div>
+
+      <div id="radm-resultado" style="display:none;">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">2. Revisão</div>
+          <div id="radm-stats" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;"></div>
+          <div id="radm-aviso" style="display:none;font-size:12px;padding:10px;border-radius:8px;margin-bottom:12px;"></div>
+          <div id="radm-lista-revisao"></div>
+          <button class="btn-acao" style="margin-top:12px;background:#378ADD;color:#fff;border-color:#2b6cb0;" onclick="admOtimizarRota()" id="radm-otimizar-btn">🛣 Otimizar rota</button>
+        </div>
+
+        <div class="card" id="radm-mapa-card" style="display:none;margin-bottom:16px;">
+          <div class="card-title">3. Mapa — arraste pins pra corrigir</div>
+          <div id="radm-mapa" style="width:100%;height:340px;border-radius:10px;border:1px solid var(--border);position:relative;"></div>
+          <div id="radm-reotimizar-wrap" style="display:none;margin-top:10px;">
+            <button class="btn-acao" style="background:#378ADD;color:#fff;border-color:#2b6cb0;" onclick="admReotimizarComCorrecoes()">🔄 Reotimizar com correções</button>
+          </div>
+        </div>
+
+        <div class="card" id="radm-envio-card" style="display:none;">
+          <div class="card-title">4. Enviar pro entregador</div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;">
+            <div>
+              <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">Escolher entregador</label>
+              <select id="radm-entregador-select" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;">
+                <option value="">Selecione...</option>
+              </select>
+            </div>
+            <button class="btn-acao" style="background:var(--green);color:#fff;border-color:var(--green-dark);padding:10px 18px;" onclick="admEnviarRota()">📤 Enviar rota pronta</button>
+          </div>
+          <div id="radm-lista-final" style="margin-top:16px;"></div>
+        </div>
       </div>
     </div>
 
@@ -310,35 +358,47 @@ tr:hover td{background:#FAFBFC}
     <!-- USUÁRIOS (apenas admin raiz) -->
     <div class="page" id="page-usuarios">
       <div class="page-title">Gerenciar Usuários</div>
-      <div class="page-sub">Adicione supervisores e escolha exatamente o que cada um pode ver e editar no painel.</div>
+      <div class="page-sub">Cadastre supervisores (com permissões granulares) e entregadores (pra poder enviar rotas prontas pra eles).</div>
 
       <div class="card" style="margin-bottom:20px;">
-        <div class="card-title">➕ Adicionar supervisor</div>
+        <div class="card-title">➕ Adicionar usuário</div>
         <p style="font-size:12px;color:var(--text-3);margin-bottom:14px;line-height:1.5;">
           Primeiro crie o login dele em <b>Firebase Console → Authentication → Add user</b> (e-mail e senha).
           Depois copie o <b>UID</b> gerado (aparece na tabela de usuários do Firebase) e cole abaixo.
         </p>
+        <div style="margin-bottom:14px;">
+          <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">Papel</label>
+          <select id="novo-usr-role" onchange="onNovoUsuarioRoleChange()" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;">
+            <option value="supervisor">🛡 Supervisor (acesso ao painel)</option>
+            <option value="entregador">🚚 Entregador (recebe rotas prontas)</option>
+          </select>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
           <div>
             <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">UID do usuário (Firebase Auth)</label>
             <input type="text" id="novo-sup-uid" placeholder="Ex: aZ8k3..." style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;"/>
           </div>
           <div>
-            <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">E-mail (só identificação)</label>
-            <input type="email" id="novo-sup-email" placeholder="amigo@email.com" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;"/>
+            <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">Nome ou e-mail</label>
+            <input type="text" id="novo-sup-email" placeholder="Ex: João ou amigo@email.com" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;"/>
           </div>
         </div>
-        <div class="perm-grid" style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px;">
+        <div class="perm-grid" id="novo-usr-permissoes-wrap" style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px;">
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="novo-sup-p-editarReg"/> ✏️ Editar Registros</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="novo-sup-p-excluirReg"/> 🗑 Excluir Registros</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="novo-sup-p-editarCid"/> 🏙 Editar Cidades</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="novo-sup-p-editarFaixas"/> 📏 Editar Faixas</label>
         </div>
-        <button class="btn-acao" style="background:var(--green);color:#fff;border-color:var(--green-dark);padding:9px 18px;" onclick="salvarNovoSupervisor()">💾 Adicionar supervisor</button>
+        <button class="btn-acao" style="background:var(--green);color:#fff;border-color:var(--green-dark);padding:9px 18px;" onclick="salvarNovoSupervisor()">💾 Adicionar</button>
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-title">🚚 Entregadores cadastrados</div>
+        <div id="lista-entregadores"></div>
       </div>
 
       <div class="card">
-        <div class="card-title">👥 Supervisores cadastrados</div>
+        <div class="card-title">🛡 Supervisores cadastrados</div>
         <div id="lista-supervisores"></div>
       </div>
     </div>
@@ -572,7 +632,7 @@ const cfg={apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",authDomain:"app-rota
 const fapp=initializeApp(cfg);
 const db=getFirestore(fapp);
 const auth=getAuth(fapp);
-window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas'),colUsuarios:collection(db,'usuarios'),colCorrecoes:collection(db,'correcoesParser'),colTelemetria:collection(db,'telemetriaEntregas'),colCoordQuadra:collection(db,'coordenadasQuadra'),colHistorico:collection(db,'historicoRotas'),colPendentes:collection(db,'registrosPendentes')};
+window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas'),colUsuarios:collection(db,'usuarios'),colCorrecoes:collection(db,'correcoesParser'),colTelemetria:collection(db,'telemetriaEntregas'),colCoordQuadra:collection(db,'coordenadasQuadra'),colHistorico:collection(db,'historicoRotas'),colPendentes:collection(db,'registrosPendentes'),colRotasEnviadas:collection(db,'rotasEnviadas')};
 setPersistence(auth, browserLocalPersistence).finally(()=>{
   window.__fbReady=true;
   window.dispatchEvent(new Event('fb-ready'));
@@ -768,7 +828,7 @@ function iniciarFb(){
       fb.onSnapshot(fb.query(fb.colUsuarios),snap=>{
         USUARIOS={};
         snap.docs.forEach(d=>{ USUARIOS[d.id]={id:d.id,...d.data()}; });
-        if(document.getElementById('page-usuarios').classList.contains('active')) renderListaSupervisores();
+        if(document.getElementById('page-usuarios').classList.contains('active')){ renderListaSupervisores(); renderListaEntregadores(); }
       },err=>console.error('[Usuarios]',err));
     }
   };
@@ -797,7 +857,7 @@ function navTo(page,el){
   if(page==='registros')renderTabela();
   if(page==='cidades')renderCidadesList();
   if(page==='faixas')renderFaixasTabela();
-  if(page==='usuarios')renderListaSupervisores();
+  if(page==='usuarios'){ renderListaSupervisores(); renderListaEntregadores(); }
   if(page==='correcoes')renderCorrecoes();
   if(page==='telemetria')renderTelemetria();
   if(page==='historico')renderHistorico();
@@ -1224,6 +1284,403 @@ async function salvarFaixa(id, cidade, bairro, quadra, conjunto){
     showMsgAdmin('✓ Faixa salva: '+quadra+' Cj.'+conjunto);
   } catch(e){ alert('Erro: '+(e.message||e.code)); }
 }
+// ═══════════════════════════════════════════════════════════════════════════
+// ROTAS — montar rota completa no painel admin (reaproveita lógica do app)
+// ═══════════════════════════════════════════════════════════════════════════
+function normalizarTexto(t){
+  return (t||'').toLowerCase()
+    .replace(/[àáâãä]/g,'a').replace(/[èéêë]/g,'e')
+    .replace(/[ìíîï]/g,'i').replace(/[òóôõö]/g,'o')
+    .replace(/[ùúûü]/g,'u').replace(/ç/g,'c')
+    .trim();
+}
+function compararValor(a,b){
+  const na = normalizarTexto(a), nb = normalizarTexto(b);
+  if(na === nb) return true;
+  const ia = parseInt(a,10), ib = parseInt(b,10);
+  if(!isNaN(ia) && !isNaN(ib)) return ia === ib;
+  return false;
+}
+function normalizarCasa(valor){
+  if(!valor) return valor;
+  const str = String(valor).trim();
+  const m = str.match(/^0*(\d+)([a-zA-Z]*)$/);
+  if(m) return m[1] + m[2].toUpperCase();
+  return str;
+}
+function normalizarConjuntoAdm(val){
+  val = (val||'').trim();
+  if(!val) return '';
+  if(/^\d+$/.test(val)) return val.replace(/^0+/,'').padStart(2,'0') || '00';
+  return val.toUpperCase();
+}
+
+function parsearLinhaAdmin(linha){
+  linha = linha.trim();
+  if(!linha) return null;
+  let address = '';
+  if(linha.startsWith('"')){
+    const fechaAspas = linha.indexOf('"', 1);
+    address = linha.slice(1, fechaAspas === -1 ? linha.length : fechaAspas);
+  } else { address = linha.split(',')[0]; }
+  if(!address) return null;
+  const partesLinha = linha.split(',');
+  const contato = partesLinha[partesLinha.length - 1]?.trim().replace(/"/g,'') || '';
+  const todosParens = [...address.matchAll(/\(([^)]+)\)/g)];
+  const dentroParens = todosParens.length ? todosParens[todosParens.length - 1][1] : '';
+  const prefixo = address.split('(')[0];
+  let quadra = '', conjunto = '', casa = '';
+  const reQNO = /(?:qno|qn[o0])\s*(\d+)/i;
+  const reCJ  = /(?:conjunto|conj\.?|cj\.?)\s*([a-z0-9]+)/i;
+  const reCASA = /(?:casa|ca\.?)\s*(\d+[a-z]?)/i;
+  const mQ = prefixo.match(reQNO) || dentroParens.match(reQNO);
+  if(mQ) quadra = 'QNO ' + mQ[1];
+  const mCJ = prefixo.match(reCJ) || dentroParens.match(reCJ);
+  if(mCJ) conjunto = normalizarConjuntoAdm(mCJ[1]);
+  const tokens = prefixo.split(',').map(t=>t.trim()).filter(Boolean);
+  if(tokens.length > 1 && /^\d{1,3}[a-z]?$/i.test(tokens[1])) casa = normalizarCasa(tokens[1]);
+  if(!casa){ const mCASA = dentroParens.match(reCASA); if(mCASA) casa = normalizarCasa(mCASA[1]); }
+  if(!casa){
+    const reCASA_antes = /(\d{1,3}[a-z]?)\s*,?\s*(?:casa|ca\.?)\b/i;
+    const mCASA2 = dentroParens.match(reCASA_antes);
+    if(mCASA2) casa = normalizarCasa(mCASA2[1]);
+  }
+  let bairro = 'Expansão Setor O';
+  if(/^Rua\s+\d/i.test(quadra)) bairro = 'Cond. Agrícola Privê';
+  if(!quadra) return null;
+  return { quadra, conjunto, casa, casaPendente: !casa, bairro, cidade:'Ceilândia', contato, enderecoOriginal: address };
+}
+
+const cacheGeocodingAdmin = {};
+let ultimaChamadaNominatimAdmin = 0;
+async function geocodificarComNominatimAdmin(pacote){
+  const enderecoTexto = `${pacote.quadra} Conjunto ${pacote.conjunto||''} Casa ${pacote.casa||''}, ${pacote.bairro}, ${pacote.cidade}, DF, Brasil`;
+  if(cacheGeocodingAdmin[enderecoTexto]) return cacheGeocodingAdmin[enderecoTexto];
+  const agora = Date.now();
+  const espera = Math.max(0, 1100 - (agora - ultimaChamadaNominatimAdmin));
+  if(espera > 0) await new Promise(r => setTimeout(r, espera));
+  ultimaChamadaNominatimAdmin = Date.now();
+  try{
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(enderecoTexto)}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if(data?.[0]?.lat){
+      const resultado = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), tipo: 'estimado' };
+      cacheGeocodingAdmin[enderecoTexto] = resultado;
+      return resultado;
+    }
+  } catch(e){ console.warn('[Nominatim admin]', e); }
+  return null;
+}
+
+function interpolarEntreVizinhasAdmin(pacote, doConjunto, faixa){
+  const casaNum = parseInt(pacote.casa, 10);
+  if(isNaN(casaNum) || !doConjunto.length) return null;
+  let comNumero = doConjunto.map(r => ({ ...r, casaNum: parseInt(r.casa, 10) })).filter(r => !isNaN(r.casaNum));
+  if(!comNumero.length) return null;
+  if(faixa?.tipo === 'pares' || faixa?.tipo === 'impares'){
+    const alvo = faixa.tipo === 'pares' ? 0 : 1;
+    const filtrado = comNumero.filter(r => r.casaNum % 2 === alvo);
+    if(filtrado.length) comNumero = filtrado;
+  }
+  if(comNumero.length === 1){ const u=comNumero[0]; return { lat:u.lat, lng:u.lng, tipo:'estimado_conjunto' }; }
+  const inferior = comNumero.filter(r => r.casaNum <= casaNum).sort((a,b)=>b.casaNum-a.casaNum)[0];
+  const superior = comNumero.filter(r => r.casaNum >= casaNum).sort((a,b)=>a.casaNum-b.casaNum)[0];
+  if(inferior && superior && inferior.casaNum !== superior.casaNum){
+    const proporcao = (casaNum - inferior.casaNum) / (superior.casaNum - inferior.casaNum);
+    return { lat: inferior.lat+(superior.lat-inferior.lat)*proporcao, lng: inferior.lng+(superior.lng-inferior.lng)*proporcao, tipo:'estimado_conjunto' };
+  }
+  const maisProxima = comNumero.sort((a,b) => Math.abs(a.casaNum-casaNum) - Math.abs(b.casaNum-casaNum))[0];
+  return maisProxima ? { lat:maisProxima.lat, lng:maisProxima.lng, tipo:'estimado_conjunto' } : null;
+}
+
+async function encontrarGPSAdmin(pacote){
+  const norm = normalizarTexto;
+  const matchExato = registros.find(r => norm(r.quadra)===norm(pacote.quadra) && compararValor(r.conjunto,pacote.conjunto) && (compararValor(r.casa,pacote.casa)||!pacote.casa));
+  if(matchExato?.lat) return { lat:matchExato.lat, lng:matchExato.lng, tipo:'gps' };
+  if(pacote.conjunto){
+    const doConjunto = registros.filter(r => norm(r.quadra)===norm(pacote.quadra) && compararValor(r.conjunto,pacote.conjunto) && r.lat);
+    if(doConjunto.length){
+      const faixa = FAIXAS[idFaixa(pacote.cidade,pacote.bairro,pacote.quadra,pacote.conjunto)];
+      const interp = interpolarEntreVizinhasAdmin(pacote, doConjunto, faixa);
+      if(interp) return interp;
+    }
+  }
+  const coordAdmin = COORD_QUADRA[idCoordQuadra(pacote.cidade,pacote.bairro,pacote.quadra)];
+  if(coordAdmin?.lat) return { lat:coordAdmin.lat, lng:coordAdmin.lng, tipo:'estimado' };
+  const geo = await geocodificarComNominatimAdmin(pacote);
+  if(geo) return geo;
+  return null;
+}
+
+function validarCasaNaFaixaAdmin(pacote){
+  if(!pacote.casa) return null;
+  const faixa = FAIXAS[idFaixa(pacote.cidade,pacote.bairro,pacote.quadra,pacote.conjunto)];
+  if(!faixa || faixa.min==null || faixa.max==null) return null;
+  const casaNum = parseInt(pacote.casa,10);
+  if(isNaN(casaNum)) return null;
+  const dentro = casaNum>=faixa.min && casaNum<=faixa.max;
+  const paridadeOk = faixa.tipo==='pares'?casaNum%2===0:faixa.tipo==='impares'?casaNum%2===1:true;
+  if(!dentro || !paridadeOk) return `Fora da faixa esperada (${faixa.min}–${faixa.max}${faixa.tipo!=='todas'?', '+faixa.tipo:''})`;
+  return null;
+}
+
+function infoTipoGPSAdmin(tipo){
+  if(tipo==='gps') return {cor:'#1D9E75', txt:'GPS'};
+  if(tipo==='estimado_conjunto') return {cor:'#378ADD', txt:'Aprox.'};
+  if(tipo==='estimado') return {cor:'#EF9F27', txt:'Estimado'};
+  return {cor:'#E24B4A', txt:'Não enc.'};
+}
+
+let radmPacotesAnalisados = [];
+let radmRotaAtual = [];
+let radmMap = null, radmMarkers = null, radmLinha = null, radmMapReady = false;
+let radmDuracaoOSRM = null;
+
+function admImportarCSV(e){
+  const file = e.target.files[0]; e.target.value='';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { document.getElementById('radm-input').value = ev.target.result; admAnalisarLista(); };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function admAnalisarLista(){
+  const input = document.getElementById('radm-input').value.trim();
+  if(!input){ alert('Cole ou importe a lista de pacotes primeiro.'); return; }
+  const btn = document.getElementById('radm-analisar-btn');
+  btn.disabled = true;
+  const linhas = input.split('\n').filter(l => l.trim() && !l.startsWith('Address,'));
+  const pacotes = [];
+  let naoReconhecidos = 0;
+  for(const linha of linhas){
+    const p = parsearLinhaAdmin(linha);
+    if(!p){ naoReconhecidos++; continue; }
+    btn.textContent = `Analisando... (${pacotes.length+1}/${linhas.length})`;
+    const gps = await encontrarGPSAdmin(p);
+    const avisoFaixa = validarCasaNaFaixaAdmin(p);
+    pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo||'nao_encontrado', avisoFaixa });
+  }
+  radmPacotesAnalisados = pacotes;
+  btn.disabled = false; btn.textContent = '🔍 Analisar lista';
+  admRenderRevisao(pacotes, naoReconhecidos);
+}
+
+function admRenderRevisao(pacotes, naoReconhecidos){
+  document.getElementById('radm-resultado').style.display = 'block';
+  document.getElementById('radm-mapa-card').style.display = 'none';
+  document.getElementById('radm-envio-card').style.display = 'none';
+
+  const pendentes = pacotes.filter(p=>p.casaPendente);
+  const forasFaixa = pacotes.filter(p=>p.avisoFaixa);
+  document.getElementById('radm-stats').innerHTML = `
+    <div class="stat-mini"><span class="num">${pacotes.length}</span><span class="lbl">pacotes</span></div>
+    <div class="stat-mini"><span class="num" style="color:var(--green)">${pacotes.length-pendentes.length}</span><span class="lbl">casa ok</span></div>
+    <div class="stat-mini"><span class="num" style="color:#EF9F27">${pendentes.length}</span><span class="lbl">sem nº casa</span></div>
+    ${forasFaixa.length?`<div class="stat-mini"><span class="num" style="color:var(--red)">${forasFaixa.length}</span><span class="lbl">fora da faixa</span></div>`:''}
+    ${naoReconhecidos?`<div class="stat-mini"><span class="num" style="color:var(--red)">${naoReconhecidos}</span><span class="lbl">não reconh.</span></div>`:''}
+  `;
+
+  const aviso = document.getElementById('radm-aviso');
+  if(forasFaixa.length){ aviso.style.display='block'; aviso.style.background='var(--red-light,#FCEBEB)'; aviso.style.color='var(--red)'; aviso.textContent = `🚨 ${forasFaixa.length} endereço(s) com casa fora da faixa esperada — confira antes de otimizar.`; }
+  else if(pendentes.length){ aviso.style.display='block'; aviso.style.background='#FFF3CD'; aviso.style.color='#856404'; aviso.textContent = `⚠️ ${pendentes.length} endereço(s) sem número de casa — preencha manualmente abaixo.`; }
+  else { aviso.style.display='block'; aviso.style.background='var(--green-light,#E1F5EE)'; aviso.style.color='var(--green-dark,#0F6E56)'; aviso.textContent = '✓ Todos os endereços tiveram a casa identificada.'; }
+
+  document.getElementById('radm-lista-revisao').innerHTML = pacotes.map((p,i)=>{
+    const info = infoTipoGPSAdmin(p.tipoGPS);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;${p.avisoFaixa?'background:var(--red-light,#FCEBEB);':''}">
+      <div style="width:26px;height:26px;border-radius:50%;background:${info.cor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${i+1}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;">${p.quadra} · Cj.${p.conjunto||'?'} <span style="font-size:10px;padding:2px 6px;border-radius:8px;background:${info.cor}22;color:${info.cor};">${info.txt}</span></div>
+        <div style="font-size:11px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.enderecoOriginal.slice(0,70)}</div>
+        ${p.avisoFaixa?`<div style="font-size:11px;color:var(--red);font-weight:600;">🚨 ${p.avisoFaixa}</div>`:''}
+      </div>
+      ${p.casaPendente?`<input type="text" data-idx="${i}" class="radm-casa-input" placeholder="casa?" style="width:80px;padding:6px 8px;border:1px solid #EF9F27;border-radius:6px;font-size:12px;"/>`:`<div style="font-size:12px;font-weight:700;">Casa ${p.casa}</div>`}
+    </div>`;
+  }).join('');
+}
+
+function admDistancia(a,b){ const dlat=a.lat-b.lat, dlng=a.lng-b.lng; return Math.sqrt(dlat*dlat+dlng*dlng); }
+function admOtimizarVizinhoProximo(origem, pacotes){
+  const restantes=[...pacotes], ordenados=[]; let posAtual=origem;
+  while(restantes.length){
+    let melhorIdx=0, melhorDist=Infinity;
+    restantes.forEach((p,i)=>{ if(!p.coords) return; const d=admDistancia(posAtual,p.coords); if(d<melhorDist){melhorDist=d;melhorIdx=i;} });
+    const prox = restantes.splice(melhorIdx,1)[0];
+    ordenados.push(prox);
+    if(prox.coords) posAtual=prox.coords;
+  }
+  return ordenados;
+}
+function admAplicar2opt(rota, maxIt){
+  if(rota.length<4) return rota;
+  let atual=rota.slice(), melhorou=true, tentativas=0;
+  const limite = maxIt||300;
+  while(melhorou && tentativas<limite){
+    melhorou=false; tentativas++;
+    for(let i=0;i<atual.length-2;i++){
+      for(let j=i+2;j<atual.length-1;j++){
+        const a=atual[i],b=atual[i+1],c=atual[j],d=atual[j+1];
+        const distAtual = distanciaMetrosAdmin(a.coords,b.coords)+distanciaMetrosAdmin(c.coords,d.coords);
+        const distNova = distanciaMetrosAdmin(a.coords,c.coords)+distanciaMetrosAdmin(b.coords,d.coords);
+        if(distNova < distAtual-1){
+          const meio = atual.slice(i+1,j+1).reverse();
+          atual = [...atual.slice(0,i+1), ...meio, ...atual.slice(j+1)];
+          melhorou=true;
+        }
+      }
+    }
+  }
+  return atual;
+}
+async function admOtimizarRotaComOSRM(pacotes){
+  if(pacotes.length<=1) return pacotes;
+  const coordsStr = pacotes.map(p=>p.coords.lng+','+p.coords.lat).join(';');
+  const url = `https://router.project-osrm.org/trip/v1/driving/${coordsStr}?roundtrip=false&overview=false`;
+  const resp = await fetch(url);
+  const data = await resp.json();
+  if(data.code!=='Ok'||!data.waypoints) throw new Error('OSRM: '+data.code);
+  radmDuracaoOSRM = data.trips?.[0]?.duration || null;
+  const comOrdem = data.waypoints.map((wp,i)=>({pacote:pacotes[i], ordem:wp.waypoint_index}));
+  comOrdem.sort((a,b)=>a.ordem-b.ordem);
+  return comOrdem.map(x=>x.pacote);
+}
+
+async function admOtimizarRota(){
+  for(const inp of document.querySelectorAll('.radm-casa-input')){
+    const idx = parseInt(inp.getAttribute('data-idx'));
+    const val = inp.value.trim();
+    if(val && radmPacotesAnalisados[idx]){
+      const p = radmPacotesAnalisados[idx];
+      p.casa = normalizarCasa(val); p.casaPendente=false;
+      const gps = await encontrarGPSAdmin(p);
+      p.coords=gps; p.tipoGPS=gps?.tipo||'nao_encontrado';
+      p.avisoFaixa = validarCasaNaFaixaAdmin(p);
+    }
+  }
+  const comCoords = radmPacotesAnalisados.filter(p=>p.coords);
+  const semCoords = radmPacotesAnalisados.filter(p=>!p.coords);
+  const btn = document.getElementById('radm-otimizar-btn');
+  btn.disabled=true; btn.textContent='🛣 Calculando...';
+  let otimizados;
+  try{ otimizados = await admOtimizarRotaComOSRM(comCoords); }
+  catch(e){ console.warn('[Rota admin] fallback local', e); radmDuracaoOSRM=null; otimizados = admAplicar2opt(admOtimizarVizinhoProximo(comCoords[0]?.coords||CENTER, comCoords)); }
+  radmRotaAtual = [...otimizados, ...semCoords];
+  btn.disabled=false; btn.textContent='🛣 Otimizar rota';
+  admRenderMapaRota();
+  admRenderListaFinal();
+  admPopularSelectEntregadores();
+  document.getElementById('radm-mapa-card').style.display='block';
+  document.getElementById('radm-envio-card').style.display='block';
+}
+
+function admRenderMapaRota(){
+  const comCoords = radmRotaAtual.filter(p=>p.coords);
+  if(!comCoords.length) return;
+  if(!radmMapReady){
+    radmMap = L.map('radm-mapa',{zoomControl:true}).setView(CENTER,14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(radmMap);
+    radmMarkers = L.layerGroup().addTo(radmMap);
+    radmMapReady = true;
+  }
+  setTimeout(()=>radmMap.invalidateSize(),100);
+  radmMarkers.clearLayers();
+  if(radmLinha){ radmMap.removeLayer(radmLinha); radmLinha=null; }
+
+  comCoords.forEach(p=>{
+    const info = infoTipoGPSAdmin(p.tipoGPS);
+    const idx = radmRotaAtual.indexOf(p);
+    const icon = L.divIcon({ html:`<div style="background:${info.cor};border:2px solid white;border-radius:50%;width:27px;height:27px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;box-shadow:0 2px 6px rgba(0,0,0,.3);">${idx+1}</div>`, className:'', iconSize:[27,27], iconAnchor:[13,13] });
+    const marker = L.marker([p.coords.lat,p.coords.lng],{icon,draggable:true}).addTo(radmMarkers)
+      .bindPopup(`<b>${idx+1}. ${p.quadra} · Cj.${p.conjunto||'?'} · Casa ${p.casa||'?'}</b><br><span style="font-size:11px;color:#888;">🖐 Arraste pra corrigir</span>`);
+    marker.on('dragend', ()=>{ const pos=marker.getLatLng(); admCorrigirPosicao(idx,pos.lat,pos.lng); });
+  });
+
+  const bounds = L.latLngBounds(comCoords.map(p=>[p.coords.lat,p.coords.lng]));
+  radmMap.fitBounds(bounds,{padding:[30,30]});
+
+  const coordsStr = comCoords.map(p=>p.coords.lng+','+p.coords.lat).join(';');
+  fetch(`https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`)
+    .then(r=>r.json()).then(data=>{
+      const pontos = (data.code==='Ok'&&data.routes?.[0]) ? data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]) : comCoords.map(p=>[p.coords.lat,p.coords.lng]);
+      radmLinha = L.polyline(pontos,{color:'#378ADD',weight:4,opacity:0.75}).addTo(radmMap);
+      radmLinha.bringToBack();
+    }).catch(()=>{});
+}
+
+async function admCorrigirPosicao(idx, lat, lng){
+  const p = radmRotaAtual[idx]; if(!p) return;
+  p.coords = { lat, lng, tipo:'gps' }; p.tipoGPS='gps';
+  if(fb && p.casa){
+    try{
+      const nCidade=normalizarTexto(p.cidade),nBairro=normalizarTexto(p.bairro),nQuadra=normalizarTexto(p.quadra);
+      const existente = registros.find(r=>normalizarTexto(r.cidade)===nCidade&&normalizarTexto(r.bairro)===nBairro&&normalizarTexto(r.quadra)===nQuadra&&compararValor(r.conjunto,p.conjunto)&&compararValor(r.casa,p.casa));
+      if(existente?.localizacaoTravada){ showMsgAdmin('🔒 Localização travada — corrigida só nesta rota.'); }
+      else {
+        const docId = existente?.id || (p.cidade+'_'+p.bairro+'_'+p.quadra+'_'+p.conjunto+'_'+p.casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+        const novaConf = { lat, lng, uid:UID_ADMIN, email:'admin', ts:new Date().toISOString() };
+        const confs = [...(existente?.confirmacoes||[]), novaConf];
+        await fb.setDoc(fb.doc(fb.db,'registros',docId), {
+          cidade:p.cidade,bairro:p.bairro,quadra:p.quadra,conjunto:p.conjunto,casa:p.casa,
+          obs:existente?.obs||'', foto:existente?.foto||null, lat, lng,
+          confirmacoes:confs, totalConfirmacoes:confs.length, verificado:existente?.verificado||false,
+          ts: existente?.ts || new Date().toLocaleDateString('pt-BR')
+        }, {merge:true});
+        showMsgAdmin('✓ Posição corrigida e salva no banco.');
+      }
+    } catch(e){ console.warn(e); }
+  }
+  document.getElementById('radm-reotimizar-wrap').style.display='block';
+  admRenderMapaRota();
+}
+
+async function admReotimizarComCorrecoes(){
+  const comCoords = radmRotaAtual.filter(p=>p.coords);
+  const semCoords = radmRotaAtual.filter(p=>!p.coords);
+  let otimizados;
+  try{ otimizados = await admOtimizarRotaComOSRM(comCoords); }
+  catch(e){ otimizados = admAplicar2opt(admOtimizarVizinhoProximo(comCoords[0]?.coords||CENTER, comCoords)); }
+  radmRotaAtual = [...otimizados, ...semCoords];
+  document.getElementById('radm-reotimizar-wrap').style.display='none';
+  admRenderMapaRota();
+  admRenderListaFinal();
+  showMsgAdmin('🔄 Rota recalculada.');
+}
+
+function admRenderListaFinal(){
+  document.getElementById('radm-lista-final').innerHTML = radmRotaAtual.map((p,i)=>{
+    const info = infoTipoGPSAdmin(p.tipoGPS);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--border);">
+      <div style="width:22px;height:22px;border-radius:50%;background:${info.cor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">${i+1}</div>
+      <div style="flex:1;font-size:12px;">${p.quadra} · Cj.${p.conjunto||'?'} · Casa ${p.casa||'?'}</div>
+    </div>`;
+  }).join('');
+}
+
+function admPopularSelectEntregadores(){
+  const sel = document.getElementById('radm-entregador-select');
+  sel.innerHTML = '<option value="">Selecione...</option>';
+  Object.values(USUARIOS).filter(u=>u.role==='entregador').forEach(u=>{
+    const o = document.createElement('option'); o.value=u.id; o.textContent=u.email||u.id; sel.appendChild(o);
+  });
+}
+
+async function admEnviarRota(){
+  const uid = document.getElementById('radm-entregador-select').value;
+  if(!uid){ alert('Escolha um entregador antes de enviar.'); return; }
+  const entregador = USUARIOS[uid];
+  if(!radmRotaAtual.length){ alert('Nenhuma rota otimizada ainda.'); return; }
+  try{
+    await fb.setDoc(fb.doc(fb.db,'rotasEnviadas', Date.now()+'_'+Math.random().toString(36).slice(2,8)), {
+      entregadorUid: uid, entregadorEmail: entregador?.email||'',
+      pacotes: radmRotaAtual,
+      enviadoPor: usuarioAtual?.email||'admin', enviadoEm: new Date().toISOString(),
+      status: 'pendente'
+    });
+    alert('✓ Rota enviada! O entregador vai ver o aviso ao abrir o app.');
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
 function showMsgAdmin(txt){
   // feedback simples via título temporário do botão de sync (sem modal extra)
   const el = document.getElementById('sync-text');
@@ -1859,25 +2316,48 @@ function verFoto(url){ document.getElementById('foto-modal-img').src=url; docume
 function abrirModal(id){document.getElementById(id).classList.add('open');}
 function fecharModal(id){document.getElementById(id).classList.remove('open');}
 
-// ─── Gerenciar Usuários (supervisores) — apenas admin raiz ────────────────────
+// ─── Gerenciar Usuários (supervisores e entregadores) — apenas admin raiz ─────
+function onNovoUsuarioRoleChange(){
+  const ehSupervisor = document.getElementById('novo-usr-role').value === 'supervisor';
+  document.getElementById('novo-usr-permissoes-wrap').style.display = ehSupervisor ? 'flex' : 'none';
+}
+
 async function salvarNovoSupervisor(){
+  const role = document.getElementById('novo-usr-role').value;
   const uid = document.getElementById('novo-sup-uid').value.trim();
   const email = document.getElementById('novo-sup-email').value.trim();
-  if(!uid || !email){ alert('Preencha o UID e o e-mail.'); return; }
-  if(USUARIOS[uid]){ alert('Já existe um supervisor com esse UID.'); return; }
-  const permissoes = {
-    editarReg: document.getElementById('novo-sup-p-editarReg').checked,
-    excluirReg: document.getElementById('novo-sup-p-excluirReg').checked,
-    editarCid: document.getElementById('novo-sup-p-editarCid').checked,
-    editarFaixas: document.getElementById('novo-sup-p-editarFaixas').checked,
-  };
+  if(!uid || !email){ alert('Preencha o UID e o nome/e-mail.'); return; }
+  if(USUARIOS[uid]){ alert('Já existe um usuário com esse UID.'); return; }
+
+  const dados = { email, role, criadoEm: new Date().toISOString() };
+  if(role === 'supervisor'){
+    dados.permissoes = {
+      editarReg: document.getElementById('novo-sup-p-editarReg').checked,
+      excluirReg: document.getElementById('novo-sup-p-excluirReg').checked,
+      editarCid: document.getElementById('novo-sup-p-editarCid').checked,
+      editarFaixas: document.getElementById('novo-sup-p-editarFaixas').checked,
+    };
+  }
   try{
-    await fb.setDoc(fb.doc(fb.db,'usuarios',uid), { email, role:'supervisor', permissoes, criadoEm: new Date().toISOString() });
+    await fb.setDoc(fb.doc(fb.db,'usuarios',uid), dados);
     document.getElementById('novo-sup-uid').value='';
     document.getElementById('novo-sup-email').value='';
     ['editarReg','excluirReg','editarCid','editarFaixas'].forEach(k=>{ document.getElementById('novo-sup-p-'+k).checked=false; });
-    alert('Supervisor adicionado com sucesso!');
+    alert((role==='supervisor'?'Supervisor':'Entregador')+' adicionado com sucesso!');
   } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
+function renderListaEntregadores(){
+  const div = document.getElementById('lista-entregadores');
+  const lista = Object.values(USUARIOS).filter(u=>u.role==='entregador');
+  if(!lista.length){ div.innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:10px 0;">Nenhum entregador cadastrado ainda.</div>'; return; }
+  div.innerHTML = lista.map(u=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+    <div>
+      <div style="font-size:13px;font-weight:600;">${u.email||u.id}</div>
+      <div style="font-size:10px;color:var(--text-3);">UID: ${u.id}</div>
+    </div>
+    <button class="btn-acao del" onclick="removerSupervisor('${u.id}')">🗑 Remover</button>
+  </div>`).join('');
 }
 
 function renderListaSupervisores(){
@@ -1935,6 +2415,9 @@ async function sairAdmin(){
 
 window.entrar=entrar; window.navTo=navTo; window.irPara=irPara; window.sairAdmin=sairAdmin;
 window.salvarNovoSupervisor=salvarNovoSupervisor; window.salvarPermissoesSupervisor=salvarPermissoesSupervisor;
+window.onNovoUsuarioRoleChange=onNovoUsuarioRoleChange; window.renderListaEntregadores=renderListaEntregadores;
+window.admImportarCSV=admImportarCSV; window.admAnalisarLista=admAnalisarLista; window.admOtimizarRota=admOtimizarRota;
+window.admReotimizarComCorrecoes=admReotimizarComCorrecoes; window.admEnviarRota=admEnviarRota;
 window.removerSupervisor=removerSupervisor; window.renderListaSupervisores=renderListaSupervisores;
 window.onFaixasCidadeChange=onFaixasCidadeChange; window.renderFaixasTabela=renderFaixasTabela;
 window.salvarFaixa=salvarFaixa; window.irParaFaixas=irParaFaixas;

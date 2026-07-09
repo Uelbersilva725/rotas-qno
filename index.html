@@ -268,6 +268,9 @@ html,body{height:100%;background:var(--bg-alt);font-family:-apple-system,BlinkMa
   <div id="offline-banner" style="display:none;background:#EF9F27;color:#fff;text-align:center;font-size:12px;padding:7px 10px;font-weight:600;">
     📡 Sem conexão — o app continua funcionando, os dados serão sincronizados automaticamente quando a internet voltar
   </div>
+  <div id="rota-enviada-banner" onclick="abrirRotaEnviada()" style="display:none;background:#1D9E75;color:#fff;text-align:center;font-size:13px;padding:10px 12px;font-weight:700;cursor:pointer;">
+    📬 O administrador te enviou uma rota — toque pra abrir
+  </div>
   <div class="header">
     <div class="header-icon">📦</div>
     <div><div class="header-title">Rotas QNO</div><div class="header-sub">Ceilândia · DF</div></div>
@@ -594,7 +597,8 @@ window.__fb = {
   colCidades:   collection(db,'cidades'),
   colFaixas:    collection(db,'faixas'),
   colCoordQuadra: collection(db,'coordenadasQuadra'),
-  colRegistrosPendentes: collection(db,'registrosPendentes')
+  colRegistrosPendentes: collection(db,'registrosPendentes'),
+  colRotasEnviadas: collection(db,'rotasEnviadas')
 };
 
 // Garante persistência explícita (mantém login salvo no navegador entre acessos)
@@ -613,6 +617,7 @@ let fb = null;
 let usuarioAtual = null;   // objeto do Firebase Auth
 let nivelAcesso  = 'visitante'; // 'admin' | 'entregador' | 'visitante'
 let registros = [], CIDADES = {}, FAIXAS = {}, COORD_QUADRA_ADMIN = {}, registrosPendentes = [];
+let rotasEnviadasRecebidas = [], rotaEnviadaAbertaId = null;
 let posicaoAtual = null, trackingAtivo = false, primeiraLoc = true;
 let map, markersLayer, meuPin, meuCirculo, mapReady = false;
 let fotoBase64 = null;
@@ -696,6 +701,12 @@ function initFirebase(){
 
   fb.onSnapshot(fb.query(fb.colRegistrosPendentes), snap=>{
     registrosPendentes = snap.docs.map(d=>({id:d.id,...d.data()}));
+  });
+
+  fb.onSnapshot(fb.query(fb.colRotasEnviadas), snap=>{
+    const todas = snap.docs.map(d=>({id:d.id,...d.data()}));
+    rotasEnviadasRecebidas = todas.filter(r => r.entregadorUid === usuarioAtual?.uid && r.status !== 'concluida');
+    atualizarBannerRotaEnviada();
   });
 
   // Escuta registros
@@ -2354,6 +2365,33 @@ function confirmarEntrega(){
 function pularParada(){ contadorPuladas++; confirmarEntrega(); }
 
 // ─── Resumo final da rota (histórico) ─────────────────────────────────────────
+// ─── Rota enviada pelo admin (recebida pelo entregador) ───────────────────────
+function atualizarBannerRotaEnviada(){
+  const banner = document.getElementById('rota-enviada-banner');
+  if(!banner) return;
+  banner.style.display = rotasEnviadasRecebidas.length ? 'block' : 'none';
+}
+
+async function abrirRotaEnviada(){
+  if(!rotasEnviadasRecebidas.length) return;
+  // Prioriza uma que já esteja "aberta" (retomar), senão pega a mais recente pendente
+  const rota = rotasEnviadasRecebidas.find(r=>r.status==='aberta') || rotasEnviadasRecebidas[0];
+  if(!rota?.pacotes?.length){ showMsg('Rota recebida está vazia.','err'); return; }
+
+  rotaAtual = rota.pacotes;
+  rotaEnviadaAbertaId = rota.id;
+
+  if(rota.status === 'pendente' && fb){
+    fb.setDoc(fb.doc(fb.db,'rotasEnviadas',rota.id), { status:'aberta' }, { merge:true }).catch(()=>{});
+  }
+
+  showTab('rota', true);
+  document.getElementById('rota-resultado').style.display = 'block';
+  document.getElementById('rota-revisao-wrap').style.display = 'none';
+  renderRotaFinal(rotaAtual);
+  showMsg('📬 Rota do administrador carregada — confira e inicie quando estiver pronto.', 'ok');
+}
+
 async function finalizarRotaComResumo(){
   const duracaoMs = navInicioTs ? Date.now() - navInicioTs : 0;
   const duracaoMin = Math.round(duracaoMs / 60000);
@@ -2376,6 +2414,10 @@ async function finalizarRotaComResumo(){
   if(fb){
     fb.setDoc(fb.doc(fb.db, 'historicoRotas', Date.now()+'_'+Math.random().toString(36).slice(2,8)), resumo)
       .catch(e => console.warn('[Histórico] Falha ao salvar:', e));
+    if(rotaEnviadaAbertaId){
+      fb.setDoc(fb.doc(fb.db,'rotasEnviadas',rotaEnviadaAbertaId), { status:'concluida' }, { merge:true }).catch(()=>{});
+      rotaEnviadaAbertaId = null;
+    }
   }
 
   mostrarModalResumoRota(resumo, duracaoFmt, distanciaKm);
@@ -2466,6 +2508,7 @@ window.analisarLista=analisarLista; window.importarCSV=importarCSV; window.fecha
 window.selecionarPontoPartida=selecionarPontoPartida;
 window.removerParadaDaRota=removerParadaDaRota;
 window.reotimizarComCorrecoes=reotimizarComCorrecoes;
+window.abrirRotaEnviada=abrirRotaEnviada;
 window.fazerLogout=fazerLogout; window.abrirCadastro=abrirCadastro;
 window.ativarGPS=ativarGPS; window.solicitarGPS=solicitarGPS;
 window.onCidadeChange=onCidadeChange; window.onBairroChange=onBairroChange; window.onQuadraChange=onQuadraChange;
