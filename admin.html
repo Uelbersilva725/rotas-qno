@@ -534,6 +534,30 @@ tr:hover td{background:#FAFBFC}
   </div>
 </div>
 
+<!-- Perfil Inteligente do Endereço -->
+<div class="modal-bg" id="perfil-modal">
+  <div class="modal" style="text-align:center;">
+    <h3 id="perfil-modal-title">Perfil do Endereço</h3>
+    <div id="perfil-estrelas" style="font-size:28px;margin:10px 0;">☆☆☆☆☆</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;text-align:left;">
+      <div style="background:var(--bg-alt,#f5f5f5);border-radius:10px;padding:12px;">
+        <div style="font-size:11px;color:var(--text-3);">Precisão GPS</div>
+        <div id="perfil-precisao" style="font-size:20px;font-weight:800;">—</div>
+      </div>
+      <div style="background:var(--bg-alt,#f5f5f5);border-radius:10px;padding:12px;">
+        <div style="font-size:11px;color:var(--text-3);">Tempo médio parado</div>
+        <div id="perfil-tempo" style="font-size:20px;font-weight:800;">—</div>
+      </div>
+      <div style="background:var(--bg-alt,#f5f5f5);border-radius:10px;padding:12px;grid-column:span 2;">
+        <div style="font-size:11px;color:var(--text-3);">Melhor horário observado</div>
+        <div id="perfil-horario" style="font-size:16px;font-weight:700;">—</div>
+      </div>
+    </div>
+    <div id="perfil-detalhe" style="font-size:11px;color:var(--text-3);margin-bottom:16px;"></div>
+    <button onclick="fecharModal('perfil-modal')" style="width:100%;">Fechar</button>
+  </div>
+</div>
+
 <!-- Modal foto -->
 <div class="foto-modal-bg" id="foto-modal" onclick="this.classList.remove('open')">
   <img class="foto-modal-img" id="foto-modal-img" src="" alt=""/>
@@ -1360,6 +1384,7 @@ function renderTabela(){
     <td>${r.localizacaoTravada?'<span title="Localização travada pelo admin" style="cursor:help;">🔒</span>':suspeita?'<span title="Coordenada fora da região esperada ou zerada" style="cursor:help;">⚠️</span>':(r.lat?'<span class="badge badge-gps">✓</span>':'<span style="color:var(--text-3);">—</span>')}</td>
     <td style="font-size:11px;color:var(--text-3);">${r.ts||'—'}</td>
     <td><div class="td-acoes">
+      <button class="btn-acao" onclick="abrirPerfilEndereco('${r.id}')" title="Ver perfil do endereço">⭐</button>
       ${(ehAdminRaiz||permissoesAtuais.editarReg)?`<button class="btn-acao" onclick="abrirEditModal('${r.id}')">✏️</button>`:''}
       ${(ehAdminRaiz||permissoesAtuais.excluirReg)?`<button class="btn-acao del" onclick="excluir('${r.id}')">🗑</button>`:''}
       ${(!ehAdminRaiz&&!permissoesAtuais.editarReg&&!permissoesAtuais.excluirReg)?`<span style="font-size:11px;color:var(--text-3);">Somente leitura</span>`:''}
@@ -1663,6 +1688,86 @@ async function uploadFotoAdmin(b64){
   return (await r.json()).secure_url;
 }
 
+// ─── Perfil Inteligente do Endereço ─────────────────────────────────────────────
+function distanciaMetrosAdmin(a,b){
+  const R = 6371000;
+  const dLat = (b.lat-a.lat)*Math.PI/180, dLng = (b.lng-a.lng)*Math.PI/180;
+  const la1 = a.lat*Math.PI/180, la2 = b.lat*Math.PI/180;
+  const h = Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+
+function calcularPerfilEndereco(r){
+  // Precisão GPS (%): baseada na dispersão entre as confirmações registradas
+  let precisaoGps = null;
+  if(r.confirmacoes && r.confirmacoes.length >= 2){
+    const latMedio = r.confirmacoes.reduce((s,c)=>s+c.lat,0)/r.confirmacoes.length;
+    const lngMedio = r.confirmacoes.reduce((s,c)=>s+c.lng,0)/r.confirmacoes.length;
+    const centroide = { lat: latMedio, lng: lngMedio };
+    const maxDist = Math.max(...r.confirmacoes.map(c=>distanciaMetrosAdmin(c,centroide)));
+    precisaoGps = Math.max(0, Math.round(100 - (maxDist/40)*100));
+  } else if(r.lat){
+    precisaoGps = r.verificado ? 100 : 50;
+  }
+
+  // Tempo médio parado: usa o campo já calculado no app (média móvel), com fallback
+  // pra calcular na hora a partir da telemetria bruta, caso ainda não tenha sido preenchido
+  let tempoMedioSeg = r.tempoMedioParadaSeg || null;
+  const telemetriaDoEndereco = TELEMETRIA.filter(t =>
+    t.cidade===r.cidade && t.bairro===r.bairro && t.quadra===r.quadra &&
+    (''+t.conjunto)===(''+r.conjunto) && (''+t.casa)===(''+r.casa)
+  );
+  if(tempoMedioSeg == null && telemetriaDoEndereco.length){
+    const comTempo = telemetriaDoEndereco.filter(t=>t.tempoParadoSeg!=null);
+    if(comTempo.length) tempoMedioSeg = Math.round(comTempo.reduce((s,t)=>s+t.tempoParadoSeg,0)/comTempo.length);
+  }
+
+  // Melhor horário: agrupa a telemetria em faixas de 3h e acha a de menor tempo médio
+  let melhorHorario = null;
+  if(telemetriaDoEndereco.length >= 2){
+    const faixas = {};
+    telemetriaDoEndereco.forEach(t=>{
+      if(!t.ts) return;
+      const hora = new Date(t.ts).getHours();
+      const faixaIni = Math.floor(hora/3)*3;
+      const chave = faixaIni+'h–'+(faixaIni+3)+'h';
+      const tempo = (t.tempoAteChegarSeg||0)+(t.tempoParadoSeg||0);
+      (faixas[chave] = faixas[chave]||[]).push(tempo);
+    });
+    let melhorMedia = Infinity;
+    Object.entries(faixas).forEach(([chave, tempos])=>{
+      const media = tempos.reduce((a,b)=>a+b,0)/tempos.length;
+      if(media < melhorMedia){ melhorMedia = media; melhorHorario = chave; }
+    });
+  }
+
+  // Estrelas: composto de verificação + confirmações + precisão
+  let estrelas = 1;
+  if(r.verificado) estrelas += 2;
+  if((r.totalConfirmacoes||0) >= 3) estrelas += 1;
+  if(precisaoGps!=null && precisaoGps >= 80) estrelas += 1;
+  estrelas = Math.min(5, estrelas);
+
+  return { precisaoGps, tempoMedioSeg, melhorHorario, estrelas, amostrasTelemetria: telemetriaDoEndereco.length };
+}
+
+function abrirPerfilEndereco(id){
+  const r = registros.find(x=>x.id===id); if(!r) return;
+  const perfil = calcularPerfilEndereco(r);
+
+  document.getElementById('perfil-modal-title').textContent = r.quadra+' · Cj.'+(r.conjunto||'?')+' · Casa '+r.casa;
+  document.getElementById('perfil-estrelas').textContent = '⭐'.repeat(perfil.estrelas) + '☆'.repeat(5-perfil.estrelas);
+  document.getElementById('perfil-precisao').textContent = perfil.precisaoGps!=null ? perfil.precisaoGps+'%' : '—';
+  document.getElementById('perfil-tempo').textContent = perfil.tempoMedioSeg!=null
+    ? (perfil.tempoMedioSeg < 60 ? perfil.tempoMedioSeg+'s' : Math.floor(perfil.tempoMedioSeg/60)+'min'+(perfil.tempoMedioSeg%60?(perfil.tempoMedioSeg%60)+'s':''))
+    : '—';
+  document.getElementById('perfil-horario').textContent = perfil.melhorHorario || 'Ainda sem dados suficientes';
+  document.getElementById('perfil-detalhe').textContent =
+    `Baseado em ${r.totalConfirmacoes||0} confirmação(ões) de localização e ${perfil.amostrasTelemetria} entrega(s) registrada(s).`;
+
+  abrirModal('perfil-modal');
+}
+
 function abrirEditModal(id){
   if(!ehAdminRaiz && !permissoesAtuais.editarReg){ alert('Você não tem permissão para editar registros.'); return; }
   const r = registros.find(x=>x.id===id); if(!r) return;
@@ -1848,6 +1953,7 @@ window.abrirModalNovoBairro=abrirModalNovoBairro; window.salvarNovoBairro=salvar
 window.abrirModalNovaQuadra=abrirModalNovaQuadra; window.salvarNovaQuadra=salvarNovaQuadra; window.excluirQuadra=excluirQuadra;
 window.adicionarConjunto=adicionarConjunto; window.excluirConjunto=excluirConjunto;
 window.abrirEditModal=abrirEditModal; window.salvarEdicaoCompleta=salvarEdicaoCompleta; window.excluir=excluir;
+window.abrirPerfilEndereco=abrirPerfilEndereco;
 window.previewFotoEdit=previewFotoEdit;
 window.verFoto=verFoto; window.fecharModal=fecharModal;
 </script>

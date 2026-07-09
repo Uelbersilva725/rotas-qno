@@ -418,6 +418,9 @@ html,body{height:100%;background:var(--bg-alt);font-family:-apple-system,BlinkMa
         </div>
 
         <!-- Etapa 2: rota final otimizada — mapa primeiro, lista depois -->
+        <div id="rota-tempo-total-wrap" style="display:none;margin:10px 0;padding:10px 12px;background:#EAF2FB;border-radius:10px;font-size:12px;color:#1B5A8A;">
+          ⏱ <b id="rota-tempo-total-texto"></b>
+        </div>
         <div id="rota-nav-start-wrap" style="display:none;">
           <button class="nav-start-btn" onclick="iniciarNavegacao()">🧭 Iniciar navegação guiada</button>
         </div>
@@ -1333,7 +1336,7 @@ async function encontrarGPS(pacote){
     compararValor(r.conjunto, pacote.conjunto) &&
     (compararValor(r.casa, pacote.casa) || !pacote.casa)
   );
-  if(matchExato?.lat) return { lat: matchExato.lat, lng: matchExato.lng, tipo: 'gps' };
+  if(matchExato?.lat) return { lat: matchExato.lat, lng: matchExato.lng, tipo: 'gps', tempoMedioParadaSeg: matchExato.tempoMedioParadaSeg || null };
 
   // 2) Camada intermediária: interpolação entre casas vizinhas do mesmo conjunto
   if(pacote.conjunto){
@@ -1438,7 +1441,7 @@ async function analisarLista(){
       btn.textContent = `Analisando... (${pacotes.length+1}/${linhas.length})`;
       const gps = await encontrarGPS(p);
       const avisoFaixa = validarCasaNaFaixa(p);
-      pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo || 'nao_encontrado', avisoFaixa });
+      pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo || 'nao_encontrado', avisoFaixa, tempoMedioParadaSeg: gps?.tempoMedioParadaSeg || null });
     }
 
     pacotesAnalisados = pacotes;
@@ -1559,9 +1562,11 @@ function aplicar2opt(pontosComCoords, maxIteracoes){
 
 // Otimização real via OSRM Trip — considera as ruas de verdade (tempo real de percurso),
 // não só distância em linha reta. É a forma mais precisa de minimizar o tempo do motorista.
+let duracaoViagemOSRMSeg = null; // capturada a cada otimização, usada na estimativa total da rota
+
 async function otimizarRotaComOSRM(pacotesComCoords){
   if(!pacotesComCoords.length) return [];
-  if(pacotesComCoords.length === 1) return pacotesComCoords;
+  if(pacotesComCoords.length === 1){ duracaoViagemOSRMSeg = null; return pacotesComCoords; }
   const origem = obterPontoPartida();
   const todasCoords = [origem, ...pacotesComCoords.map(p=>p.coords)];
   const coordsStr = todasCoords.map(c=>c.lng+','+c.lat).join(';');
@@ -1569,6 +1574,7 @@ async function otimizarRotaComOSRM(pacotesComCoords){
   const resp = await fetch(url);
   const data = await resp.json();
   if(data.code !== 'Ok' || !data.waypoints) throw new Error('OSRM trip: '+data.code);
+  duracaoViagemOSRMSeg = data.trips?.[0]?.duration || null;
   // waypoints vem na MESMA ordem da entrada; o índice 0 é a origem (motorista) — removemos.
   const waypointsPacotes = data.waypoints.slice(1);
   const comOrdem = waypointsPacotes.map((wp, idxOriginal) => ({
@@ -1604,6 +1610,7 @@ async function fecharRota(){
       const gps = await encontrarGPS(p);
       p.coords = gps;
       p.tipoGPS = gps?.tipo || 'nao_encontrado';
+      p.tempoMedioParadaSeg = gps?.tempoMedioParadaSeg || null;
       p.avisoFaixa = validarCasaNaFaixa(p);
     }
   }
@@ -1659,6 +1666,23 @@ function renderRotaFinal(pacotes){
      <div class="rota-stat"><span class="n" style="color:#378ADD">${estConjunto}</span>aprox.</div>
      <div class="rota-stat"><span class="n" style="color:#EF9F27">${estimado}</span>estimados</div>
      <div class="rota-stat"><span class="n" style="color:#E24B4A">${naoAch}</span>sem loc.</div>`;
+
+  // Tempo total estimado da rota: deslocamento (OSRM) + tempo médio de parada de cada
+  // endereço (aprendido das entregas anteriores, "perfil do endereço") — só mostra quando
+  // temos o dado real de deslocamento do OSRM (não disponível no fallback local).
+  const wrapTempoTotal = document.getElementById('rota-tempo-total-wrap');
+  if(duracaoViagemOSRMSeg != null){
+    const tempoParadasSeg = pacotes.reduce((s,p) => s + (p.tempoMedioParadaSeg || 60), 0);
+    const totalSeg = duracaoViagemOSRMSeg + tempoParadasSeg;
+    const totalMin = Math.round(totalSeg/60);
+    const horas = Math.floor(totalMin/60), minutos = totalMin%60;
+    const totalFmt = horas>0 ? `${horas}h${minutos.toString().padStart(2,'0')}min` : `${minutos}min`;
+    document.getElementById('rota-tempo-total-texto').textContent =
+      `Tempo total estimado: ~${totalFmt} (deslocamento + tempo médio parado em cada endereço)`;
+    wrapTempoTotal.style.display = 'block';
+  } else {
+    wrapTempoTotal.style.display = 'none';
+  }
 
   document.getElementById('rota-aviso').style.display = 'none';
 
@@ -2330,6 +2354,7 @@ function registrarTelemetriaParadaAtual(){
   const agora = Date.now();
   const tempoAteChegar = telemetriaChegadaTs ? Math.round((telemetriaChegadaTs - telemetriaInicioParadaTs)/1000) : null;
   const tempoParado = telemetriaChegadaTs ? Math.round((agora - telemetriaChegadaTs)/1000) : null;
+  const horaAgora = new Date().getHours();
 
   const dados = {
     cidade: p.cidade||'', bairro: p.bairro||'', quadra: p.quadra||'', conjunto: p.conjunto||'', casa: p.casa||'',
@@ -2344,6 +2369,26 @@ function registrarTelemetriaParadaAtual(){
 
   fb.setDoc(fb.doc(fb.db, 'telemetriaEntregas', Date.now()+'_'+Math.random().toString(36).slice(2,8)), dados)
     .catch(e => console.warn('[Telemetria] Falha ao salvar:', e));
+
+  // Alimenta o "perfil do endereço" diretamente no registro (média móvel), sem o
+  // entregador precisar carregar toda a coleção de telemetria pra usar essa info.
+  if(tempoParado != null){
+    const nCidade=normalizarTexto(p.cidade), nBairro=normalizarTexto(p.bairro), nQuadra=normalizarTexto(p.quadra);
+    const reg = registros.find(r =>
+      normalizarTexto(r.cidade)===nCidade && normalizarTexto(r.bairro)===nBairro &&
+      normalizarTexto(r.quadra)===nQuadra && compararValor(r.conjunto, p.conjunto) && compararValor(r.casa, p.casa)
+    );
+    if(reg){
+      const amostrasAntes = reg.amostrasTempoParada || 0;
+      const mediaAntes = reg.tempoMedioParadaSeg || 0;
+      const novaMedia = Math.round((mediaAntes * amostrasAntes + tempoParado) / (amostrasAntes + 1));
+      fb.setDoc(fb.doc(fb.db,'registros',reg.id), {
+        tempoMedioParadaSeg: novaMedia,
+        amostrasTempoParada: amostrasAntes + 1,
+        ultimaHoraEntrega: horaAgora
+      }, { merge:true }).catch(e => console.warn('[Perfil endereço] Falha ao atualizar:', e));
+    }
+  }
 }
 
 
