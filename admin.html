@@ -674,6 +674,23 @@ tr:hover td{background:#FAFBFC}
   </div>
 </div>
 
+<!-- Editar posição de uma confirmação específica -->
+<div class="modal-bg" id="editar-confirmacao-modal">
+  <div class="modal" style="max-width:440px;text-align:left;">
+    <h3 id="conf-edit-title">Corrigir posição da confirmação</h3>
+    <p style="font-size:12px;color:var(--text-3);margin-bottom:10px;">Arraste o pin até o local correto. Isso só corrige <b>esta confirmação específica</b> — a posição geral do endereço é recalculada com base em todas as confirmações depois de salvar.</p>
+    <div id="conf-edit-map" style="width:100%;height:260px;border-radius:10px;border:1px solid var(--border);margin-bottom:10px;"></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <input type="number" step="0.000001" id="conf-edit-lat" placeholder="Latitude" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;"/>
+      <input type="number" step="0.000001" id="conf-edit-lng" placeholder="Longitude" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;"/>
+    </div>
+    <div class="modal-btns">
+      <button onclick="fecharModal('editar-confirmacao-modal')">Cancelar</button>
+      <button class="save" onclick="salvarEdicaoConfirmacao()">Salvar posição</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal foto -->
 <div class="foto-modal-bg" id="foto-modal" onclick="this.classList.remove('open')">
   <img class="foto-modal-img" id="foto-modal-img" src="" alt=""/>
@@ -1339,7 +1356,10 @@ function renderConfirmacoes(){
       <td style="font-size:11px;color:var(--text-3);">${c.lat?.toFixed(6)}, ${c.lng?.toFixed(6)}</td>
       <td style="font-size:12px;">${c.email||'—'}</td>
       <td style="font-size:11px;color:var(--text-3);">${dataFmt}</td>
-      <td><button class="btn-acao del" onclick="removerConfirmacao('${c.registroId}','${c.ts}')">🗑 Desfazer</button></td>
+      <td><div class="td-acoes">
+        <button class="btn-acao" onclick="abrirEditarConfirmacao('${c.registroId}','${c.ts}')">✏️ Corrigir</button>
+        <button class="btn-acao del" onclick="removerConfirmacao('${c.registroId}','${c.ts}')">🗑 Desfazer</button>
+      </div></td>
     </tr>`;
   }).join('');
 
@@ -1348,6 +1368,77 @@ function renderConfirmacoes(){
   document.getElementById('conf-paginacao').innerHTML = pags;
 }
 function irParaConfirmacoes(p){ confirmacoesPag=p; renderConfirmacoes(); }
+
+// ─── Corrigir a posição de uma confirmação específica (mini-mapa) ─────────────
+let confEditMap = null, confEditMarker = null;
+let confEditandoRegistroId = null, confEditandoTs = null;
+
+function abrirEditarConfirmacao(registroId, ts){
+  const r = registros.find(x=>x.id===registroId);
+  if(!r){ alert('Registro não encontrado.'); return; }
+  const conf = (r.confirmacoes||[]).find(c=>c.ts===ts);
+  if(!conf){ alert('Confirmação não encontrada.'); return; }
+
+  confEditandoRegistroId = registroId;
+  confEditandoTs = ts;
+  document.getElementById('conf-edit-title').textContent = 'Corrigir · '+r.quadra+' · Cj.'+(r.conjunto||'?')+' · Casa '+r.casa;
+  document.getElementById('conf-edit-lat').value = conf.lat;
+  document.getElementById('conf-edit-lng').value = conf.lng;
+
+  abrirModal('editar-confirmacao-modal');
+
+  setTimeout(()=>{
+    if(!confEditMap){
+      confEditMap = L.map('conf-edit-map').setView([conf.lat,conf.lng], 18);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(confEditMap);
+      confEditMarker = L.marker([conf.lat,conf.lng], { draggable:true }).addTo(confEditMap);
+      confEditMarker.on('dragend', () => {
+        const pos = confEditMarker.getLatLng();
+        document.getElementById('conf-edit-lat').value = pos.lat.toFixed(6);
+        document.getElementById('conf-edit-lng').value = pos.lng.toFixed(6);
+      });
+      ['conf-edit-lat','conf-edit-lng'].forEach(id=>{
+        document.getElementById(id).oninput = () => {
+          const lat = parseFloat(document.getElementById('conf-edit-lat').value);
+          const lng = parseFloat(document.getElementById('conf-edit-lng').value);
+          if(!isNaN(lat) && !isNaN(lng)){ confEditMarker.setLatLng([lat,lng]); confEditMap.panTo([lat,lng]); }
+        };
+      });
+    } else {
+      confEditMap.setView([conf.lat,conf.lng], 18);
+      confEditMarker.setLatLng([conf.lat,conf.lng]);
+      confEditMap.invalidateSize();
+    }
+  }, 100);
+}
+
+async function salvarEdicaoConfirmacao(){
+  if(!confEditandoRegistroId || !confEditandoTs) return;
+  const lat = parseFloat(document.getElementById('conf-edit-lat').value);
+  const lng = parseFloat(document.getElementById('conf-edit-lng').value);
+  if(isNaN(lat) || isNaN(lng)){ alert('Coordenada inválida.'); return; }
+
+  const r = registros.find(x=>x.id===confEditandoRegistroId);
+  if(!r){ alert('Registro não encontrado.'); return; }
+
+  // Substitui só a confirmação editada, mantendo as demais intactas
+  const confsAtualizadas = (r.confirmacoes||[]).map(c => c.ts===confEditandoTs ? { ...c, lat, lng } : c);
+
+  const dados = { confirmacoes: confsAtualizadas, totalConfirmacoes: confsAtualizadas.length };
+  if(confsAtualizadas.length){
+    const latMedio = confsAtualizadas.reduce((s,c)=>s+c.lat,0)/confsAtualizadas.length;
+    const lngMedio = confsAtualizadas.reduce((s,c)=>s+c.lng,0)/confsAtualizadas.length;
+    const maxDist = Math.max(...confsAtualizadas.map(c=>distanciaMetrosAdmin(c,{lat:latMedio,lng:lngMedio})));
+    dados.verificado = confsAtualizadas.length >= 3 && maxDist <= 40;
+    if(!r.localizacaoTravada){ dados.lat = latMedio; dados.lng = lngMedio; }
+  }
+
+  try{
+    await fb.setDoc(fb.doc(fb.db,'registros',confEditandoRegistroId), dados, { merge:true });
+    fecharModal('editar-confirmacao-modal');
+    showMsgAdmin('✓ Confirmação corrigida — posição do endereço recalculada.');
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
 
 async function removerConfirmacao(registroId, ts){
   if(!confirm('Desfazer essa confirmação? A posição do endereço será recalculada com as confirmações restantes.')) return;
@@ -2736,6 +2827,7 @@ window.renderTelemetria=renderTelemetria; window.irParaTelemetria=irParaTelemetr
 window.salvarCoordQuadra=salvarCoordQuadra;
 window.renderHistorico=renderHistorico; window.irParaHistorico=irParaHistorico;
 window.renderConfirmacoes=renderConfirmacoes; window.irParaConfirmacoes=irParaConfirmacoes; window.removerConfirmacao=removerConfirmacao;
+window.abrirEditarConfirmacao=abrirEditarConfirmacao; window.salvarEdicaoConfirmacao=salvarEdicaoConfirmacao;
 window.renderAprovacoes=renderAprovacoes; window.aprovarPendente=aprovarPendente; window.rejeitarPendente=rejeitarPendente;
 window.exportarRegistrosCSV=exportarRegistrosCSV; window.exportarTelemetriaCSV=exportarTelemetriaCSV;
 window.exportarHistoricoCSV=exportarHistoricoCSV; window.exportarCorrecoesCSV=exportarCorrecoesCSV;
