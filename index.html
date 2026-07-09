@@ -312,7 +312,7 @@ html,body{height:100%;background:var(--bg-alt);font-family:-apple-system,BlinkMa
       <div class="form-row" style="margin-bottom:6px;">
         <select id="busca-quadra" onchange="onQuadraChange('busca-quadra','busca-cj');buscarEndereco()" style="flex:1;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:7px;"><option value="">Quadra...</option></select>
         <select id="busca-cj" onchange="buscarEndereco()" style="flex:1;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:7px;"><option value="">Conjunto...</option></select>
-        <input type="number" id="busca-casa" placeholder="Casa" min="1" max="500" oninput="buscarEndereco()" style="width:64px;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:7px;"/>
+        <input type="text" inputmode="text" id="busca-casa" placeholder="Casa (ex: 15 ou 11A)" oninput="buscarEndereco()" style="width:90px;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:7px;"/>
       </div>
       <div id="busca-resultado" style="display:none;">
         <div id="busca-sem" style="display:none;" class="empty" style="padding:12px;"><span class="icon">📭</span>Não cadastrado ainda.</div>
@@ -367,7 +367,7 @@ html,body{height:100%;background:var(--bg-alt);font-family:-apple-system,BlinkMa
         </div>
       </div>
       <div class="form-group"><label>Casa nº</label>
-        <input type="number" id="reg-casa" placeholder="Ex: 15" min="1" max="500"/>
+        <input type="text" inputmode="text" id="reg-casa" placeholder="Ex: 15 ou 11A"/>
       </div>
       <div class="form-group"><label>Observação</label>
         <textarea id="reg-obs" placeholder="Casa azul, portão preto, sem placa..."></textarea>
@@ -1171,7 +1171,7 @@ function parsearLinha(linha){
 
   const reQNO = /(?:qno|qn[o0])\s*(\d+)/i;
   const reCJ  = /(?:conjunto|conj\.?|cj\.?)\s*([a-z0-9]+)/i;
-  const reCASA = /(?:casa|ca\.?)\s*(\d+)/i;
+  const reCASA = /(?:casa|ca\.?)\s*(\d+[a-z]?)/i;
 
   const mQ = prefixo.match(reQNO) || dentroParens.match(reQNO);
   if(mQ) quadra = 'QNO ' + mQ[1];
@@ -1179,25 +1179,25 @@ function parsearLinha(linha){
   const mCJ = prefixo.match(reCJ) || dentroParens.match(reCJ);
   if(mCJ) conjunto = normalizarConjunto(mCJ[1]);
 
-  // ── Detecção do número da casa ──────────────────────────────────────────
+  // ── Detecção do número da casa (aceita letra no final, ex: "11A") ────────
   // 1) Padrão mais confiável: "QNO 16 Cj C, 9, Brasília..." → token logo após
-  //    o trecho da quadra/conjunto, antes da cidade, sendo um número puro
+  //    o trecho da quadra/conjunto, antes da cidade, sendo um número (+ letra opcional)
   const tokens = prefixo.split(',').map(t=>t.trim()).filter(Boolean);
-  if(tokens.length > 1 && /^\d{1,3}$/.test(tokens[1])){
-    casa = tokens[1].replace(/^0+/,'') || '0';
+  if(tokens.length > 1 && /^\d{1,3}[a-z]?$/i.test(tokens[1])){
+    casa = tokens[1].replace(/^0+(?=\d)/,'') || '0';
   }
 
-  // 2) Fallback: "casa 09" dentro dos parênteses (número depois da palavra)
+  // 2) Fallback: "casa 09" ou "casa 11A" dentro dos parênteses (número depois da palavra)
   if(!casa){
     const mCASA = dentroParens.match(reCASA);
-    if(mCASA) casa = mCASA[1].replace(/^0+/,'') || '0';
+    if(mCASA) casa = mCASA[1].replace(/^0+(?=\d)/,'') || '0';
   }
 
-  // 3) Fallback: "18 casa" ou "01,Casa" — número ANTES da palavra "casa"
+  // 3) Fallback: "18 casa" ou "11A casa" — número (+ letra opcional) ANTES da palavra "casa"
   if(!casa){
-    const reCASA_antes = /(\d{1,3})\s*,?\s*(?:casa|ca\.?)\b/i;
+    const reCASA_antes = /(\d{1,3}[a-z]?)\s*,?\s*(?:casa|ca\.?)\b/i;
     const mCASA2 = dentroParens.match(reCASA_antes);
-    if(mCASA2) casa = mCASA2[1].replace(/^0+/,'') || '0';
+    if(mCASA2) casa = mCASA2[1].replace(/^0+(?=\d)/,'') || '0';
   }
 
   // Infere bairro pela quadra
@@ -1466,7 +1466,7 @@ function renderAnalise(pacotes, naoReconhecidos){
         ${p.casaPendente
           ? `<div style="margin-top:6px;display:flex;align-items:center;gap:6px;">
                <span style="font-size:11px;color:#856404;">Nº da casa:</span>
-               <input type="number" class="rota-casa-input" data-idx="${i}" placeholder="?" style="width:70px;padding:5px 8px;border:1px solid #EF9F27;border-radius:6px;font-size:12px;"/>
+               <input type="text" inputmode="text" class="rota-casa-input" data-idx="${i}" placeholder="ex: 15 ou 11A" style="width:90px;padding:5px 8px;border:1px solid #EF9F27;border-radius:6px;font-size:12px;"/>
              </div>`
           : `<div style="font-size:11px;color:${p.avisoFaixa?'#A32D2D':'#1D9E75'};margin-top:3px;font-weight:${p.avisoFaixa?'600':'400'};">${p.avisoFaixa?'🚨 Casa '+p.casa+' — '+p.avisoFaixa:'✓ Casa '+p.casa}</div>`
         }
