@@ -1005,7 +1005,14 @@ async function executarSalvar(pp){
     let fotoUrl=null;
     if(fotoBase64){ btn.textContent='Enviando foto...'; fotoUrl=await uploadFoto(fotoBase64); }
     btn.textContent='Salvando...';
-    const docId=(cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+    // Procura por campos (tolerante) primeiro — se já existir (mesmo com ID no esquema
+    // antigo), atualiza o mesmo documento em vez de criar um duplicado.
+    const nCidade=normalizarTexto(cidade), nBairro=normalizarTexto(bairro), nQuadra=normalizarTexto(quadra);
+    const existente = registros.find(r=>
+      normalizarTexto(r.cidade)===nCidade && normalizarTexto(r.bairro)===nBairro &&
+      normalizarTexto(r.quadra)===nQuadra && compararValor(r.conjunto, conjunto) && compararValor(r.casa, casa)
+    );
+    const docId = existente?.id || (cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
     await fb.setDoc(fb.doc(fb.db,'registros',docId),{
       cidade,bairro,quadra,conjunto,casa,obs,foto:fotoUrl,
       lat:pp.lat,lng:pp.lng,
@@ -1032,8 +1039,16 @@ function buscarEndereco(){
   const casa=normalizarCasa($('busca-casa').value);
   const divRes=$('busca-resultado'), divSem=$('busca-sem'), divCom=$('busca-com');
   if(!cidade||!bairro||!quadra||!casa){ divRes.style.display='none'; removerPinBusca(); return; }
-  const docId=(cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
-  const reg=registros.find(r=>r.id===docId);
+  // Compara pelos campos salvos (tolerante a "01"/"1", maiúsculo/minúsculo), não pelo ID
+  // reconstruído — assim continua achando endereços salvos antes da normalização de IDs.
+  const nCidade=normalizarTexto(cidade), nBairro=normalizarTexto(bairro), nQuadra=normalizarTexto(quadra);
+  const reg=registros.find(r=>
+    normalizarTexto(r.cidade)===nCidade &&
+    normalizarTexto(r.bairro)===nBairro &&
+    normalizarTexto(r.quadra)===nQuadra &&
+    compararValor(r.conjunto, conjunto) &&
+    compararValor(r.casa, casa)
+  );
   divRes.style.display='block'; resultadoBusca=reg||null;
   if(!reg){ divSem.style.display='block'; divCom.style.display='none'; removerPinBusca(); return; }
   divSem.style.display='none'; divCom.style.display='block';
@@ -1924,12 +1939,21 @@ async function registrarConfirmacaoLocal(coordOverride){
   const casa = normalizarCasa(p.casa);
   if(!casa){ showMsg('Sem número de casa — confirmação não pôde ser vinculada.','err'); return; }
 
-  const docId = (cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+  const nCidade=normalizarTexto(cidade), nBairro=normalizarTexto(bairro), nQuadra=normalizarTexto(quadra);
+  const bateEndereco = r =>
+    normalizarTexto(r.cidade)===nCidade && normalizarTexto(r.bairro)===nBairro &&
+    normalizarTexto(r.quadra)===nQuadra && compararValor(r.conjunto, conjunto) && compararValor(r.casa, casa);
+
+  // Busca por campos (tolerante a "01"/"1"), não pelo ID reconstruído — assim continua
+  // achando e atualizando endereços salvos antes da normalização de IDs, em vez de criar duplicata.
+  const docIdNovo = (cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
 
   // Já existe como registro OFICIAL (aprovado)? Continua o fluxo normal, sem passar por aprovação.
-  const existenteOficial = registros.find(r => r.id === docId);
+  const existenteOficial = registros.find(bateEndereco);
   // Ou já existe como pendente (alguém já confirmou antes, ainda não aprovado)?
-  const existentePendente = registrosPendentes.find(r => r.id === docId);
+  const existentePendente = registrosPendentes.find(bateEndereco);
+  // Escreve no ID que já existe de verdade (mesmo que seja o esquema antigo), ou no novo se for inédito
+  const docId = existenteOficial?.id || existentePendente?.id || docIdNovo;
   const existente = existenteOficial || existentePendente;
 
   const novaConfirmacao = {
