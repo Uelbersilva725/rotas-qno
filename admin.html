@@ -183,6 +183,7 @@ tr:hover td{background:#FAFBFC}
     <div class="nav-item" onclick="navTo('correcoes',this)"><span class="nav-icon">🛠</span> Correções</div>
     <div class="nav-item" onclick="navTo('telemetria',this)"><span class="nav-icon">📊</span> Telemetria</div>
     <div class="nav-item" onclick="navTo('historico',this)"><span class="nav-icon">🏁</span> Histórico</div>
+    <div class="nav-item" onclick="navTo('confirmacoes',this)"><span class="nav-icon">📍</span> Confirmações</div>
     <div class="sidebar-footer">
       <div id="papel-badge" style="font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;display:inline-block;margin-bottom:8px;background:rgba(29,158,117,.2);color:var(--green);"></div>
       <div class="sync-indicator">
@@ -525,6 +526,43 @@ tr:hover td{background:#FAFBFC}
           </table>
         </div>
         <div class="pagination" id="hist-paginacao"></div>
+      </div>
+    </div>
+
+    <!-- CONFIRMAÇÕES DE ENDEREÇO (auditoria + desfazer) -->
+    <div class="page" id="page-confirmacoes">
+      <div class="page-title">Confirmações de Endereço</div>
+      <div class="page-sub">Toda vez que uma posição de endereço é confirmada (pelo app do entregador ou ao corrigir manualmente pins no painel), fica registrado aqui. Se alguma confirmação foi feita por engano, remova — o sistema recalcula a posição do endereço automaticamente com as confirmações restantes.</div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="table-toolbar" style="gap:16px;flex-wrap:wrap;">
+          <div class="stat-mini"><span class="num" id="conf-total">0</span><span class="lbl">confirmações no total</span></div>
+          <div class="stat-mini"><span class="num" id="conf-hoje">0</span><span class="lbl">hoje</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-toolbar">
+          <input type="text" id="conf-busca" placeholder="🔍  Buscar quadra/conjunto..." oninput="renderConfirmacoes()"/>
+          <select id="conf-quem" onchange="renderConfirmacoes()">
+            <option value="">Todos</option>
+          </select>
+          <select id="conf-periodo" onchange="renderConfirmacoes()">
+            <option value="">Todo período</option>
+            <option value="hoje">Só hoje</option>
+          </select>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Endereço</th>
+              <th>Coordenada</th>
+              <th>Confirmado por</th>
+              <th>Quando</th>
+              <th>Ação</th>
+            </tr></thead>
+            <tbody id="conf-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="conf-paginacao"></div>
       </div>
     </div>
   </div>
@@ -879,6 +917,7 @@ function navTo(page,el){
   if(page==='correcoes')renderCorrecoes();
   if(page==='telemetria')renderTelemetria();
   if(page==='historico')renderHistorico();
+  if(page==='confirmacoes')renderConfirmacoes();
   if(page==='aprovacoes')renderAprovacoes();
 }
 
@@ -1240,6 +1279,102 @@ function renderHistorico(){
   document.getElementById('hist-paginacao').innerHTML = pags;
 }
 function irParaHistorico(p){ historicoPag=p; renderHistorico(); }
+
+// ─── Confirmações de endereço (auditoria + desfazer) ───────────────────────────
+let confirmacoesPag = 1;
+const CONFIRMACOES_POR_PAG = 25;
+
+function listarTodasConfirmacoes(){
+  const lista = [];
+  registros.forEach(r=>{
+    (r.confirmacoes||[]).forEach(c=>{
+      lista.push({
+        registroId: r.id, quadra:r.quadra, conjunto:r.conjunto, casa:r.casa, bairro:r.bairro, cidade:r.cidade,
+        lat:c.lat, lng:c.lng, uid:c.uid, email:c.email, ts:c.ts
+      });
+    });
+  });
+  return lista;
+}
+
+function renderConfirmacoes(){
+  const busca = (document.getElementById('conf-busca').value||'').toLowerCase();
+  const quemFiltro = document.getElementById('conf-quem').value;
+  const periodo = document.getElementById('conf-periodo').value;
+
+  let todas = listarTodasConfirmacoes();
+
+  const selQuem = document.getElementById('conf-quem');
+  if(selQuem.options.length <= 1){
+    const emails = [...new Set(todas.map(c=>c.email).filter(Boolean))].sort();
+    emails.forEach(e=>{ const o=document.createElement('option'); o.value=e; o.textContent=e; selQuem.appendChild(o); });
+  }
+
+  const hojeStr = new Date().toDateString();
+  document.getElementById('conf-total').textContent = todas.length;
+  document.getElementById('conf-hoje').textContent = todas.filter(c=>c.ts && new Date(c.ts).toDateString()===hojeStr).length;
+
+  let lista = todas;
+  if(quemFiltro) lista = lista.filter(c=>c.email===quemFiltro);
+  if(periodo==='hoje') lista = lista.filter(c=>c.ts && new Date(c.ts).toDateString()===hojeStr);
+  if(busca) lista = lista.filter(c=>((c.quadra||'')+' '+(c.conjunto||'')).toLowerCase().includes(busca));
+
+  lista.sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
+
+  const total = lista.length;
+  const totalPags = Math.max(1, Math.ceil(total/CONFIRMACOES_POR_PAG));
+  if(confirmacoesPag > totalPags) confirmacoesPag = 1;
+  const pagina = lista.slice((confirmacoesPag-1)*CONFIRMACOES_POR_PAG, confirmacoesPag*CONFIRMACOES_POR_PAG);
+
+  if(!total){
+    document.getElementById('conf-body').innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:24px;">Nenhuma confirmação registrada ainda.</td></tr>`;
+    document.getElementById('conf-paginacao').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('conf-body').innerHTML = pagina.map(c=>{
+    const dataFmt = c.ts ? new Date(c.ts).toLocaleDateString('pt-BR')+' '+new Date(c.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<tr>
+      <td style="font-size:12px;">${c.quadra||'—'} · Cj.${c.conjunto||'?'} · Casa ${c.casa||'?'}</td>
+      <td style="font-size:11px;color:var(--text-3);">${c.lat?.toFixed(6)}, ${c.lng?.toFixed(6)}</td>
+      <td style="font-size:12px;">${c.email||'—'}</td>
+      <td style="font-size:11px;color:var(--text-3);">${dataFmt}</td>
+      <td><button class="btn-acao del" onclick="removerConfirmacao('${c.registroId}','${c.ts}')">🗑 Desfazer</button></td>
+    </tr>`;
+  }).join('');
+
+  let pags = `<span>${total} confirmações</span>`;
+  if(totalPags>1) pags += Array.from({length:totalPags},(_,i)=>`<button class="page-btn ${i+1===confirmacoesPag?'active':''}" onclick="irParaConfirmacoes(${i+1})">${i+1}</button>`).join('');
+  document.getElementById('conf-paginacao').innerHTML = pags;
+}
+function irParaConfirmacoes(p){ confirmacoesPag=p; renderConfirmacoes(); }
+
+async function removerConfirmacao(registroId, ts){
+  if(!confirm('Desfazer essa confirmação? A posição do endereço será recalculada com as confirmações restantes.')) return;
+  const r = registros.find(x=>x.id===registroId);
+  if(!r){ alert('Registro não encontrado.'); return; }
+
+  const confsRestantes = (r.confirmacoes||[]).filter(c=>c.ts !== ts);
+  const dados = { confirmacoes: confsRestantes, totalConfirmacoes: confsRestantes.length };
+
+  if(confsRestantes.length === 0){
+    // Sem nenhuma confirmação restante — não dá pra recalcular centróide, mantém a
+    // coordenada como estava (só desmarca a verificação) e avisa o admin.
+    dados.verificado = false;
+  } else {
+    const latMedio = confsRestantes.reduce((s,c)=>s+c.lat,0)/confsRestantes.length;
+    const lngMedio = confsRestantes.reduce((s,c)=>s+c.lng,0)/confsRestantes.length;
+    const maxDist = Math.max(...confsRestantes.map(c=>distanciaMetrosAdmin(c,{lat:latMedio,lng:lngMedio})));
+    const aindaVerificado = confsRestantes.length >= 3 && maxDist <= 40;
+    dados.verificado = aindaVerificado;
+    if(!r.localizacaoTravada){ dados.lat = latMedio; dados.lng = lngMedio; }
+  }
+
+  try{
+    await fb.setDoc(fb.doc(fb.db,'registros',registroId), dados, { merge:true });
+    showMsgAdmin('✓ Confirmação desfeita — posição recalculada.');
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
 
 // ─── Aprovações de endereços novos ─────────────────────────────────────────────
 function renderAprovacoes(){
@@ -1604,16 +1739,25 @@ async function admOtimizarRota(){
 
 // Trava a ordem atual — a partir daqui, reotimizar automaticamente fica bloqueado,
 // evitando que o sistema embaralhe de novo o que já foi ajustado manualmente com cuidado.
-function admFecharRota(){
+async function admFecharRota(){
   if(!radmRotaAtual.length){ alert('Otimize a rota antes de fechar.'); return; }
+  const btn = document.querySelector('#radm-fechar-wrap .btn-acao');
+  if(btn){ btn.disabled = true; btn.textContent = '🔒 Salvando confirmações...'; }
+
+  const corrigidos = radmRotaAtual.filter(p => p.posicaoCorrigidaManualmente);
+  for(const p of corrigidos){
+    await admSalvarConfirmacaoDefinitiva(p);
+  }
+
   radmOrdemTravada = true;
+  if(btn){ btn.disabled = false; btn.textContent = '🔒 Fechar rota (trava a ordem definida)'; }
   document.getElementById('radm-reotimizar-wrap').style.display = 'none';
   document.getElementById('radm-fechar-wrap').style.display = 'none';
   document.getElementById('radm-envio-card').style.display = 'block';
   admTracarLinhaRota();
   admRenderMapaRota(); // renumera os pins na ordem final travada
   admRenderListaFinal();
-  showMsgAdmin('🔒 Ordem da rota travada — pronta pra enviar.');
+  showMsgAdmin(corrigidos.length ? `🔒 Rota fechada — ${corrigidos.length} correção(ões) salva(s) no banco.` : '🔒 Ordem da rota travada — pronta pra enviar.');
 }
 
 function admRenderMapaRota(){
@@ -1685,30 +1829,35 @@ function admMoverParaPosicao(idPacote){
   showMsgAdmin('✓ '+pacote.quadra+' · Casa '+(pacote.casa||'?')+' agora é a entrega nº '+novaPos);
 }
 
-async function admCorrigirPosicao(idx, lat, lng){
+function admCorrigirPosicao(idx, lat, lng){
   const p = radmRotaAtual[idx]; if(!p) return;
   p.coords = { lat, lng, tipo:'gps' }; p.tipoGPS='gps';
-  if(fb && p.casa){
-    try{
-      const nCidade=normalizarTexto(p.cidade),nBairro=normalizarTexto(p.bairro),nQuadra=normalizarTexto(p.quadra);
-      const existente = registros.find(r=>normalizarTexto(r.cidade)===nCidade&&normalizarTexto(r.bairro)===nBairro&&normalizarTexto(r.quadra)===nQuadra&&compararValor(r.conjunto,p.conjunto)&&compararValor(r.casa,p.casa));
-      if(existente?.localizacaoTravada){ showMsgAdmin('🔒 Localização travada — corrigida só nesta rota.'); }
-      else {
-        const docId = existente?.id || (p.cidade+'_'+p.bairro+'_'+p.quadra+'_'+p.conjunto+'_'+p.casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
-        const novaConf = { lat, lng, uid:UID_ADMIN, email:'admin', ts:new Date().toISOString() };
-        const confs = [...(existente?.confirmacoes||[]), novaConf];
-        await fb.setDoc(fb.doc(fb.db,'registros',docId), {
-          cidade:p.cidade,bairro:p.bairro,quadra:p.quadra,conjunto:p.conjunto,casa:p.casa,
-          obs:existente?.obs||'', foto:existente?.foto||null, lat, lng,
-          confirmacoes:confs, totalConfirmacoes:confs.length, verificado:existente?.verificado||false,
-          ts: existente?.ts || new Date().toLocaleDateString('pt-BR')
-        }, {merge:true});
-        showMsgAdmin('✓ Posição corrigida e salva no banco.');
-      }
-    } catch(e){ console.warn(e); }
-  }
+  // NÃO salva no banco aqui — só marca a intenção. O salvamento de verdade só acontece
+  // quando a rota é fechada de propósito, evitando gravar testes/ajustes exploratórios.
+  p.posicaoCorrigidaManualmente = true;
   if(!radmOrdemTravada) document.getElementById('radm-reotimizar-wrap').style.display='block';
   admRenderMapaRota();
+  showMsgAdmin('📍 Posição ajustada nesta rota (será salva ao fechar a rota).');
+}
+
+// Salva de fato uma correção manual como confirmação no banco — chamada só a partir
+// de admFecharRota(), nunca direto no evento de arrastar.
+async function admSalvarConfirmacaoDefinitiva(p){
+  if(!fb || !p.casa) return;
+  const nCidade=normalizarTexto(p.cidade),nBairro=normalizarTexto(p.bairro),nQuadra=normalizarTexto(p.quadra);
+  const existente = registros.find(r=>normalizarTexto(r.cidade)===nCidade&&normalizarTexto(r.bairro)===nBairro&&normalizarTexto(r.quadra)===nQuadra&&compararValor(r.conjunto,p.conjunto)&&compararValor(r.casa,p.casa));
+  if(existente?.localizacaoTravada) return; // travado pelo admin, não sobrescreve
+  try{
+    const docId = existente?.id || (p.cidade+'_'+p.bairro+'_'+p.quadra+'_'+p.conjunto+'_'+p.casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+    const novaConf = { lat:p.coords.lat, lng:p.coords.lng, uid:UID_ADMIN, email:usuarioAtual?.email||'admin', ts:new Date().toISOString() };
+    const confs = [...(existente?.confirmacoes||[]), novaConf];
+    await fb.setDoc(fb.doc(fb.db,'registros',docId), {
+      cidade:p.cidade,bairro:p.bairro,quadra:p.quadra,conjunto:p.conjunto,casa:p.casa,
+      obs:existente?.obs||'', foto:existente?.foto||null, lat:p.coords.lat, lng:p.coords.lng,
+      confirmacoes:confs, totalConfirmacoes:confs.length, verificado:existente?.verificado||false,
+      ts: existente?.ts || new Date().toLocaleDateString('pt-BR')
+    }, {merge:true});
+  } catch(e){ console.warn('[Confirmação definitiva]', e); }
 }
 
 async function admReotimizarComCorrecoes(){
@@ -2586,6 +2735,7 @@ window.renderCorrecoes=renderCorrecoes; window.irParaCorrecoes=irParaCorrecoes;
 window.renderTelemetria=renderTelemetria; window.irParaTelemetria=irParaTelemetria;
 window.salvarCoordQuadra=salvarCoordQuadra;
 window.renderHistorico=renderHistorico; window.irParaHistorico=irParaHistorico;
+window.renderConfirmacoes=renderConfirmacoes; window.irParaConfirmacoes=irParaConfirmacoes; window.removerConfirmacao=removerConfirmacao;
 window.renderAprovacoes=renderAprovacoes; window.aprovarPendente=aprovarPendente; window.rejeitarPendente=rejeitarPendente;
 window.exportarRegistrosCSV=exportarRegistrosCSV; window.exportarTelemetriaCSV=exportarTelemetriaCSV;
 window.exportarHistoricoCSV=exportarHistoricoCSV; window.exportarCorrecoesCSV=exportarCorrecoesCSV;
