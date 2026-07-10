@@ -391,6 +391,17 @@ html,body{height:100%;background:var(--bg-alt);font-family:-apple-system,BlinkMa
   <div id="screen-rota" class="screen">
     <div class="rota-screen" id="rota-screen-inner">
       <div>
+        <div class="section-label">Transportadora dessa lista</div>
+        <input list="transportadoras-sugestoes" id="rota-transportadora" placeholder="Ex: Anjun Express, iMile, Shopee, J&amp;T Express..." style="width:100%;padding:10px 12px;margin-bottom:12px;border:1px solid #ddd;border-radius:8px;font-size:13px;"/>
+        <datalist id="transportadoras-sugestoes">
+          <option value="Anjun Express"></option>
+          <option value="iMile"></option>
+          <option value="Shopee"></option>
+          <option value="J&amp;T Express"></option>
+          <option value="Total Express"></option>
+          <option value="Loggi"></option>
+          <option value="Correios"></option>
+        </datalist>
         <div class="section-label">Lista de pacotes do dia</div>
         <button class="btn" style="width:100%;padding:10px;margin-bottom:8px;background:#f5f5f5;border:1.5px dashed #ccc;color:#555;font-size:13px;" onclick="document.getElementById('rota-csv-input').click()">
           📁 Importar arquivo CSV
@@ -398,8 +409,12 @@ html,body{height:100%;background:var(--bg-alt);font-family:-apple-system,BlinkMa
         <input type="file" id="rota-csv-input" accept=".csv,text/csv" style="display:none;" onchange="importarCSV(event)"/>
         <div style="text-align:center;font-size:11px;color:#aaa;margin-bottom:8px;">ou cole o conteúdo manualmente abaixo</div>
         <textarea class="rota-textarea" id="rota-input" placeholder='Cole aqui o CSV de pacotes. Exemplo:&#10;"QNO 18 Cj 25, 30, Ceilândia...",Brasília,DF,556199...&#10;"QNO 17 Cj 59, 03, Brasília...",Brasília,DF,556198...'></textarea>
+        <div style="font-size:11px;color:#aaa;margin-top:4px;">Pode importar mais de um CSV: cada novo arquivo se soma à lista já carregada (não zera). Pacotes na mesma casa ganham um aviso "itens no local".</div>
       </div>
-      <button class="rota-btn" id="rota-btn" onclick="analisarLista()">🔍 Analisar lista</button>
+      <div style="display:flex;gap:8px;">
+        <button class="rota-btn" id="rota-btn" style="flex:1;" onclick="analisarLista()">🔍 Analisar lista</button>
+        <button class="rota-btn" style="background:#f5f5f5;color:#666;flex:0 0 auto;padding:0 16px;" onclick="limparListaImportada()" title="Apaga tudo que foi importado até agora">🗑</button>
+      </div>
       <div id="rota-resultado" style="display:none;">
         <div class="rota-stats" id="rota-stats"></div>
         <div class="rota-aviso" id="rota-aviso" style="display:none;"></div>
@@ -755,6 +770,8 @@ function mostrarApp(usuario){
   $('tab-registrar').style.display = ehAdmin ? 'block' : 'none';
   $('tab-lista').style.display = ehAdmin ? 'block' : 'none';
   if(!ehAdmin && $('sync-text').textContent.includes('endereços')) $('sync-text').textContent='Conectado';
+  const ultimaTransportadora = localStorage.getItem('rotasqno_ultima_transportadora');
+  if(ultimaTransportadora && $('rota-transportadora')) $('rota-transportadora').value = ultimaTransportadora;
   if(mapReady) filtrarMapa(); // reaplica a regra de visibilidade dos pins se o mapa já estava carregado
   else esperarLeaflet(); // primeira vez: app já está visível aqui, então o mapa nasce com o tamanho certo
   solicitarGPS();
@@ -1394,6 +1411,22 @@ function infoTipoGPS(tipo){
 
 // ─── Etapa 1: Analisar lista ────────────────────────────────────────────────
 let pacotesAnalisados = [];
+// Chave de endereço usada pra detectar pacotes duplicados na mesma casa (ex: 2 encomendas
+// pro mesmo endereço, seja da mesma transportadora ou de listas diferentes unificadas).
+function chaveEndereco(p){
+  return [normalizarTexto(p.cidade), normalizarTexto(p.bairro), normalizarTexto(p.quadra), normalizarTexto(p.conjunto||''), normalizarTexto(p.casa||'')].join('|');
+}
+function contarDuplicados(pacotes){
+  const contagem = {};
+  pacotes.forEach(p=>{ if(!p.casa) return; const k=chaveEndereco(p); contagem[k]=(contagem[k]||0)+1; });
+  return contagem;
+}
+function tagDuplicado(p, contagem){
+  if(!p.casa) return '';
+  const n = contagem[chaveEndereco(p)] || 1;
+  if(n<=1) return '';
+  return `<span style="background:#FFF3CD;color:#856404;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;margin-right:4px;">📦 ${n} itens no local</span>`;
+}
 
 // ─── Importar arquivo CSV ──────────────────────────────────────────────────────
 function importarCSV(e){
@@ -1441,31 +1474,46 @@ async function analisarLista(){
   const input = document.getElementById('rota-input').value.trim();
   if(!input){ showMsg('Cole a lista de pacotes antes.','err'); return; }
 
+  const transportadora = document.getElementById('rota-transportadora').value.trim();
+  if(transportadora) localStorage.setItem('rotasqno_ultima_transportadora', transportadora);
+
   const btn = document.getElementById('rota-btn');
   btn.disabled = true; btn.textContent = 'Analisando...';
 
   try {
     const linhas = input.split('\n').filter(l => l.trim() && !l.startsWith('Address,'));
-    const pacotes = [];
+    const pacotesNovos = [];
     let naoReconhecidos = 0;
 
     for(const linha of linhas){
       const p = parsearLinha(linha);
       if(!p){ naoReconhecidos++; continue; }
-      btn.textContent = `Analisando... (${pacotes.length+1}/${linhas.length})`;
+      btn.textContent = `Analisando... (${pacotesNovos.length+1}/${linhas.length})`;
       const gps = await encontrarGPS(p);
       const avisoFaixa = validarCasaNaFaixa(p);
-      pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo || 'nao_encontrado', avisoFaixa, tempoMedioParadaSeg: gps?.tempoMedioParadaSeg || null });
+      pacotesNovos.push({ ...p, coords: gps, tipoGPS: gps?.tipo || 'nao_encontrado', avisoFaixa, tempoMedioParadaSeg: gps?.tempoMedioParadaSeg || null, transportadora });
     }
 
-    pacotesAnalisados = pacotes;
-    renderAnalise(pacotes, naoReconhecidos);
+    // Unifica com o que já tinha sido importado antes, em vez de zerar — permite juntar
+    // vários CSVs (de transportadoras diferentes) na mesma rota do dia.
+    pacotesAnalisados = [...pacotesAnalisados, ...pacotesNovos];
+    document.getElementById('rota-input').value = ''; // limpa pra próxima importação não duplicar o conteúdo
+    renderAnalise(pacotesAnalisados, naoReconhecidos);
   } catch(e){
     console.error('[Rota]', e);
     showMsg('Erro ao analisar: ' + e.message, 'err');
   }
 
   btn.disabled = false; btn.textContent = '🔍 Analisar lista';
+}
+
+function limparListaImportada(){
+  if(!pacotesAnalisados.length) return;
+  if(!confirm('Apagar todos os '+pacotesAnalisados.length+' pacotes importados até agora e começar do zero?')) return;
+  pacotesAnalisados = [];
+  document.getElementById('rota-input').value = '';
+  document.getElementById('rota-resultado').style.display = 'none';
+  showMsg('🗑 Lista de importação limpa.', 'ok');
 }
 
 function renderAnalise(pacotes, naoReconhecidos){
@@ -1501,15 +1549,17 @@ function renderAnalise(pacotes, naoReconhecidos){
     aviso.textContent = '✓ Todos os endereços tiveram o número da casa identificado automaticamente.';
   }
 
+  const contagemDuplicados = contarDuplicados(pacotes);
   const lista = document.getElementById('rota-lista');
   lista.innerHTML = pacotes.map((p, i) => {
     const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
     const info = infoTipoGPS(p.tipoGPS);
     const gpsTxt = `<span class="rota-badge ${info.cls}">${info.txt}</span>`;
+    const dupTag = tagDuplicado(p, contagemDuplicados);
     return `<div class="rota-item" ${p.avisoFaixa?'style="border-color:#E24B4A;background:#FCEBEB;"':''}>
       <div class="rota-num${p.casaPendente?' sem-gps':''}">${i+1}</div>
       <div class="rota-info">
-        <div class="rota-addr">${p.quadra} · Cj. ${p.conjunto||'?'} ${gpsTxt}</div>
+        <div class="rota-addr">${dupTag}${p.quadra} · Cj. ${p.conjunto||'?'} ${gpsTxt}</div>
         <div class="rota-detalhe">${p.enderecoOriginal.slice(0,55)}${p.enderecoOriginal.length>55?'...':''}</div>
         ${contatoFmt?`<div class="rota-contato">📞 ${contatoFmt}</div>`:''}
         ${p.casaPendente
@@ -1703,6 +1753,7 @@ function renderRotaFinal(pacotes){
 
   const lista = document.getElementById('rota-lista-final');
   let prevBairro = '';
+  const contagemDuplicados = contarDuplicados(pacotes);
   lista.innerHTML = pacotes.map((p, i) => {
     let sep = '';
     if(p.bairro !== prevBairro){
@@ -1712,12 +1763,14 @@ function renderRotaFinal(pacotes){
     const info = infoTipoGPS(p.tipoGPS);
     const badgeCls = info.cls, badgeTxt = info.txt, numCls = info.numCls;
     const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
+    const transpTag = p.transportadora ? `<span style="background:#EAF2FB;color:#1B5A8A;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;margin-left:4px;">${p.transportadora}</span>` : '';
+    const dupTag = tagDuplicado(p, contagemDuplicados);
     const clicavel = p.coords ? `onclick="iniciarNavegacaoNoIndicePacote(${i})" style="cursor:pointer;"` : '';
     return `${sep}<div class="rota-item" ${clicavel}>
       <div class="rota-num${numCls}">${i+1}</div>
       <div class="rota-info">
-        <div class="rota-addr">${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:' · Casa ?'}
-          <span class="rota-badge ${badgeCls}">${badgeTxt}</span>
+        <div class="rota-addr">${dupTag}${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:' · Casa ?'}
+          <span class="rota-badge ${badgeCls}">${badgeTxt}</span>${transpTag}
         </div>
         <div class="rota-detalhe">${p.enderecoOriginal.slice(0,60)}${p.enderecoOriginal.length>60?'...':''}</div>
         ${contatoFmt?`<div class="rota-contato">📞 ${contatoFmt}</div>`:''}
@@ -1942,7 +1995,9 @@ function atualizarParadaAtual(){
   const p = rotaNavegacao[navIndex];
   if(!p) return;
   $('nav-progress').textContent = 'Parada ' + (navIndex+1) + ' de ' + rotaNavegacao.length;
-  $('nav-addr').textContent = p.quadra + ' · Cj. ' + (p.conjunto||'?') + (p.casa?' · Casa '+p.casa:' · Casa ?');
+  const transpTag = p.transportadora ? ` <span style="background:#EAF2FB;color:#1B5A8A;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;vertical-align:middle;">${p.transportadora}</span>` : '';
+  const dupTag = rotaNavegacao ? tagDuplicado(p, contarDuplicados(rotaNavegacao)) : '';
+  $('nav-addr').innerHTML = dupTag + p.quadra + ' · Cj. ' + (p.conjunto||'?') + (p.casa?' · Casa '+p.casa:' · Casa ?') + transpTag;
   $('nav-obs').textContent = p.enderecoOriginal ? p.enderecoOriginal.slice(0,90) : '';
   const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
   $('nav-contato').textContent = contatoFmt ? '📞 '+contatoFmt : '';
@@ -2504,7 +2559,7 @@ function registrarTelemetriaParadaAtual(){
 
 // ─── Globais ───────────────────────────────────────────────────────────────────
 window.showTab=showTab; window.fazerLogin=fazerLogin;
-window.analisarLista=analisarLista; window.importarCSV=importarCSV; window.fecharRota=fecharRota; window.copiarRota=copiarRota;
+window.analisarLista=analisarLista; window.importarCSV=importarCSV; window.fecharRota=fecharRota; window.copiarRota=copiarRota; window.limparListaImportada=limparListaImportada;
 window.selecionarPontoPartida=selecionarPontoPartida;
 window.removerParadaDaRota=removerParadaDaRota;
 window.reotimizarComCorrecoes=reotimizarComCorrecoes;
