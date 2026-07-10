@@ -233,6 +233,17 @@ tr:hover td{background:#FAFBFC}
 
       <div class="card" style="margin-bottom:16px;">
         <div class="card-title">1. Importar pacotes</div>
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">Transportadora dessa lista</label>
+        <input list="radm-transportadoras-sugestoes" id="radm-transportadora" placeholder="Ex: Anjun Express, iMile, Shopee, J&amp;T Express..." style="width:100%;padding:9px 12px;margin-bottom:12px;border:1px solid var(--border);border-radius:8px;font-size:13px;"/>
+        <datalist id="radm-transportadoras-sugestoes">
+          <option value="Anjun Express"></option>
+          <option value="iMile"></option>
+          <option value="Shopee"></option>
+          <option value="J&amp;T Express"></option>
+          <option value="Total Express"></option>
+          <option value="Loggi"></option>
+          <option value="Correios"></option>
+        </datalist>
         <button class="btn-acao" style="margin-bottom:10px;" onclick="document.getElementById('radm-csv-input').click()">📁 Importar arquivo CSV</button>
         <input type="file" id="radm-csv-input" accept=".csv,text/csv" style="display:none;" onchange="admImportarCSV(event)"/>
         <div style="text-align:center;font-size:11px;color:var(--text-3);margin:6px 0;">ou cole o conteúdo manualmente abaixo</div>
@@ -812,6 +823,9 @@ function abrirPainelComPermissoes(){
   document.getElementById('admin-screen').style.display='block';
   atualizarUIPermissoes();
   iniciarFb();
+  const ultimaTransportadora = localStorage.getItem('rotasqno_ultima_transportadora');
+  const campoTransp = document.getElementById('radm-transportadora');
+  if(ultimaTransportadora && campoTransp) campoTransp.value = ultimaTransportadora;
 }
 
 function atualizarUIPermissoes(){
@@ -1693,6 +1707,10 @@ function admImportarCSV(e){
 async function admAnalisarLista(){
   const input = document.getElementById('radm-input').value.trim();
   if(!input){ alert('Cole ou importe a lista de pacotes primeiro.'); return; }
+
+  const transportadora = document.getElementById('radm-transportadora').value.trim();
+  if(transportadora) localStorage.setItem('rotasqno_ultima_transportadora', transportadora);
+
   const btn = document.getElementById('radm-analisar-btn');
   btn.disabled = true;
   const linhas = input.split('\n').filter(l => l.trim() && !l.startsWith('Address,'));
@@ -1705,7 +1723,7 @@ async function admAnalisarLista(){
     const gps = await encontrarGPSAdmin(p);
     const avisoFaixa = validarCasaNaFaixaAdmin(p);
     const idPacote = 'p'+Date.now()+'_'+pacotes.length+'_'+Math.random().toString(36).slice(2,6);
-    pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo||'nao_encontrado', avisoFaixa, idPacote });
+    pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo||'nao_encontrado', avisoFaixa, idPacote, transportadora });
   }
   radmPacotesAnalisados = pacotes;
   btn.disabled = false; btn.textContent = '🔍 Analisar lista';
@@ -1738,10 +1756,11 @@ function admRenderRevisao(pacotes, naoReconhecidos){
 
   document.getElementById('radm-lista-revisao').innerHTML = pacotes.map((p,i)=>{
     const info = infoTipoGPSAdmin(p.tipoGPS);
+    const transpTag = p.transportadora ? `<span style="background:#EAF2FB;color:#1B5A8A;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;margin-left:4px;">${p.transportadora}</span>` : '';
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;${p.avisoFaixa?'background:var(--red-light,#FCEBEB);':''}">
       <div style="width:26px;height:26px;border-radius:50%;background:${info.cor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${i+1}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:600;">${p.quadra} · Cj.${p.conjunto||'?'} <span style="font-size:10px;padding:2px 6px;border-radius:8px;background:${info.cor}22;color:${info.cor};">${info.txt}</span></div>
+        <div style="font-size:13px;font-weight:600;">${p.quadra} · Cj.${p.conjunto||'?'} <span style="font-size:10px;padding:2px 6px;border-radius:8px;background:${info.cor}22;color:${info.cor};">${info.txt}</span>${transpTag}</div>
         <div style="font-size:11px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.enderecoOriginal.slice(0,70)}</div>
         ${p.avisoFaixa?`<div style="font-size:11px;color:var(--red);font-weight:600;">🚨 ${p.avisoFaixa}</div>`:''}
       </div>
@@ -1968,9 +1987,10 @@ async function admReotimizarComCorrecoes(){
 function admRenderListaFinal(){
   document.getElementById('radm-lista-final').innerHTML = radmRotaAtual.map((p,i)=>{
     const info = infoTipoGPSAdmin(p.tipoGPS);
+    const transpTag = p.transportadora ? `<span style="background:#EAF2FB;color:#1B5A8A;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;margin-left:4px;">${p.transportadora}</span>` : '';
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--border);">
       <div style="width:22px;height:22px;border-radius:50%;background:${info.cor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">${i+1}</div>
-      <div style="flex:1;font-size:12px;">${p.quadra} · Cj.${p.conjunto||'?'} · Casa ${p.casa||'?'}</div>
+      <div style="flex:1;font-size:12px;">${p.quadra} · Cj.${p.conjunto||'?'} · Casa ${p.casa||'?'}${transpTag}</div>
     </div>`;
   }).join('');
 }
