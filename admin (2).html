@@ -1,0 +1,2867 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Rotas QNO · Painel Admin</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#1D9E75;--green-dark:#0F6E56;--green-light:#E1F5EE;
+  --blue:#378ADD;--orange:#D85A30;--yellow:#BA7517;--pink:#D4537E;--purple:#7B5EA7;
+  --red:#E24B4A;--red-light:#FCEBEB;
+  --bg:#F4F6F9;--surface:#fff;--border:#E5E9EF;
+  --text:#111;--text-2:#555;--text-3:#999;
+  --radius:12px;--shadow:0 1px 4px rgba(0,0,0,.08);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999}
+.login-card{background:var(--surface);border-radius:16px;padding:40px;width:360px;box-shadow:0 4px 24px rgba(0,0,0,.1);text-align:center}
+.login-logo{width:56px;height:56px;background:var(--green);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px}
+.login-card h2{font-size:20px;margin-bottom:4px}
+.login-card p{font-size:13px;color:var(--text-3);margin-bottom:24px}
+.login-card input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:12px;outline:none}
+.login-card input:focus{border-color:var(--green)}
+.login-card button{width:100%;padding:12px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+.login-err{font-size:12px;color:var(--red);margin-top:8px;display:none}
+#admin-screen{display:none;min-height:100vh}
+.sidebar{position:fixed;top:0;left:0;width:220px;height:100vh;background:#1A2332;display:flex;flex-direction:column;padding:20px 0;z-index:100}
+.sidebar-logo{display:flex;align-items:center;gap:10px;padding:0 20px 20px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:12px}
+.sidebar-logo-icon{width:36px;height:36px;background:var(--green);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.sidebar-logo-text{font-size:14px;font-weight:600;color:#fff;line-height:1.2}
+.sidebar-logo-sub{font-size:10px;color:rgba(255,255,255,.4)}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;color:rgba(255,255,255,.6);cursor:pointer;border-left:3px solid transparent;transition:all .15s}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-item.active{background:rgba(29,158,117,.15);color:var(--green);border-left-color:var(--green)}
+.nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.nav-section{font-size:10px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.8px;padding:12px 20px 4px;margin-top:4px}
+.sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid rgba(255,255,255,.08)}
+.sync-indicator{display:flex;align-items:center;gap:8px;font-size:11px;color:rgba(255,255,255,.4)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0}
+.sync-dot.ok{background:var(--green)}
+.sync-dot.buscando{background:#EF9F27;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.main{margin-left:220px;padding:28px}
+.page{display:none}
+.page.active{display:block}
+.page-title{font-size:22px;font-weight:600;margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--text-3);margin-bottom:24px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.stat-card{background:var(--surface);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.stat-card .label{font-size:12px;color:var(--text-3);margin-bottom:8px;font-weight:500}
+.stat-card .value{font-size:32px;font-weight:700;line-height:1;margin-bottom:4px}
+.stat-card .sub{font-size:11px;color:var(--text-3)}
+.stat-card.green .value{color:var(--green)}
+.stat-card.blue .value{color:var(--blue)}
+.stat-card.orange .value{color:var(--orange)}
+.stat-card.purple .value{color:var(--purple)}
+.grid-3-1{display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:28px}
+.card{background:var(--surface);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.card-title{font-size:14px;font-weight:600;margin-bottom:16px}
+.quadra-row{margin-bottom:14px}
+.quadra-row-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.quadra-name{font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px}
+.quadra-badge{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.quadra-pct{font-size:12px;color:var(--text-3)}
+.progress-bar{height:7px;background:#eee;border-radius:20px;overflow:hidden}
+.progress-fill{height:100%;border-radius:20px;transition:width .5s}
+.recent-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.recent-item:last-child{border-bottom:none}
+.recent-thumb{width:42px;height:42px;border-radius:8px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;cursor:pointer}
+.recent-thumb-empty{width:42px;height:42px;border-radius:8px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.recent-info{flex:1;min-width:0}
+.recent-addr{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recent-obs{font-size:11px;color:var(--text-3);margin-top:2px}
+.recent-ts{font-size:10px;color:var(--text-3);margin-top:2px}
+.badge{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500}
+.badge-gps{background:var(--green-light);color:var(--green-dark)}
+#admin-map{width:100%;height:calc(100vh - 200px);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)}
+.map-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.map-filters select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);outline:none}
+.map-legend{display:flex;gap:12px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-2)}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+.table-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.stat-mini{display:flex;flex-direction:column;}
+.stat-mini .num{font-size:22px;font-weight:700;color:var(--text);}
+.stat-mini .lbl{font-size:11px;color:var(--text-3);}
+.table-toolbar input,.table-toolbar select{padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);outline:none}
+.table-toolbar input{flex:1;min-width:200px}
+.table-toolbar input:focus,.table-toolbar select:focus{border-color:var(--green)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 12px;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);background:var(--bg)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:hover td{background:#FAFBFC}
+.td-foto img{width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid var(--border);cursor:pointer}
+.td-acoes{display:flex;gap:6px}
+.btn-acao{padding:5px 10px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text-2)}
+.btn-acao:hover{background:var(--bg)}
+.btn-acao.del{color:var(--red);border-color:#FCCFCF}
+.btn-acao.del:hover{background:var(--red-light)}
+.pagination{display:flex;align-items:center;gap:8px;margin-top:16px;justify-content:flex-end;font-size:13px;color:var(--text-3)}
+.page-btn{padding:5px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--surface);font-size:12px}
+.page-btn.active{background:var(--green);color:#fff;border-color:var(--green-dark)}
+/* Gerenciar */
+.cidades-layout{display:grid;grid-template-columns:240px 240px 1fr;gap:16px;align-items:start}
+.col-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.col-panel-title{font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.list-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:4px;border:1px solid transparent}
+.list-item:hover{background:var(--bg)}
+.list-item.active{background:var(--green-light);border-color:var(--green);color:var(--green-dark);font-weight:500}
+.list-item-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.list-item-name{flex:1}
+.list-item-count{font-size:11px;color:var(--text-3)}
+.list-item-del{background:none;border:none;cursor:pointer;font-size:13px;color:#ccc;padding:2px 4px}
+.list-item-del:hover{color:var(--red)}
+.add-btn{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1.5px dashed var(--border);border-radius:8px;background:none;cursor:pointer;font-size:13px;color:var(--text-3);width:100%;margin-top:6px}
+.add-btn:hover{border-color:var(--green);color:var(--green);background:var(--green-light)}
+.conjuntos-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.cj-tag{display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:12px}
+.cj-tag-del{background:none;border:none;cursor:pointer;font-size:11px;color:#ccc}
+.cj-tag-del:hover{color:var(--red)}
+.inline-add{display:flex;gap:6px}
+.inline-add input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;outline:none}
+.inline-add input:focus{border-color:var(--green)}
+.inline-add button{padding:7px 14px;background:var(--green);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer}
+.empty-panel{text-align:center;padding:30px 16px;color:var(--text-3);font-size:13px}
+.empty-panel .icon{font-size:28px;display:block;margin-bottom:8px}
+.quadra-row-edit{background:var(--bg);border-radius:8px;padding:12px;margin-bottom:10px;border:1px solid var(--border)}
+.quadra-row-edit-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.quadra-row-edit-name{font-size:13px;font-weight:600}
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border-radius:14px;padding:24px;width:420px;max-width:100%}
+.modal h3{font-size:16px;margin-bottom:16px}
+.modal label{font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;font-weight:500}
+.modal input,.modal select,.modal textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;margin-bottom:12px;font-family:inherit}
+.modal input:focus,.modal select:focus{border-color:var(--green)}
+.modal textarea{resize:vertical;min-height:70px}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.modal-btns button{padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface)}
+.modal-btns .save{background:var(--green);color:#fff;border-color:var(--green-dark)}
+.foto-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:5000;display:none;align-items:center;justify-content:center}
+.foto-modal-bg.open{display:flex}
+.foto-modal-img{max-width:90vw;max-height:85vh;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.4);cursor:pointer}
+@media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr)}.grid-3-1{grid-template-columns:1fr}.cidades-layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">📦</div>
+    <h2>Rotas QNO</h2>
+    <p>Painel de Administração</p>
+    <input type="email" id="login-email" placeholder="E-mail do administrador" style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:10px;outline:none;"/>
+    <input type="password" id="login-pass" placeholder="Senha" onkeydown="if(event.key==='Enter')entrar()" style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:12px;outline:none;"/>
+    <button onclick="entrar()">Entrar no painel</button>
+    <div class="login-err" id="login-err">Acesso negado.</div>
+  </div>
+</div>
+
+<div id="admin-screen">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">📦</div>
+      <div><div class="sidebar-logo-text">Rotas QNO</div><div class="sidebar-logo-sub">Painel Admin</div></div>
+    </div>
+    <div class="nav-section">Principal</div>
+    <div class="nav-item active" onclick="navTo('dashboard',this)"><span class="nav-icon">📊</span> Dashboard</div>
+    <div class="nav-item" onclick="navTo('rotas',this)"><span class="nav-icon">🛣</span> Rotas</div>
+    <div class="nav-item" onclick="navTo('mapa',this)"><span class="nav-icon">🗺</span> Mapa Geral</div>
+    <div class="nav-section">Dados</div>
+    <div class="nav-item" id="nav-item-aprovacoes" onclick="navTo('aprovacoes',this)">
+      <span class="nav-icon">📥</span> Aprovações
+      <span id="badge-pendentes" style="display:none;background:#E24B4A;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 7px;margin-left:auto;">0</span>
+    </div>
+    <div class="nav-item" onclick="navTo('registros',this)"><span class="nav-icon">📋</span> Registros</div>
+    <div class="nav-item" onclick="navTo('cidades',this)"><span class="nav-icon">🏙</span> Cidades</div>
+    <div class="nav-item" onclick="navTo('faixas',this)"><span class="nav-icon">📏</span> Faixas</div>
+    <div class="nav-section" id="nav-section-admin" style="display:none;">Administração</div>
+    <div class="nav-item" id="nav-item-usuarios" onclick="navTo('usuarios',this)" style="display:none;"><span class="nav-icon">👥</span> Usuários</div>
+    <div class="nav-item" onclick="navTo('correcoes',this)"><span class="nav-icon">🛠</span> Correções</div>
+    <div class="nav-item" onclick="navTo('telemetria',this)"><span class="nav-icon">📊</span> Telemetria</div>
+    <div class="nav-item" onclick="navTo('historico',this)"><span class="nav-icon">🏁</span> Histórico</div>
+    <div class="nav-item" onclick="navTo('confirmacoes',this)"><span class="nav-icon">📍</span> Confirmações</div>
+    <div class="sidebar-footer">
+      <div id="papel-badge" style="font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;display:inline-block;margin-bottom:8px;background:rgba(29,158,117,.2);color:var(--green);"></div>
+      <div class="sync-indicator">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-text">Conectando...</span>
+      </div>
+      <button onclick="sairAdmin()" style="margin-top:10px;width:100%;padding:7px;background:none;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);border-radius:7px;font-size:11px;cursor:pointer;">Sair</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-title">Dashboard</div>
+      <div class="page-sub">Visão geral do mapeamento</div>
+      <div class="stats-grid">
+        <div class="stat-card green"><div class="label">Total mapeado</div><div class="value" id="d-total">—</div><div class="sub">endereços</div></div>
+        <div class="stat-card blue"><div class="label">Com GPS</div><div class="value" id="d-gps">—</div><div class="sub" id="d-gps-pct">—</div></div>
+        <div class="stat-card orange"><div class="label">Com foto</div><div class="value" id="d-foto">—</div><div class="sub" id="d-foto-pct">—</div></div>
+        <div class="stat-card purple"><div class="label">Sem GPS ainda</div><div class="value" id="d-sem-gps">—</div><div class="sub">pendentes</div></div>
+      </div>
+      <div class="grid-3-1">
+        <div class="card"><div class="card-title">📍 Progresso por bairro</div><div id="bairro-progress"></div></div>
+        <div class="card"><div class="card-title">🕐 Últimos registros</div><div id="recent-list"></div></div>
+      </div>
+    </div>
+
+    <!-- MAPA -->
+    <div class="page" id="page-mapa">
+      <div class="page-title">Mapa Geral</div>
+      <div class="page-sub">Todos os endereços com GPS</div>
+      <div class="card" style="padding:16px;">
+        <div class="map-filters">
+          <select id="map-cidade" onchange="onMapCidadeChange()"><option value="">Todas cidades</option></select>
+          <select id="map-bairro" onchange="onMapBairroChange()"><option value="">Todos bairros</option></select>
+          <select id="map-quadra" onchange="filtrarMapaAdmin()"><option value="">Todas quadras</option></select>
+          <div class="map-legend" id="map-legend"></div>
+        </div>
+        <div id="admin-map"></div>
+      </div>
+    </div>
+
+    <!-- ROTAS (montar e enviar pro entregador) -->
+    <div class="page" id="page-rotas">
+      <div class="page-title">Montar Rota</div>
+      <div class="page-sub">Importe o CSV, revise/corrija manualmente com calma na tela grande, otimize, e envie a rota pronta pra um entregador iniciar direto.</div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">1. Importar pacotes</div>
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">Transportadora dessa lista</label>
+        <input list="radm-transportadoras-sugestoes" id="radm-transportadora" placeholder="Ex: Anjun Express, iMile, Shopee, J&amp;T Express..." style="width:100%;padding:9px 12px;margin-bottom:12px;border:1px solid var(--border);border-radius:8px;font-size:13px;"/>
+        <datalist id="radm-transportadoras-sugestoes">
+          <option value="Anjun Express"></option>
+          <option value="iMile"></option>
+          <option value="Shopee"></option>
+          <option value="J&amp;T Express"></option>
+          <option value="Total Express"></option>
+          <option value="Loggi"></option>
+          <option value="Correios"></option>
+        </datalist>
+        <button class="btn-acao" style="margin-bottom:10px;" onclick="document.getElementById('radm-csv-input').click()">📁 Importar arquivo CSV</button>
+        <input type="file" id="radm-csv-input" accept=".csv,text/csv" style="display:none;" onchange="admImportarCSV(event)"/>
+        <div style="text-align:center;font-size:11px;color:var(--text-3);margin:6px 0;">ou cole o conteúdo manualmente abaixo</div>
+        <textarea id="radm-input" placeholder='Cole aqui o CSV de pacotes...' style="width:100%;height:100px;font-family:monospace;font-size:12px;padding:10px;border:1px solid var(--border);border-radius:8px;"></textarea>
+        <button class="btn-acao" style="margin-top:10px;background:var(--green);color:#fff;border-color:var(--green-dark);" onclick="admAnalisarLista()" id="radm-analisar-btn">🔍 Analisar lista</button>
+      </div>
+
+      <div id="radm-resultado" style="display:none;">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">2. Revisão</div>
+          <div id="radm-stats" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;"></div>
+          <div id="radm-aviso" style="display:none;font-size:12px;padding:10px;border-radius:8px;margin-bottom:12px;"></div>
+          <div id="radm-lista-revisao"></div>
+          <button class="btn-acao" style="margin-top:12px;background:#378ADD;color:#fff;border-color:#2b6cb0;" onclick="admOtimizarRota()" id="radm-otimizar-btn">🛣 Otimizar rota</button>
+        </div>
+
+        <div class="card" id="radm-busca-card" style="display:none;margin-bottom:16px;">
+          <div class="card-title">🔍 Buscar endereço já cadastrado</div>
+          <p style="font-size:11px;color:var(--text-3);margin-bottom:10px;">Use pra conferir a posição real de um endereço no banco enquanto ajusta os pins manualmente.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <select id="radm-busca-cidade" onchange="radmOnBuscaCidadeChange()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;"><option value="">Cidade...</option></select>
+            <select id="radm-busca-bairro" onchange="radmOnBuscaBairroChange()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;"><option value="">Bairro...</option></select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 80px;gap:8px;margin-bottom:10px;">
+            <select id="radm-busca-quadra" onchange="radmOnBuscaQuadraChange()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;"><option value="">Quadra...</option></select>
+            <select id="radm-busca-cj" onchange="radmBuscarEndereco()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;"><option value="">Conjunto...</option></select>
+            <input type="text" id="radm-busca-casa" placeholder="Casa" oninput="radmBuscarEndereco()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;"/>
+          </div>
+          <div id="radm-busca-resultado" style="display:none;"></div>
+        </div>
+
+        <div class="card" id="radm-mapa-card" style="display:none;margin-bottom:16px;">
+          <div class="card-title">3. Mapa — arraste os pins pra corrigir a posição, ou digite a ordem de entrega no popup de cada um</div>
+          <div id="radm-mapa" style="width:100%;height:340px;border-radius:10px;border:1px solid var(--border);position:relative;"></div>
+          <div id="radm-reotimizar-wrap" style="display:none;margin-top:10px;">
+            <button class="btn-acao" style="background:#378ADD;color:#fff;border-color:#2b6cb0;" onclick="admReotimizarComCorrecoes()">🔄 Reotimizar com correções</button>
+          </div>
+          <div id="radm-fechar-wrap" style="display:none;margin-top:10px;">
+            <button class="btn-acao" style="background:var(--green);color:#fff;border-color:var(--green-dark);width:100%;padding:10px;" onclick="admFecharRota()">🔒 Fechar rota (trava a ordem definida)</button>
+          </div>
+        </div>
+
+        <div class="card" id="radm-envio-card" style="display:none;">
+          <div class="card-title">4. Enviar pro entregador</div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;">
+            <div>
+              <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">Escolher entregador</label>
+              <select id="radm-entregador-select" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;">
+                <option value="">Selecione...</option>
+              </select>
+            </div>
+            <button class="btn-acao" style="background:var(--green);color:#fff;border-color:var(--green-dark);padding:10px 18px;" onclick="admEnviarRota()">📤 Enviar rota pronta</button>
+          </div>
+          <div id="radm-lista-final" style="margin-top:16px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REGISTROS -->
+    <div class="page" id="page-registros">
+      <div class="page-title">Registros</div>
+      <div class="page-sub">Todos os endereços cadastrados</div>
+      <div class="card">
+        <div class="table-toolbar">
+          <input type="text" id="tabela-busca" placeholder="🔍  Buscar..." oninput="renderTabela()"/>
+          <select id="tab-cidade" onchange="onTabCidadeChange()"><option value="">Todas cidades</option></select>
+          <select id="tab-bairro" onchange="onTabBairroChange()"><option value="">Todos bairros</option></select>
+          <select id="tab-quadra" onchange="renderTabela()"><option value="">Todas quadras</option></select>
+          <select id="tab-extra" onchange="renderTabela()">
+            <option value="">Todos</option><option value="gps">Com GPS</option><option value="semgps">Sem GPS</option>
+            <option value="foto">Com foto</option><option value="semfoto">Sem foto</option>
+            <option value="suspeita">⚠️ Coordenada suspeita</option>
+          </select>
+          <button class="btn-acao" onclick="exportarRegistrosCSV()">📥 Exportar CSV</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Foto</th><th>Cidade</th><th>Bairro</th><th>Quadra</th><th>Conjunto</th><th>Casa</th>
+              <th>Observação</th><th>GPS</th><th>Registrado</th><th>Ações</th>
+            </tr></thead>
+            <tbody id="tabela-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="paginacao"></div>
+      </div>
+    </div>
+
+    <!-- CIDADES -->
+    <div class="page" id="page-cidades">
+      <div class="page-title">Gerenciar Cidades</div>
+      <div class="page-sub">Adicione cidades, bairros, quadras e conjuntos. Mudanças refletem no app em tempo real.</div>
+      <div class="cidades-layout">
+        <!-- Cidades -->
+        <div class="col-panel">
+          <div class="col-panel-title">🏙 Cidades <span id="cidades-count" style="font-size:11px;color:var(--text-3);font-weight:400;"></span></div>
+          <div id="cidades-list"></div>
+          <button class="add-btn" id="btn-add-cidade" onclick="abrirModalNovaCidade()">＋ Nova cidade</button>
+        </div>
+        <!-- Bairros -->
+        <div class="col-panel">
+          <div class="col-panel-title">🏘 Bairros <span id="bairros-count" style="font-size:11px;color:var(--text-3);font-weight:400;"></span></div>
+          <div id="bairros-list"><div class="empty-panel"><span class="icon">👈</span>Selecione uma cidade</div></div>
+          <button class="add-btn" id="btn-add-bairro" style="display:none;" onclick="abrirModalNovoBairro()">＋ Novo bairro</button>
+        </div>
+        <!-- Quadras e Conjuntos -->
+        <div class="col-panel" id="quadras-col">
+          <div class="empty-panel"><span class="icon">👈</span>Selecione um bairro</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAIXAS -->
+    <div class="page" id="page-faixas">
+      <div class="page-title">Faixas de Numeração</div>
+      <div class="page-sub">Cadastre a faixa de casas de cada conjunto (ex: 1 a 40). Isso permite validar CSVs importados e calcular a cobertura real de mapeamento — sem sobrecarregar o banco com um documento por casa.</div>
+      <div class="card">
+        <div class="table-toolbar">
+          <input type="text" id="faixas-busca" placeholder="🔍  Buscar conjunto..." oninput="renderFaixasTabela()"/>
+          <select id="faixas-cidade" onchange="onFaixasCidadeChange()"><option value="">Todas cidades</option></select>
+          <select id="faixas-bairro" onchange="renderFaixasTabela()"><option value="">Todos bairros</option></select>
+          <select id="faixas-status" onchange="renderFaixasTabela()">
+            <option value="">Todos</option>
+            <option value="sem_faixa">Sem faixa cadastrada</option>
+            <option value="com_faixa">Com faixa cadastrada</option>
+          </select>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Bairro</th><th>Quadra</th><th>Conjunto</th>
+              <th>Casa mín.</th><th>Casa máx.</th><th>Tipo</th>
+              <th>Cobertura</th><th>Ações</th>
+            </tr></thead>
+            <tbody id="faixas-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="faixas-paginacao"></div>
+      </div>
+    </div>
+
+    <!-- USUÁRIOS (apenas admin raiz) -->
+    <div class="page" id="page-usuarios">
+      <div class="page-title">Gerenciar Usuários</div>
+      <div class="page-sub">Cadastre supervisores (com permissões granulares) e entregadores (pra poder enviar rotas prontas pra eles).</div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-title">➕ Adicionar usuário</div>
+        <p style="font-size:12px;color:var(--text-3);margin-bottom:14px;line-height:1.5;">
+          Primeiro crie o login dele em <b>Firebase Console → Authentication → Add user</b> (e-mail e senha).
+          Depois copie o <b>UID</b> gerado (aparece na tabela de usuários do Firebase) e cole abaixo.
+        </p>
+        <div style="margin-bottom:14px;">
+          <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">Papel</label>
+          <select id="novo-usr-role" onchange="onNovoUsuarioRoleChange()" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;">
+            <option value="supervisor">🛡 Supervisor (acesso ao painel)</option>
+            <option value="entregador">🚚 Entregador (recebe rotas prontas)</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+          <div>
+            <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">UID do usuário (Firebase Auth)</label>
+            <input type="text" id="novo-sup-uid" placeholder="Ex: aZ8k3..." style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;"/>
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">Nome ou e-mail</label>
+            <input type="text" id="novo-sup-email" placeholder="Ex: João ou amigo@email.com" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;"/>
+          </div>
+        </div>
+        <div class="perm-grid" id="novo-usr-permissoes-wrap" style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="novo-sup-p-editarReg"/> ✏️ Editar Registros</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="novo-sup-p-excluirReg"/> 🗑 Excluir Registros</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="novo-sup-p-editarCid"/> 🏙 Editar Cidades</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="novo-sup-p-editarFaixas"/> 📏 Editar Faixas</label>
+        </div>
+        <button class="btn-acao" style="background:var(--green);color:#fff;border-color:var(--green-dark);padding:9px 18px;" onclick="salvarNovoSupervisor()">💾 Adicionar</button>
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-title">🚚 Entregadores cadastrados</div>
+        <div id="lista-entregadores"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🛡 Supervisores cadastrados</div>
+        <div id="lista-supervisores"></div>
+      </div>
+    </div>
+
+    <!-- CORREÇÕES DO PARSER -->
+    <div class="page" id="page-correcoes">
+      <div class="page-title">Correções do Parser de Endereços</div>
+      <div class="page-sub">Toda vez que um entregador completa manualmente o número de uma casa que o sistema não conseguiu identificar sozinho, fica registrado aqui. Revise periodicamente pra identificar padrões e ajustar as regras de leitura do CSV.</div>
+      <div class="card">
+        <div class="table-toolbar">
+          <input type="text" id="correcoes-busca" placeholder="🔍  Buscar no endereço original..." oninput="renderCorrecoes()"/>
+          <select id="correcoes-quadra" onchange="renderCorrecoes()">
+            <option value="">Todas quadras</option>
+          </select>
+          <button class="btn-acao" onclick="exportarCorrecoesCSV()">📥 Exportar CSV</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Endereço original (do CSV)</th>
+              <th>Quadra/Cj. reconhecidos</th>
+              <th>Casa digitada manualmente</th>
+              <th>Corrigido por</th>
+              <th>Quando</th>
+            </tr></thead>
+            <tbody id="correcoes-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="correcoes-paginacao"></div>
+      </div>
+    </div>
+
+    <!-- TELEMETRIA DE ENTREGAS -->
+    <div class="page" id="page-telemetria">
+      <div class="page-title">Telemetria de Entregas</div>
+      <div class="page-sub">Dados brutos registrados automaticamente a cada parada concluída — tempo até chegar, tempo parado no local, velocidade e precisão do GPS. Puro log, sem processamento automático — revise periodicamente pra identificar padrões (ex: "esse conjunto sempre demora mais").</div>
+      <div class="card" style="margin-bottom:20px;">
+        <div class="table-toolbar" style="gap:16px;flex-wrap:wrap;">
+          <div class="stat-mini"><span class="num" id="tel-media-chegar">—</span><span class="lbl">média p/ chegar</span></div>
+          <div class="stat-mini"><span class="num" id="tel-media-parado">—</span><span class="lbl">média parado</span></div>
+          <div class="stat-mini"><span class="num" id="tel-total">0</span><span class="lbl">entregas registradas</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-toolbar">
+          <input type="text" id="tel-busca" placeholder="🔍  Buscar quadra/conjunto..." oninput="renderTelemetria()"/>
+          <select id="tel-motorista" onchange="renderTelemetria()">
+            <option value="">Todos motoristas</option>
+          </select>
+          <button class="btn-acao" onclick="exportarTelemetriaCSV()">📥 Exportar CSV</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Endereço</th>
+              <th>Tempo até chegar</th>
+              <th>Tempo parado</th>
+              <th>Velocidade</th>
+              <th>Precisão GPS</th>
+              <th>Motorista</th>
+              <th>Quando</th>
+            </tr></thead>
+            <tbody id="tel-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="tel-paginacao"></div>
+      </div>
+    </div>
+
+    <!-- APROVAÇÕES DE ENDEREÇOS NOVOS -->
+    <div class="page" id="page-aprovacoes">
+      <div class="page-title">Aprovações de Endereços Novos</div>
+      <div class="page-sub">Endereços confirmados por entregadores que ainda não existiam no sistema ficam aqui até você aprovar. Endereços já cadastrados continuam recebendo confirmações normalmente, sem passar por essa fila.</div>
+      <div id="aprovacoes-lista"></div>
+    </div>
+
+    <!-- HISTÓRICO DE ROTAS CONCLUÍDAS -->
+    <div class="page" id="page-historico">
+      <div class="page-title">Histórico de Rotas Concluídas</div>
+      <div class="page-sub">Resumo de cada rota finalizada por cada entregador — total de entregas, tempo e distância percorrida.</div>
+      <div class="card" style="margin-bottom:20px;">
+        <div class="table-toolbar" style="gap:16px;flex-wrap:wrap;">
+          <div class="stat-mini"><span class="num" id="hist-total-rotas">0</span><span class="lbl">rotas concluídas</span></div>
+          <div class="stat-mini"><span class="num" id="hist-total-entregas">0</span><span class="lbl">total entregues</span></div>
+          <div class="stat-mini"><span class="num" id="hist-total-km">0</span><span class="lbl">km percorridos</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-toolbar">
+          <select id="hist-motorista" onchange="renderHistorico()">
+            <option value="">Todos motoristas</option>
+          </select>
+          <button class="btn-acao" onclick="exportarHistoricoCSV()">📥 Exportar CSV</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Motorista</th>
+              <th>Entregues</th>
+              <th>Puladas</th>
+              <th>Duração</th>
+              <th>Distância</th>
+              <th>Data</th>
+            </tr></thead>
+            <tbody id="hist-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="hist-paginacao"></div>
+      </div>
+    </div>
+
+    <!-- CONFIRMAÇÕES DE ENDEREÇO (auditoria + desfazer) -->
+    <div class="page" id="page-confirmacoes">
+      <div class="page-title">Confirmações de Endereço</div>
+      <div class="page-sub">Toda vez que uma posição de endereço é confirmada (pelo app do entregador ou ao corrigir manualmente pins no painel), fica registrado aqui. Se alguma confirmação foi feita por engano, remova — o sistema recalcula a posição do endereço automaticamente com as confirmações restantes.</div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="table-toolbar" style="gap:16px;flex-wrap:wrap;">
+          <div class="stat-mini"><span class="num" id="conf-total">0</span><span class="lbl">confirmações no total</span></div>
+          <div class="stat-mini"><span class="num" id="conf-hoje">0</span><span class="lbl">hoje</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-toolbar">
+          <input type="text" id="conf-busca" placeholder="🔍  Buscar quadra/conjunto..." oninput="renderConfirmacoes()"/>
+          <select id="conf-quem" onchange="renderConfirmacoes()">
+            <option value="">Todos</option>
+          </select>
+          <select id="conf-periodo" onchange="renderConfirmacoes()">
+            <option value="">Todo período</option>
+            <option value="hoje">Só hoje</option>
+          </select>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Endereço</th>
+              <th>Coordenada</th>
+              <th>Confirmado por</th>
+              <th>Quando</th>
+              <th>Ação</th>
+            </tr></thead>
+            <tbody id="conf-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="conf-paginacao"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nova cidade -->
+<div class="modal-bg" id="modal-nova-cidade">
+  <div class="modal">
+    <h3>Nova cidade</h3>
+    <label>Nome da cidade</label>
+    <input type="text" id="nova-cidade-nome" placeholder="Ex: Samambaia"/>
+    <label>Cor no mapa</label>
+    <input type="color" id="nova-cidade-cor" value="#1D9E75" style="height:40px;padding:4px;"/>
+    <div class="modal-btns">
+      <button onclick="fecharModal('modal-nova-cidade')">Cancelar</button>
+      <button class="save" onclick="salvarNovaCidade()">Criar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal novo bairro -->
+<div class="modal-bg" id="modal-novo-bairro">
+  <div class="modal">
+    <h3 id="modal-novo-bairro-title">Novo bairro</h3>
+    <label>Nome do bairro</label>
+    <input type="text" id="novo-bairro-nome" placeholder="Ex: Expansão Setor O"/>
+    <label>Cor no mapa (opcional)</label>
+    <input type="color" id="novo-bairro-cor" value="#378ADD" style="height:40px;padding:4px;"/>
+    <div class="modal-btns">
+      <button onclick="fecharModal('modal-novo-bairro')">Cancelar</button>
+      <button class="save" onclick="salvarNovoBairro()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nova quadra -->
+<div class="modal-bg" id="modal-nova-quadra">
+  <div class="modal">
+    <h3 id="modal-nova-quadra-title">Nova quadra/rua</h3>
+    <label>Nome</label>
+    <input type="text" id="nova-quadra-nome" placeholder="Ex: QNO 21 ou Rua 14"/>
+    <div class="modal-btns">
+      <button onclick="fecharModal('modal-nova-quadra')">Cancelar</button>
+      <button class="save" onclick="salvarNovaQuadra()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal editar obs -->
+<div class="modal-bg" id="edit-modal">
+  <div class="modal" style="max-width:480px;text-align:left;">
+    <h3 id="edit-modal-title">Editar registro</h3>
+
+    <div id="edit-info-extra" style="font-size:11px;color:var(--text-3);margin-bottom:12px;line-height:1.6;"></div>
+
+    <label>Localização (arraste o pin pra reposicionar)</label>
+    <div id="edit-map" style="width:100%;height:220px;border-radius:10px;border:1px solid var(--border);margin-bottom:6px;"></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <input type="number" step="0.000001" id="edit-lat-input" placeholder="Latitude" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;"/>
+      <input type="number" step="0.000001" id="edit-lng-input" placeholder="Longitude" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;"/>
+    </div>
+
+    <label>Foto da fachada</label>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;">
+      <img id="edit-foto-preview" src="" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border);display:none;"/>
+      <div style="flex:1;">
+        <input type="file" id="edit-foto-input" accept="image/*" style="display:none;" onchange="previewFotoEdit(event)"/>
+        <button class="btn-acao" onclick="document.getElementById('edit-foto-input').click()">📷 Trocar foto</button>
+        <span id="edit-foto-status" style="font-size:11px;color:var(--text-3);margin-left:6px;"></span>
+      </div>
+    </div>
+
+    <label>Observação</label>
+    <textarea id="edit-obs-input" style="margin-bottom:14px;"></textarea>
+
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--bg-alt,#f5f5f5);padding:10px 12px;border-radius:8px;">
+      <input type="checkbox" id="edit-travar-checkbox" style="width:16px;height:16px;"/>
+      <span style="font-size:12px;font-weight:600;">🔒 Travar esta localização (impede que o sistema de confirmações do app altere o GPS)</span>
+    </label>
+
+    <div class="modal-btns">
+      <button onclick="fecharModal('edit-modal')">Cancelar</button>
+      <button class="save" onclick="salvarEdicaoCompleta()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Perfil Inteligente do Endereço -->
+<div class="modal-bg" id="perfil-modal">
+  <div class="modal" style="text-align:center;">
+    <h3 id="perfil-modal-title">Perfil do Endereço</h3>
+    <div id="perfil-estrelas" style="font-size:28px;margin:10px 0;">☆☆☆☆☆</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;text-align:left;">
+      <div style="background:var(--bg-alt,#f5f5f5);border-radius:10px;padding:12px;">
+        <div style="font-size:11px;color:var(--text-3);">Precisão GPS</div>
+        <div id="perfil-precisao" style="font-size:20px;font-weight:800;">—</div>
+      </div>
+      <div style="background:var(--bg-alt,#f5f5f5);border-radius:10px;padding:12px;">
+        <div style="font-size:11px;color:var(--text-3);">Tempo médio parado</div>
+        <div id="perfil-tempo" style="font-size:20px;font-weight:800;">—</div>
+      </div>
+      <div style="background:var(--bg-alt,#f5f5f5);border-radius:10px;padding:12px;grid-column:span 2;">
+        <div style="font-size:11px;color:var(--text-3);">Melhor horário observado</div>
+        <div id="perfil-horario" style="font-size:16px;font-weight:700;">—</div>
+      </div>
+    </div>
+    <div id="perfil-detalhe" style="font-size:11px;color:var(--text-3);margin-bottom:16px;"></div>
+    <button onclick="fecharModal('perfil-modal')" style="width:100%;">Fechar</button>
+  </div>
+</div>
+
+<!-- Editar posição de uma confirmação específica -->
+<div class="modal-bg" id="editar-confirmacao-modal">
+  <div class="modal" style="max-width:440px;text-align:left;">
+    <h3 id="conf-edit-title">Corrigir posição da confirmação</h3>
+    <p style="font-size:12px;color:var(--text-3);margin-bottom:10px;">Arraste o pin até o local correto. Isso só corrige <b>esta confirmação específica</b> — a posição geral do endereço é recalculada com base em todas as confirmações depois de salvar.</p>
+    <div id="conf-edit-map" style="width:100%;height:260px;border-radius:10px;border:1px solid var(--border);margin-bottom:10px;"></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <input type="number" step="0.000001" id="conf-edit-lat" placeholder="Latitude" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;"/>
+      <input type="number" step="0.000001" id="conf-edit-lng" placeholder="Longitude" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;"/>
+    </div>
+    <div class="modal-btns">
+      <button onclick="fecharModal('editar-confirmacao-modal')">Cancelar</button>
+      <button class="save" onclick="salvarEdicaoConfirmacao()">Salvar posição</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal foto -->
+<div class="foto-modal-bg" id="foto-modal" onclick="this.classList.remove('open')">
+  <img class="foto-modal-img" id="foto-modal-img" src="" alt=""/>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, addDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+const cfg={apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",authDomain:"app-rotas-68cf4.firebaseapp.com",projectId:"app-rotas-68cf4",storageBucket:"app-rotas-68cf4.firebasestorage.app",messagingSenderId:"400409767391",appId:"1:400409767391:web:0bcebe50738d6d3450a86a"};
+const fapp=initializeApp(cfg);
+const db=getFirestore(fapp);
+const auth=getAuth(fapp);
+window.__fb={db,auth,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,signInWithEmailAndPassword,signOut,onAuthStateChanged,colReg:collection(db,'registros'),colCid:collection(db,'cidades'),colFaixas:collection(db,'faixas'),colUsuarios:collection(db,'usuarios'),colCorrecoes:collection(db,'correcoesParser'),colTelemetria:collection(db,'telemetriaEntregas'),colCoordQuadra:collection(db,'coordenadasQuadra'),colHistorico:collection(db,'historicoRotas'),colPendentes:collection(db,'registrosPendentes'),colRotasEnviadas:collection(db,'rotasEnviadas')};
+setPersistence(auth, browserLocalPersistence).finally(()=>{
+  window.__fbReady=true;
+  window.dispatchEvent(new Event('fb-ready'));
+});
+</script>
+<script>
+const UID_ADMIN="vepKTSZjEiVNtPyzXG9CcPagnk83";
+const CLOUDINARY_CLOUD  = "dxbxm3rpd";
+const CLOUDINARY_PRESET = "h90fdbtd";
+const CENTER=[-15.8485,-48.1080];
+const POR_PAG=20;
+const CORES_PAD=['#1D9E75','#378ADD','#D85A30','#BA7517','#D4537E','#7B5EA7','#2D9CDB','#F2994A'];
+const SESSAO_DURACAO_MS = 24 * 60 * 60 * 1000; // 24 horas
+const CHAVE_SESSAO_ADMIN = 'rotasqno_admin_login_ts';
+
+let registros=[],CIDADES={},fb=null;
+let adminMap=null,adminLayer=null,adminMapReady=false;
+let pag=1,editandoId=null;
+let cidSel=null,bairSel=null;
+let novaBairroParaCidade=null,novaQuadraParaBairro=null,novaQuadraParaCidade=null;
+
+// ─── Permissões ───────────────────────────────────────────────────────────────
+let ehAdminRaiz = false;
+let permissoesAtuais = { editarReg:false, excluirReg:false, editarCid:false, editarFaixas:false };
+let USUARIOS = {}; // supervisores cadastrados (para a página Usuários)
+let unsubUsuarioAtual = null;
+
+const PERMISSOES_PADRAO_ADMIN = { editarReg:true, excluirReg:true, editarCid:true, editarFaixas:true };
+
+function ordenar(keys){return [...keys].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));}
+function getCidadeByNome(nome){ return Object.values(CIDADES).find(c=>c.nome===nome); }
+function corBairro(cidade,bairro){
+  const cid=getCidadeByNome(cidade);
+  return cid?.bairros?.[bairro]?.cor||cid?.cor||'#888';
+}
+
+// ─── Sessão persistente do admin/supervisor (24h) ─────────────────────────────
+// Detecta automaticamente se já existe uma sessão válida ao carregar a página,
+// sem nunca deslogar sessões de outros papéis (ex: entregador logado no app principal).
+function iniciarObservadorSessao(){
+  fb = window.__fb;
+  fb.onAuthStateChanged(fb.auth, usuario => {
+    if(unsubUsuarioAtual){ unsubUsuarioAtual(); unsubUsuarioAtual = null; }
+
+    if(!usuario){
+      document.getElementById('login-screen').style.display='flex';
+      document.getElementById('admin-screen').style.display='none';
+      return;
+    }
+
+    if(usuario.uid === UID_ADMIN){
+      // Admin raiz — acesso total, sem depender de nenhum documento no Firestore
+      const inicio = parseInt(localStorage.getItem(CHAVE_SESSAO_ADMIN) || '0', 10);
+      const agora = Date.now();
+      if(!inicio){
+        localStorage.setItem(CHAVE_SESSAO_ADMIN, agora.toString());
+      } else if(agora - inicio > SESSAO_DURACAO_MS){
+        localStorage.removeItem(CHAVE_SESSAO_ADMIN);
+        fb.signOut(fb.auth);
+        return;
+      }
+      ehAdminRaiz = true;
+      permissoesAtuais = { ...PERMISSOES_PADRAO_ADMIN };
+      abrirPainelComPermissoes();
+      return;
+    }
+
+    // Não é o admin raiz — verifica se é um supervisor autorizado (escuta em tempo real
+    // para refletir mudanças de permissão imediatamente, sem precisar relogar)
+    unsubUsuarioAtual = fb.onSnapshot(fb.doc(fb.db,'usuarios',usuario.uid), snap => {
+      if(snap.exists() && snap.data().role === 'supervisor'){
+        const inicio = parseInt(localStorage.getItem(CHAVE_SESSAO_ADMIN) || '0', 10);
+        const agora = Date.now();
+        if(!inicio){
+          localStorage.setItem(CHAVE_SESSAO_ADMIN, agora.toString());
+        } else if(agora - inicio > SESSAO_DURACAO_MS){
+          localStorage.removeItem(CHAVE_SESSAO_ADMIN);
+          fb.signOut(fb.auth);
+          return;
+        }
+        ehAdminRaiz = false;
+        const p = snap.data().permissoes || {};
+        permissoesAtuais = {
+          editarReg: !!p.editarReg, excluirReg: !!p.excluirReg,
+          editarCid: !!p.editarCid, editarFaixas: !!p.editarFaixas
+        };
+        abrirPainelComPermissoes();
+      } else {
+        // Logado mas sem permissão de supervisor — nega acesso ao painel,
+        // sem deslogar (pode ser um entregador comum usando o mesmo navegador).
+        document.getElementById('login-screen').style.display='flex';
+        document.getElementById('admin-screen').style.display='none';
+        document.getElementById('login-err').textContent = 'Este usuário não tem acesso ao painel.';
+        document.getElementById('login-err').style.display = 'block';
+      }
+    });
+  });
+}
+if(window.__fbReady) iniciarObservadorSessao();
+else window.addEventListener('fb-ready', iniciarObservadorSessao);
+
+function abrirPainelComPermissoes(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('admin-screen').style.display='block';
+  atualizarUIPermissoes();
+  iniciarFb();
+  const ultimaTransportadora = localStorage.getItem('rotasqno_ultima_transportadora');
+  const campoTransp = document.getElementById('radm-transportadora');
+  if(ultimaTransportadora && campoTransp) campoTransp.value = ultimaTransportadora;
+}
+
+function atualizarUIPermissoes(){
+  const badge = document.getElementById('papel-badge');
+  badge.textContent = ehAdminRaiz ? '👑 Administrador' : '🛡 Supervisor';
+  badge.style.background = ehAdminRaiz ? 'rgba(29,158,117,.2)' : 'rgba(55,138,221,.2)';
+  badge.style.color = ehAdminRaiz ? 'var(--green)' : 'var(--blue)';
+  document.getElementById('nav-section-admin').style.display = ehAdminRaiz ? 'block' : 'none';
+  document.getElementById('nav-item-usuarios').style.display = ehAdminRaiz ? 'flex' : 'none';
+  document.getElementById('nav-item-aprovacoes').style.display = (ehAdminRaiz || permissoesAtuais.editarReg) ? 'flex' : 'none';
+  // Re-renderiza páginas já visíveis para aplicar/remover botões de ação
+  if(document.getElementById('page-registros').classList.contains('active')) renderTabela();
+  if(document.getElementById('page-cidades').classList.contains('active') && cidSel) renderQuadrasCol();
+  if(document.getElementById('page-cidades').classList.contains('active')) renderCidadesList();
+  if(document.getElementById('page-faixas').classList.contains('active')) renderFaixasTabela();
+}
+
+async function entrar(){
+  const email=document.getElementById('login-email').value.trim();
+  const senha=document.getElementById('login-pass').value;
+  const err=document.getElementById('login-err');
+  err.style.display='none';
+  if(!email||!senha){ err.textContent='Preencha e-mail e senha.'; err.style.display='block'; return; }
+  if(!window.__fbReady){ err.textContent='Aguarde o carregamento e tente novamente.'; err.style.display='block'; return; }
+  fb=window.__fb;
+  try {
+    await fb.signInWithEmailAndPassword(fb.auth, email, senha);
+    // Login válido — o observador de sessão (iniciarObservadorSessao) verifica se é
+    // o admin raiz ou um supervisor autorizado, e libera (ou nega) o painel automaticamente.
+  } catch(e){
+    const msgs={'auth/user-not-found':'Usuário não encontrado.','auth/wrong-password':'Senha incorreta.','auth/invalid-credential':'E-mail ou senha incorretos.','auth/invalid-email':'E-mail inválido.'};
+    err.textContent=msgs[e.code]||'Erro: '+e.code;
+    err.style.display='block';
+  }
+}
+
+let fbListenersIniciados = false;
+function iniciarFb(){
+  if(fbListenersIniciados) return; // evita duplicar listeners se as permissões mudarem em tempo real
+  fbListenersIniciados = true;
+  atualizarSync('buscando','Conectando...');
+  const go=()=>{
+    fb=window.__fb;
+    fb.onSnapshot(fb.query(fb.colCid),snap=>{
+      CIDADES={};
+      snap.docs.forEach(d=>{ CIDADES[d.id]={id:d.id,...d.data()}; });
+      renderSelectsCidades();
+      renderCidadesList();
+      renderLegendaMapa();
+      if(document.getElementById('page-faixas').classList.contains('active')) renderFaixasTabela();
+    },err=>console.error('[Cidades]',err));
+    fb.onSnapshot(fb.query(fb.colReg),snap=>{
+      registros=snap.docs.map(d=>({id:d.id,...d.data()}));
+      atualizarTudo();
+      atualizarSync('ok',registros.length+' registros');
+    },err=>atualizarSync('erro','Erro: '+err.code));
+    fb.onSnapshot(fb.query(fb.colFaixas),snap=>{
+      FAIXAS={};
+      snap.docs.forEach(d=>{ FAIXAS[d.id]={id:d.id,...d.data()}; });
+      if(document.getElementById('page-faixas').classList.contains('active')) renderFaixasTabela();
+    },err=>console.error('[Faixas]',err));
+    fb.onSnapshot(fb.query(fb.colCorrecoes),snap=>{
+      CORRECOES=snap.docs.map(d=>({id:d.id,...d.data()}));
+      if(document.getElementById('page-correcoes').classList.contains('active')) renderCorrecoes();
+    },err=>console.error('[Correcoes]',err));
+    fb.onSnapshot(fb.query(fb.colTelemetria),snap=>{
+      TELEMETRIA=snap.docs.map(d=>({id:d.id,...d.data()}));
+      if(document.getElementById('page-telemetria').classList.contains('active')) renderTelemetria();
+    },err=>console.error('[Telemetria]',err));
+    fb.onSnapshot(fb.query(fb.colCoordQuadra),snap=>{
+      COORD_QUADRA={};
+      snap.docs.forEach(d=>{ COORD_QUADRA[d.id]={id:d.id,...d.data()}; });
+      if(document.getElementById('page-cidades').classList.contains('active') && bairSel) renderQuadrasCol();
+    },err=>console.error('[CoordQuadra]',err));
+    fb.onSnapshot(fb.query(fb.colHistorico),snap=>{
+      HISTORICO=snap.docs.map(d=>({id:d.id,...d.data()}));
+      if(document.getElementById('page-historico').classList.contains('active')) renderHistorico();
+    },err=>console.error('[Historico]',err));
+    fb.onSnapshot(fb.query(fb.colPendentes),snap=>{
+      PENDENTES=snap.docs.map(d=>({id:d.id,...d.data()}));
+      const badge = document.getElementById('badge-pendentes');
+      if(PENDENTES.length){ badge.style.display='inline-block'; badge.textContent=PENDENTES.length; }
+      else { badge.style.display='none'; }
+      if(document.getElementById('page-aprovacoes').classList.contains('active')) renderAprovacoes();
+    },err=>console.error('[Pendentes]',err));
+    if(ehAdminRaiz){
+      fb.onSnapshot(fb.query(fb.colUsuarios),snap=>{
+        USUARIOS={};
+        snap.docs.forEach(d=>{ USUARIOS[d.id]={id:d.id,...d.data()}; });
+        if(document.getElementById('page-usuarios').classList.contains('active')){ renderListaSupervisores(); renderListaEntregadores(); }
+      },err=>console.error('[Usuarios]',err));
+    }
+  };
+  if(window.__fbReady)go(); else window.addEventListener('fb-ready',go);
+}
+
+function atualizarSync(e,t){
+  document.getElementById('sync-dot').className='sync-dot '+(e==='ok'?'ok':e==='buscando'?'buscando':'');
+  document.getElementById('sync-text').textContent=t;
+}
+function atualizarTudo(){
+  renderDashboard();
+  if(document.getElementById('page-registros').classList.contains('active'))renderTabela();
+  if(document.getElementById('page-faixas').classList.contains('active'))renderFaixasTabela();
+  if(adminMapReady)filtrarMapaAdmin();
+}
+
+function navTo(page,el){
+  if(page==='usuarios' && !ehAdminRaiz) return; // proteção extra — só admin raiz acessa
+  if(page==='aprovacoes' && !ehAdminRaiz && !permissoesAtuais.editarReg) return;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  el.classList.add('active');
+  if(page==='mapa')iniciarMapaAdmin();
+  if(page==='registros')renderTabela();
+  if(page==='cidades')renderCidadesList();
+  if(page==='faixas')renderFaixasTabela();
+  if(page==='usuarios'){ renderListaSupervisores(); renderListaEntregadores(); }
+  if(page==='correcoes')renderCorrecoes();
+  if(page==='telemetria')renderTelemetria();
+  if(page==='historico')renderHistorico();
+  if(page==='confirmacoes')renderConfirmacoes();
+  if(page==='aprovacoes')renderAprovacoes();
+}
+
+// ─── Selects ──────────────────────────────────────────────────────────────────
+function renderSelectsCidades(){
+  ['map-cidade','tab-cidade','faixas-cidade','radm-busca-cidade'].forEach(id=>{
+    const sel=document.getElementById(id); if(!sel) return;
+    const val=sel.value;
+    sel.innerHTML='<option value="">Todas cidades</option>';
+    ordenar(Object.keys(CIDADES)).forEach(id2=>{ const o=document.createElement('option'); o.value=CIDADES[id2].nome||id2; o.textContent=CIDADES[id2].nome||id2; sel.appendChild(o); });
+    if(val) sel.value=val;
+  });
+}
+function onMapCidadeChange(){
+  const cidade=document.getElementById('map-cidade').value;
+  const selB=document.getElementById('map-bairro');
+  selB.innerHTML='<option value="">Todos bairros</option>';
+  const cid=Object.values(CIDADES).find(c=>c.nome===cidade);
+  if(cid?.bairros) ordenar(Object.keys(cid.bairros)).forEach(b=>{ const o=document.createElement('option'); o.value=b; o.textContent=b; selB.appendChild(o); });
+  document.getElementById('map-quadra').innerHTML='<option value="">Todas quadras</option>';
+  filtrarMapaAdmin();
+}
+function onMapBairroChange(){
+  const cidade=document.getElementById('map-cidade').value;
+  const bairro=document.getElementById('map-bairro').value;
+  const selQ=document.getElementById('map-quadra');
+  selQ.innerHTML='<option value="">Todas quadras</option>';
+  const cid=Object.values(CIDADES).find(c=>c.nome===cidade);
+  if(cid?.bairros?.[bairro]?.quadras) ordenar(Object.keys(cid.bairros[bairro].quadras)).forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; selQ.appendChild(o); });
+  filtrarMapaAdmin();
+}
+function onTabCidadeChange(){
+  const cidade=document.getElementById('tab-cidade').value;
+  const selB=document.getElementById('tab-bairro');
+  selB.innerHTML='<option value="">Todos bairros</option>';
+  const cid=Object.values(CIDADES).find(c=>c.nome===cidade);
+  if(cid?.bairros) ordenar(Object.keys(cid.bairros)).forEach(b=>{ const o=document.createElement('option'); o.value=b; o.textContent=b; selB.appendChild(o); });
+  document.getElementById('tab-quadra').innerHTML='<option value="">Todas quadras</option>';
+  renderTabela();
+}
+function onTabBairroChange(){
+  const cidade=document.getElementById('tab-cidade').value;
+  const bairro=document.getElementById('tab-bairro').value;
+  const selQ=document.getElementById('tab-quadra');
+  selQ.innerHTML='<option value="">Todas quadras</option>';
+  const cid=Object.values(CIDADES).find(c=>c.nome===cidade);
+  if(cid?.bairros?.[bairro]?.quadras) ordenar(Object.keys(cid.bairros[bairro].quadras)).forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; selQ.appendChild(o); });
+  renderTabela();
+}
+function onFaixasCidadeChange(){
+  const cidade=document.getElementById('faixas-cidade').value;
+  const selB=document.getElementById('faixas-bairro');
+  selB.innerHTML='<option value="">Todos bairros</option>';
+  const cid=Object.values(CIDADES).find(c=>c.nome===cidade);
+  if(cid?.bairros) ordenar(Object.keys(cid.bairros)).forEach(b=>{ const o=document.createElement('option'); o.value=b; o.textContent=b; selB.appendChild(o); });
+  renderFaixasTabela();
+}
+
+// ─── Faixas de numeração ────────────────────────────────────────────────────────
+let FAIXAS = {}; // { docId: {cidade,bairro,quadra,conjunto,min,max,tipo} }
+let faixasPag = 1;
+let COORD_QUADRA = {}; // { docId: {cidade,bairro,quadra,lat,lng} } — fallback de coordenada por quadra
+
+function idCoordQuadra(cidade,bairro,quadra){
+  return (cidade+'_'+bairro+'_'+quadra).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+}
+
+async function salvarCoordQuadra(cidade,bairro,quadra){
+  const safeId = quadra.replace(/\s/g,'_');
+  const latVal = document.getElementById('lat-'+safeId).value;
+  const lngVal = document.getElementById('lng-'+safeId).value;
+  if(latVal===''||lngVal===''){ alert('Preencha latitude e longitude.'); return; }
+  const lat = parseFloat(latVal), lng = parseFloat(lngVal);
+  if(isNaN(lat)||isNaN(lng)){ alert('Coordenada inválida.'); return; }
+  const id = idCoordQuadra(cidade,bairro,quadra);
+  try{
+    await fb.setDoc(fb.doc(fb.db,'coordenadasQuadra',id), { cidade,bairro,quadra,lat,lng,atualizadoEm:new Date().toISOString() });
+    showMsgAdmin('✓ Coordenada de fallback salva: '+quadra);
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
+let CORRECOES = [];
+let TELEMETRIA = [];
+let HISTORICO = [];
+let PENDENTES = [];
+let historicoPag = 1;
+const HISTORICO_POR_PAG = 25;
+let telemetriaPag = 1;
+const TELEMETRIA_POR_PAG = 25;
+let correcoesPag = 1;
+const CORRECOES_POR_PAG = 25;
+const FAIXAS_POR_PAG = 25;
+
+function idFaixa(cidade,bairro,quadra,conjunto){
+  return (cidade+'_'+bairro+'_'+quadra+'_'+conjunto).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+}
+
+// Monta lista de TODOS os conjuntos conhecidos (via Cidades) cruzando com faixas já cadastradas
+function listarTodosConjuntos(){
+  const lista = [];
+  Object.values(CIDADES).forEach(cid=>{
+    Object.entries(cid.bairros||{}).forEach(([bairroNome,bairroData])=>{
+      Object.entries(bairroData.quadras||{}).forEach(([quadraNome,conjuntos])=>{
+        (conjuntos||[]).forEach(cj=>{
+          const id = idFaixa(cid.nome,bairroNome,quadraNome,cj);
+          lista.push({ id, cidade:cid.nome, bairro:bairroNome, quadra:quadraNome, conjunto:cj, faixa: FAIXAS[id]||null });
+        });
+      });
+    });
+  });
+  return lista;
+}
+
+function contarCoberturaConjunto(cidade,bairro,quadra,conjunto,faixa){
+  const doConjunto = registros.filter(r => r.cidade===cidade && r.bairro===bairro && r.quadra===quadra && (''+r.conjunto)===(''+conjunto) && r.lat);
+  if(!faixa || faixa.min==null || faixa.max==null) return { confirmadas: doConjunto.length, esperado: null, pct: null, maiorLacuna: null };
+  let esperado;
+  if(faixa.tipo === 'pares' || faixa.tipo === 'impares') esperado = Math.floor((faixa.max - faixa.min)/2) + 1;
+  else esperado = faixa.max - faixa.min + 1;
+  esperado = Math.max(esperado, 1);
+  const pct = Math.min(100, Math.round(doConjunto.length / esperado * 100));
+
+  // Calcula a maior lacuna sem nenhuma casa confirmada — inclui as pontas (min/max da
+  // faixa) como referência, pra também detectar quando falta cobrir o início ou o fim.
+  const numeros = doConjunto
+    .map(r => parseInt(r.casa, 10))
+    .filter(n => !isNaN(n))
+    .sort((a,b) => a-b);
+  let maiorLacuna = null;
+  if(numeros.length){
+    const pontos = [faixa.min, ...numeros, faixa.max];
+    for(let i=0; i<pontos.length-1; i++){
+      const delta = pontos[i+1] - pontos[i];
+      if(!maiorLacuna || delta > maiorLacuna.delta){
+        maiorLacuna = { de: pontos[i], ate: pontos[i+1], delta };
+      }
+    }
+    if(maiorLacuna && maiorLacuna.delta <= 0) maiorLacuna = null; // sem lacuna real (tudo cadastrado)
+  }
+
+  return { confirmadas: doConjunto.length, esperado, pct, maiorLacuna };
+}
+
+function renderFaixasTabela(){
+  const busca = (document.getElementById('faixas-busca').value||'').toLowerCase();
+  const cidade = document.getElementById('faixas-cidade').value;
+  const bairro = document.getElementById('faixas-bairro').value;
+  const status = document.getElementById('faixas-status').value;
+
+  let lista = listarTodosConjuntos();
+  if(cidade) lista = lista.filter(x=>x.cidade===cidade);
+  if(bairro) lista = lista.filter(x=>x.bairro===bairro);
+  if(status==='sem_faixa') lista = lista.filter(x=>!x.faixa);
+  if(status==='com_faixa') lista = lista.filter(x=>!!x.faixa);
+  if(busca) lista = lista.filter(x=> (x.bairro+' '+x.quadra+' '+x.conjunto).toLowerCase().includes(busca));
+
+  lista.sort((a,b)=> a.bairro.localeCompare(b.bairro) || a.quadra.localeCompare(b.quadra,undefined,{numeric:true}) || (''+a.conjunto).localeCompare(''+b.conjunto,undefined,{numeric:true}));
+
+  const total = lista.length;
+  const totalPags = Math.max(1, Math.ceil(total/FAIXAS_POR_PAG));
+  if(faixasPag > totalPags) faixasPag = 1;
+  const pagina = lista.slice((faixasPag-1)*FAIXAS_POR_PAG, faixasPag*FAIXAS_POR_PAG);
+
+  const podeEditarFaixas = ehAdminRaiz || permissoesAtuais.editarFaixas;
+  document.getElementById('faixas-body').innerHTML = pagina.map(x=>{
+    const f = x.faixa;
+    const cob = contarCoberturaConjunto(x.cidade,x.bairro,x.quadra,x.conjunto,f);
+    const corBarra = cob.pct==null ? '#ccc' : cob.pct>=80?'#1D9E75':cob.pct>=40?'#EF9F27':'#E24B4A';
+    const coberturaHtml = cob.esperado
+      ? `<div style="font-size:11px;color:var(--text-2);">${cob.confirmadas}/${cob.esperado}</div>
+         <div class="progress-bar" style="width:70px;"><div class="progress-fill" style="width:${cob.pct}%;background:${corBarra};"></div></div>
+         ${cob.maiorLacuna?`<div style="font-size:10px;color:var(--amber-dark,#856404);margin-top:3px;white-space:nowrap;">🎯 maior lacuna: ${cob.maiorLacuna.de}→${cob.maiorLacuna.ate}</div>`:''}`
+      : `<span style="font-size:11px;color:var(--text-3);">${cob.confirmadas} confirmadas</span>`;
+    const dis = podeEditarFaixas ? '' : 'disabled';
+    return `<tr>
+      <td style="font-size:12px;">${x.bairro}</td>
+      <td>${x.quadra}</td>
+      <td><b>${x.conjunto}</b></td>
+      <td><input type="number" class="faixa-input" id="min-${x.id}" value="${f?.min ?? ''}" placeholder="—" ${dis} style="width:60px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;${podeEditarFaixas?'':'background:#f5f5f5;color:#999;'}"/></td>
+      <td><input type="number" class="faixa-input" id="max-${x.id}" value="${f?.max ?? ''}" placeholder="—" ${dis} style="width:60px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;${podeEditarFaixas?'':'background:#f5f5f5;color:#999;'}"/></td>
+      <td>
+        <select id="tipo-${x.id}" ${dis} style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;${podeEditarFaixas?'':'background:#f5f5f5;color:#999;'}">
+          <option value="todas" ${f?.tipo==='todas'||!f?.tipo?'selected':''}>Todas</option>
+          <option value="pares" ${f?.tipo==='pares'?'selected':''}>Pares</option>
+          <option value="impares" ${f?.tipo==='impares'?'selected':''}>Ímpares</option>
+        </select>
+      </td>
+      <td>${coberturaHtml}</td>
+      <td>${podeEditarFaixas?`<button class="btn-acao" onclick="salvarFaixa('${x.id}','${x.cidade}','${x.bairro}','${x.quadra}','${x.conjunto}')">💾 Salvar</button>`:'<span style="font-size:11px;color:var(--text-3);">Somente leitura</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  let pags = `<span>${total} conjuntos</span>`;
+  if(totalPags>1) pags += Array.from({length:totalPags},(_,i)=>`<button class="page-btn ${i+1===faixasPag?'active':''}" onclick="irParaFaixas(${i+1})">${i+1}</button>`).join('');
+  document.getElementById('faixas-paginacao').innerHTML = pags;
+}
+function irParaFaixas(p){ faixasPag=p; renderFaixasTabela(); }
+
+// ─── Correções do parser (log de casas preenchidas manualmente) ──────────────
+function renderCorrecoes(){
+  const busca = (document.getElementById('correcoes-busca').value||'').toLowerCase();
+  const quadraFiltro = document.getElementById('correcoes-quadra').value;
+
+  // Popula o select de quadras dinamicamente com base nos dados existentes
+  const selQuadra = document.getElementById('correcoes-quadra');
+  if(selQuadra.options.length <= 1){
+    const quadrasUnicas = [...new Set(CORRECOES.map(c=>c.quadra).filter(Boolean))].sort();
+    quadrasUnicas.forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; selQuadra.appendChild(o); });
+  }
+
+  let lista = [...CORRECOES];
+  if(quadraFiltro) lista = lista.filter(c=>c.quadra===quadraFiltro);
+  if(busca) lista = lista.filter(c=>(c.enderecoOriginal||'').toLowerCase().includes(busca));
+
+  lista.sort((a,b)=>(b.ts||'').localeCompare(a.ts||'')); // mais recentes primeiro
+
+  const total = lista.length;
+  const totalPags = Math.max(1, Math.ceil(total/CORRECOES_POR_PAG));
+  if(correcoesPag > totalPags) correcoesPag = 1;
+  const pagina = lista.slice((correcoesPag-1)*CORRECOES_POR_PAG, correcoesPag*CORRECOES_POR_PAG);
+
+  if(!total){
+    document.getElementById('correcoes-body').innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:24px;">Nenhuma correção registrada ainda.</td></tr>`;
+    document.getElementById('correcoes-paginacao').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('correcoes-body').innerHTML = pagina.map(c=>{
+    const dataFmt = c.ts ? new Date(c.ts).toLocaleDateString('pt-BR')+' '+new Date(c.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<tr>
+      <td style="max-width:280px;font-size:12px;color:var(--text-2);">${c.enderecoOriginal||'—'}</td>
+      <td style="font-size:12px;">${c.quadra||'—'} ${c.conjunto?'· Cj.'+c.conjunto:''}</td>
+      <td><b>${c.casaDigitadaManualmente||'—'}</b></td>
+      <td style="font-size:12px;color:var(--text-3);">${c.corrigidoPor||'—'}</td>
+      <td style="font-size:11px;color:var(--text-3);">${dataFmt}</td>
+    </tr>`;
+  }).join('');
+
+  let pags = `<span>${total} correções</span>`;
+  if(totalPags>1) pags += Array.from({length:totalPags},(_,i)=>`<button class="page-btn ${i+1===correcoesPag?'active':''}" onclick="irParaCorrecoes(${i+1})">${i+1}</button>`).join('');
+  document.getElementById('correcoes-paginacao').innerHTML = pags;
+}
+function irParaCorrecoes(p){ correcoesPag=p; renderCorrecoes(); }
+
+// ─── Telemetria de entregas (log passivo de tempo/velocidade por parada) ──────
+function formatarSegundos(s){
+  if(s==null) return '—';
+  if(s<60) return s+'s';
+  return Math.round(s/60)+' min';
+}
+
+function renderTelemetria(){
+  const busca = (document.getElementById('tel-busca').value||'').toLowerCase();
+  const motoristaFiltro = document.getElementById('tel-motorista').value;
+
+  const selMot = document.getElementById('tel-motorista');
+  if(selMot.options.length <= 1){
+    const motoristasUnicos = [...new Set(TELEMETRIA.map(t=>t.motoristaEmail).filter(Boolean))].sort();
+    motoristasUnicos.forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; selMot.appendChild(o); });
+  }
+
+  let lista = [...TELEMETRIA];
+  if(motoristaFiltro) lista = lista.filter(t=>t.motoristaEmail===motoristaFiltro);
+  if(busca) lista = lista.filter(t=>((t.quadra||'')+' '+(t.conjunto||'')).toLowerCase().includes(busca));
+
+  // Estatísticas gerais (sobre a lista filtrada)
+  const comTempoChegar = lista.filter(t=>t.tempoAteChegarSeg!=null);
+  const comTempoParado = lista.filter(t=>t.tempoParadoSeg!=null);
+  const mediaChegar = comTempoChegar.length ? comTempoChegar.reduce((s,t)=>s+t.tempoAteChegarSeg,0)/comTempoChegar.length : null;
+  const mediaParado = comTempoParado.length ? comTempoParado.reduce((s,t)=>s+t.tempoParadoSeg,0)/comTempoParado.length : null;
+  document.getElementById('tel-media-chegar').textContent = formatarSegundos(mediaChegar!=null?Math.round(mediaChegar):null);
+  document.getElementById('tel-media-parado').textContent = formatarSegundos(mediaParado!=null?Math.round(mediaParado):null);
+  document.getElementById('tel-total').textContent = lista.length;
+
+  lista.sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
+
+  const total = lista.length;
+  const totalPags = Math.max(1, Math.ceil(total/TELEMETRIA_POR_PAG));
+  if(telemetriaPag > totalPags) telemetriaPag = 1;
+  const pagina = lista.slice((telemetriaPag-1)*TELEMETRIA_POR_PAG, telemetriaPag*TELEMETRIA_POR_PAG);
+
+  if(!total){
+    document.getElementById('tel-body').innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-3);padding:24px;">Nenhuma telemetria registrada ainda.</td></tr>`;
+    document.getElementById('tel-paginacao').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('tel-body').innerHTML = pagina.map(t=>{
+    const dataFmt = t.ts ? new Date(t.ts).toLocaleDateString('pt-BR')+' '+new Date(t.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<tr>
+      <td style="font-size:12px;">${t.quadra||'—'} ${t.conjunto?'· Cj.'+t.conjunto:''}${t.casa?' · Casa '+t.casa:''}</td>
+      <td>${formatarSegundos(t.tempoAteChegarSeg)}</td>
+      <td>${formatarSegundos(t.tempoParadoSeg)}</td>
+      <td style="font-size:12px;">${t.velocidadeMediaKmh!=null?t.velocidadeMediaKmh+' km/h':'—'}</td>
+      <td style="font-size:12px;">${t.precisaoGpsM!=null?'~'+t.precisaoGpsM+'m':'—'}</td>
+      <td style="font-size:12px;color:var(--text-3);">${t.motoristaEmail||'—'}</td>
+      <td style="font-size:11px;color:var(--text-3);">${dataFmt}</td>
+    </tr>`;
+  }).join('');
+
+  let pags = `<span>${total} registros</span>`;
+  if(totalPags>1) pags += Array.from({length:totalPags},(_,i)=>`<button class="page-btn ${i+1===telemetriaPag?'active':''}" onclick="irParaTelemetria(${i+1})">${i+1}</button>`).join('');
+  document.getElementById('tel-paginacao').innerHTML = pags;
+}
+function irParaTelemetria(p){ telemetriaPag=p; renderTelemetria(); }
+
+// ─── Histórico de rotas concluídas ─────────────────────────────────────────────
+function formatarDuracaoMin(min){
+  if(min==null) return '—';
+  const h = Math.floor(min/60), m = min%60;
+  return h>0 ? `${h}h${m.toString().padStart(2,'0')}min` : `${m}min`;
+}
+
+function renderHistorico(){
+  const motoristaFiltro = document.getElementById('hist-motorista').value;
+
+  const selMot = document.getElementById('hist-motorista');
+  if(selMot.options.length <= 1){
+    const motoristasUnicos = [...new Set(HISTORICO.map(h=>h.motoristaEmail).filter(Boolean))].sort();
+    motoristasUnicos.forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; selMot.appendChild(o); });
+  }
+
+  let lista = [...HISTORICO];
+  if(motoristaFiltro) lista = lista.filter(h=>h.motoristaEmail===motoristaFiltro);
+
+  const totalEntregas = lista.reduce((s,h)=>s+(h.totalEntregues||0),0);
+  const totalKm = lista.reduce((s,h)=>s+(h.distanciaTotalKm||0),0);
+  document.getElementById('hist-total-rotas').textContent = lista.length;
+  document.getElementById('hist-total-entregas').textContent = totalEntregas;
+  document.getElementById('hist-total-km').textContent = totalKm.toFixed(1);
+
+  lista.sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
+
+  const total = lista.length;
+  const totalPags = Math.max(1, Math.ceil(total/HISTORICO_POR_PAG));
+  if(historicoPag > totalPags) historicoPag = 1;
+  const pagina = lista.slice((historicoPag-1)*HISTORICO_POR_PAG, historicoPag*HISTORICO_POR_PAG);
+
+  if(!total){
+    document.getElementById('hist-body').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:24px;">Nenhuma rota concluída ainda.</td></tr>`;
+    document.getElementById('hist-paginacao').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('hist-body').innerHTML = pagina.map(h=>{
+    const dataFmt = h.ts ? new Date(h.ts).toLocaleDateString('pt-BR')+' '+new Date(h.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<tr>
+      <td style="font-size:12px;">${h.motoristaEmail||'—'}</td>
+      <td><b style="color:var(--green);">${h.totalEntregues??'—'}</b></td>
+      <td style="color:var(--red);">${h.totalPuladas??'—'}</td>
+      <td style="font-size:12px;">${formatarDuracaoMin(h.duracaoTotalMin)}</td>
+      <td style="font-size:12px;">${h.distanciaTotalKm!=null?h.distanciaTotalKm+' km':'—'}</td>
+      <td style="font-size:11px;color:var(--text-3);">${dataFmt}</td>
+    </tr>`;
+  }).join('');
+
+  let pags = `<span>${total} rotas</span>`;
+  if(totalPags>1) pags += Array.from({length:totalPags},(_,i)=>`<button class="page-btn ${i+1===historicoPag?'active':''}" onclick="irParaHistorico(${i+1})">${i+1}</button>`).join('');
+  document.getElementById('hist-paginacao').innerHTML = pags;
+}
+function irParaHistorico(p){ historicoPag=p; renderHistorico(); }
+
+// ─── Confirmações de endereço (auditoria + desfazer) ───────────────────────────
+let confirmacoesPag = 1;
+const CONFIRMACOES_POR_PAG = 25;
+
+function listarTodasConfirmacoes(){
+  const lista = [];
+  registros.forEach(r=>{
+    (r.confirmacoes||[]).forEach(c=>{
+      lista.push({
+        registroId: r.id, quadra:r.quadra, conjunto:r.conjunto, casa:r.casa, bairro:r.bairro, cidade:r.cidade,
+        lat:c.lat, lng:c.lng, uid:c.uid, email:c.email, ts:c.ts
+      });
+    });
+  });
+  return lista;
+}
+
+function renderConfirmacoes(){
+  const busca = (document.getElementById('conf-busca').value||'').toLowerCase();
+  const quemFiltro = document.getElementById('conf-quem').value;
+  const periodo = document.getElementById('conf-periodo').value;
+
+  let todas = listarTodasConfirmacoes();
+
+  const selQuem = document.getElementById('conf-quem');
+  if(selQuem.options.length <= 1){
+    const emails = [...new Set(todas.map(c=>c.email).filter(Boolean))].sort();
+    emails.forEach(e=>{ const o=document.createElement('option'); o.value=e; o.textContent=e; selQuem.appendChild(o); });
+  }
+
+  const hojeStr = new Date().toDateString();
+  document.getElementById('conf-total').textContent = todas.length;
+  document.getElementById('conf-hoje').textContent = todas.filter(c=>c.ts && new Date(c.ts).toDateString()===hojeStr).length;
+
+  let lista = todas;
+  if(quemFiltro) lista = lista.filter(c=>c.email===quemFiltro);
+  if(periodo==='hoje') lista = lista.filter(c=>c.ts && new Date(c.ts).toDateString()===hojeStr);
+  if(busca) lista = lista.filter(c=>((c.quadra||'')+' '+(c.conjunto||'')).toLowerCase().includes(busca));
+
+  lista.sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
+
+  const total = lista.length;
+  const totalPags = Math.max(1, Math.ceil(total/CONFIRMACOES_POR_PAG));
+  if(confirmacoesPag > totalPags) confirmacoesPag = 1;
+  const pagina = lista.slice((confirmacoesPag-1)*CONFIRMACOES_POR_PAG, confirmacoesPag*CONFIRMACOES_POR_PAG);
+
+  if(!total){
+    document.getElementById('conf-body').innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:24px;">Nenhuma confirmação registrada ainda.</td></tr>`;
+    document.getElementById('conf-paginacao').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('conf-body').innerHTML = pagina.map(c=>{
+    const dataFmt = c.ts ? new Date(c.ts).toLocaleDateString('pt-BR')+' '+new Date(c.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<tr>
+      <td style="font-size:12px;">${c.quadra||'—'} · Cj.${c.conjunto||'?'} · Casa ${c.casa||'?'}</td>
+      <td style="font-size:11px;color:var(--text-3);">${c.lat?.toFixed(6)}, ${c.lng?.toFixed(6)}</td>
+      <td style="font-size:12px;">${c.email||'—'}</td>
+      <td style="font-size:11px;color:var(--text-3);">${dataFmt}</td>
+      <td><div class="td-acoes">
+        <button class="btn-acao" onclick="abrirEditarConfirmacao('${c.registroId}','${c.ts}')">✏️ Corrigir</button>
+        <button class="btn-acao del" onclick="removerConfirmacao('${c.registroId}','${c.ts}')">🗑 Desfazer</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+
+  let pags = `<span>${total} confirmações</span>`;
+  if(totalPags>1) pags += Array.from({length:totalPags},(_,i)=>`<button class="page-btn ${i+1===confirmacoesPag?'active':''}" onclick="irParaConfirmacoes(${i+1})">${i+1}</button>`).join('');
+  document.getElementById('conf-paginacao').innerHTML = pags;
+}
+function irParaConfirmacoes(p){ confirmacoesPag=p; renderConfirmacoes(); }
+
+// ─── Corrigir a posição de uma confirmação específica (mini-mapa) ─────────────
+let confEditMap = null, confEditMarker = null;
+let confEditandoRegistroId = null, confEditandoTs = null;
+
+function abrirEditarConfirmacao(registroId, ts){
+  const r = registros.find(x=>x.id===registroId);
+  if(!r){ alert('Registro não encontrado.'); return; }
+  const conf = (r.confirmacoes||[]).find(c=>c.ts===ts);
+  if(!conf){ alert('Confirmação não encontrada.'); return; }
+
+  confEditandoRegistroId = registroId;
+  confEditandoTs = ts;
+  document.getElementById('conf-edit-title').textContent = 'Corrigir · '+r.quadra+' · Cj.'+(r.conjunto||'?')+' · Casa '+r.casa;
+  document.getElementById('conf-edit-lat').value = conf.lat;
+  document.getElementById('conf-edit-lng').value = conf.lng;
+
+  abrirModal('editar-confirmacao-modal');
+
+  setTimeout(()=>{
+    if(!confEditMap){
+      confEditMap = L.map('conf-edit-map').setView([conf.lat,conf.lng], 18);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(confEditMap);
+      confEditMarker = L.marker([conf.lat,conf.lng], { draggable:true }).addTo(confEditMap);
+      confEditMarker.on('dragend', () => {
+        const pos = confEditMarker.getLatLng();
+        document.getElementById('conf-edit-lat').value = pos.lat.toFixed(6);
+        document.getElementById('conf-edit-lng').value = pos.lng.toFixed(6);
+      });
+      ['conf-edit-lat','conf-edit-lng'].forEach(id=>{
+        document.getElementById(id).oninput = () => {
+          const lat = parseFloat(document.getElementById('conf-edit-lat').value);
+          const lng = parseFloat(document.getElementById('conf-edit-lng').value);
+          if(!isNaN(lat) && !isNaN(lng)){ confEditMarker.setLatLng([lat,lng]); confEditMap.panTo([lat,lng]); }
+        };
+      });
+    } else {
+      confEditMap.setView([conf.lat,conf.lng], 18);
+      confEditMarker.setLatLng([conf.lat,conf.lng]);
+      confEditMap.invalidateSize();
+    }
+  }, 100);
+}
+
+async function salvarEdicaoConfirmacao(){
+  if(!confEditandoRegistroId || !confEditandoTs) return;
+  const lat = parseFloat(document.getElementById('conf-edit-lat').value);
+  const lng = parseFloat(document.getElementById('conf-edit-lng').value);
+  if(isNaN(lat) || isNaN(lng)){ alert('Coordenada inválida.'); return; }
+
+  const r = registros.find(x=>x.id===confEditandoRegistroId);
+  if(!r){ alert('Registro não encontrado.'); return; }
+
+  // Substitui só a confirmação editada, mantendo as demais intactas
+  const confsAtualizadas = (r.confirmacoes||[]).map(c => c.ts===confEditandoTs ? { ...c, lat, lng } : c);
+
+  const dados = { confirmacoes: confsAtualizadas, totalConfirmacoes: confsAtualizadas.length };
+  if(confsAtualizadas.length){
+    const latMedio = confsAtualizadas.reduce((s,c)=>s+c.lat,0)/confsAtualizadas.length;
+    const lngMedio = confsAtualizadas.reduce((s,c)=>s+c.lng,0)/confsAtualizadas.length;
+    const maxDist = Math.max(...confsAtualizadas.map(c=>distanciaMetrosAdmin(c,{lat:latMedio,lng:lngMedio})));
+    dados.verificado = confsAtualizadas.length >= 3 && maxDist <= 40;
+    if(!r.localizacaoTravada){ dados.lat = latMedio; dados.lng = lngMedio; }
+  }
+
+  try{
+    await fb.setDoc(fb.doc(fb.db,'registros',confEditandoRegistroId), dados, { merge:true });
+    fecharModal('editar-confirmacao-modal');
+    showMsgAdmin('✓ Confirmação corrigida — posição do endereço recalculada.');
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
+async function removerConfirmacao(registroId, ts){
+  if(!confirm('Desfazer essa confirmação? A posição do endereço será recalculada com as confirmações restantes.')) return;
+  const r = registros.find(x=>x.id===registroId);
+  if(!r){ alert('Registro não encontrado.'); return; }
+
+  const confsRestantes = (r.confirmacoes||[]).filter(c=>c.ts !== ts);
+  const dados = { confirmacoes: confsRestantes, totalConfirmacoes: confsRestantes.length };
+
+  if(confsRestantes.length === 0){
+    // Sem nenhuma confirmação restante — não dá pra recalcular centróide, mantém a
+    // coordenada como estava (só desmarca a verificação) e avisa o admin.
+    dados.verificado = false;
+  } else {
+    const latMedio = confsRestantes.reduce((s,c)=>s+c.lat,0)/confsRestantes.length;
+    const lngMedio = confsRestantes.reduce((s,c)=>s+c.lng,0)/confsRestantes.length;
+    const maxDist = Math.max(...confsRestantes.map(c=>distanciaMetrosAdmin(c,{lat:latMedio,lng:lngMedio})));
+    const aindaVerificado = confsRestantes.length >= 3 && maxDist <= 40;
+    dados.verificado = aindaVerificado;
+    if(!r.localizacaoTravada){ dados.lat = latMedio; dados.lng = lngMedio; }
+  }
+
+  try{
+    await fb.setDoc(fb.doc(fb.db,'registros',registroId), dados, { merge:true });
+    showMsgAdmin('✓ Confirmação desfeita — posição recalculada.');
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
+// ─── Aprovações de endereços novos ─────────────────────────────────────────────
+function renderAprovacoes(){
+  const div = document.getElementById('aprovacoes-lista');
+  if(!PENDENTES.length){
+    div.innerHTML = '<div class="card" style="text-align:center;padding:40px 20px;color:var(--text-3);">✓ Nenhum endereço aguardando aprovação no momento.</div>';
+    return;
+  }
+  const lista = [...PENDENTES].sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
+  div.innerHTML = lista.map(p=>{
+    const dataFmt = p.ts ? new Date(p.ts).toLocaleDateString('pt-BR')+' '+new Date(p.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;gap:14px;">
+        ${p.foto?`<img src="${p.foto}" onclick="verFoto('${p.foto}')" style="width:76px;height:76px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer;flex-shrink:0;">`:`<div style="width:76px;height:76px;border-radius:10px;background:var(--bg-alt,#f5f5f5);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">📍</div>`}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:14px;">${p.bairro||'—'} · ${p.quadra||'—'} · Cj.${p.conjunto||'?'} · Casa ${p.casa||'?'}</div>
+          <div style="font-size:12px;color:var(--text-2);margin-top:3px;">${p.obs||'Sem observação'}</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px;">
+            📊 ${p.totalConfirmacoes||1} confirmação(ões) · 👤 ${p.criadoPor||'—'} · 🕐 ${dataFmt}
+          </div>
+          ${p.lat?`<div style="font-size:11px;color:var(--text-3);margin-top:2px;">📌 ${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</div>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn-acao" style="flex:1;background:var(--green);color:#fff;border-color:var(--green-dark);" onclick="aprovarPendente('${p.id}')">✅ Aprovar</button>
+        <button class="btn-acao del" style="flex:1;" onclick="rejeitarPendente('${p.id}')">🗑 Rejeitar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function aprovarPendente(id){
+  if(!ehAdminRaiz && !permissoesAtuais.editarReg){ alert('Você não tem permissão para aprovar registros.'); return; }
+  const p = PENDENTES.find(x=>x.id===id); if(!p) return;
+  try{
+    const { id: _id, ...dados } = p;
+    await fb.setDoc(fb.doc(fb.db,'registros',id), dados);
+    await fb.deleteDoc(fb.doc(fb.db,'registrosPendentes',id));
+    showMsgAdmin('✓ Endereço aprovado e adicionado ao sistema');
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
+async function rejeitarPendente(id){
+  if(!ehAdminRaiz && !permissoesAtuais.editarReg){ alert('Você não tem permissão para rejeitar registros.'); return; }
+  if(!confirm('Rejeitar este endereço? Ele será removido da fila sem entrar no sistema.')) return;
+  try{ await fb.deleteDoc(fb.doc(fb.db,'registrosPendentes',id)); }
+  catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
+async function salvarFaixa(id, cidade, bairro, quadra, conjunto){
+  if(!ehAdminRaiz && !permissoesAtuais.editarFaixas){ alert('Você não tem permissão para editar faixas.'); return; }
+  const minVal = document.getElementById('min-'+id).value;
+  const maxVal = document.getElementById('max-'+id).value;
+  const tipo = document.getElementById('tipo-'+id).value;
+  if(minVal==='' || maxVal===''){ alert('Preencha casa mínima e máxima.'); return; }
+  const min = parseInt(minVal,10), max = parseInt(maxVal,10);
+  if(isNaN(min) || isNaN(max) || min>max){ alert('Faixa inválida.'); return; }
+  try{
+    await fb.setDoc(fb.doc(fb.db,'faixas',id), { cidade,bairro,quadra,conjunto,min,max,tipo,atualizadoEm:new Date().toISOString() });
+    showMsgAdmin('✓ Faixa salva: '+quadra+' Cj.'+conjunto);
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// ROTAS — montar rota completa no painel admin (reaproveita lógica do app)
+// ═══════════════════════════════════════════════════════════════════════════
+function normalizarTexto(t){
+  return (t||'').toLowerCase()
+    .replace(/[àáâãä]/g,'a').replace(/[èéêë]/g,'e')
+    .replace(/[ìíîï]/g,'i').replace(/[òóôõö]/g,'o')
+    .replace(/[ùúûü]/g,'u').replace(/ç/g,'c')
+    .trim();
+}
+function compararValor(a,b){
+  const na = normalizarTexto(a), nb = normalizarTexto(b);
+  if(na === nb) return true;
+  const ia = parseInt(a,10), ib = parseInt(b,10);
+  if(!isNaN(ia) && !isNaN(ib)) return ia === ib;
+  return false;
+}
+function normalizarCasa(valor){
+  if(!valor) return valor;
+  const str = String(valor).trim();
+  const m = str.match(/^0*(\d+)([a-zA-Z]*)$/);
+  if(m) return m[1] + m[2].toUpperCase();
+  return str;
+}
+function normalizarConjuntoAdm(val){
+  val = (val||'').trim();
+  if(!val) return '';
+  if(/^\d+$/.test(val)) return val.replace(/^0+/,'').padStart(2,'0') || '00';
+  return val.toUpperCase();
+}
+
+function parsearLinhaAdmin(linha){
+  linha = linha.trim();
+  if(!linha) return null;
+  let address = '';
+  if(linha.startsWith('"')){
+    const fechaAspas = linha.indexOf('"', 1);
+    address = linha.slice(1, fechaAspas === -1 ? linha.length : fechaAspas);
+  } else { address = linha.split(',')[0]; }
+  if(!address) return null;
+  const partesLinha = linha.split(',');
+  const contato = partesLinha[partesLinha.length - 1]?.trim().replace(/"/g,'') || '';
+  const todosParens = [...address.matchAll(/\(([^)]+)\)/g)];
+  const dentroParens = todosParens.length ? todosParens[todosParens.length - 1][1] : '';
+  const prefixo = address.split('(')[0];
+  let quadra = '', conjunto = '', casa = '';
+  const reQNO = /(?:qno|qn[o0])\s*(\d+)/i;
+  const reCJ  = /(?:conjunto|conj\.?|cj\.?)\s*([a-z0-9]+)/i;
+  const reCASA = /(?:casa|ca\.?)\s*(\d+[a-z]?)/i;
+  const mQ = prefixo.match(reQNO) || dentroParens.match(reQNO);
+  if(mQ) quadra = 'QNO ' + mQ[1];
+  const mCJ = prefixo.match(reCJ) || dentroParens.match(reCJ);
+  if(mCJ) conjunto = normalizarConjuntoAdm(mCJ[1]);
+  const tokens = prefixo.split(',').map(t=>t.trim()).filter(Boolean);
+  if(tokens.length > 1 && /^\d{1,3}[a-z]?$/i.test(tokens[1])) casa = normalizarCasa(tokens[1]);
+  if(!casa){ const mCASA = dentroParens.match(reCASA); if(mCASA) casa = normalizarCasa(mCASA[1]); }
+  if(!casa){
+    const reCASA_antes = /(\d{1,3}[a-z]?)\s*,?\s*(?:casa|ca\.?)\b/i;
+    const mCASA2 = dentroParens.match(reCASA_antes);
+    if(mCASA2) casa = normalizarCasa(mCASA2[1]);
+  }
+  let bairro = 'Expansão Setor O';
+  if(/^Rua\s+\d/i.test(quadra)) bairro = 'Cond. Agrícola Privê';
+  if(!quadra) return null;
+  return { quadra, conjunto, casa, casaPendente: !casa, bairro, cidade:'Ceilândia', contato, enderecoOriginal: address };
+}
+
+const cacheGeocodingAdmin = {};
+let ultimaChamadaNominatimAdmin = 0;
+async function geocodificarComNominatimAdmin(pacote){
+  const enderecoTexto = `${pacote.quadra} Conjunto ${pacote.conjunto||''} Casa ${pacote.casa||''}, ${pacote.bairro}, ${pacote.cidade}, DF, Brasil`;
+  if(cacheGeocodingAdmin[enderecoTexto]) return cacheGeocodingAdmin[enderecoTexto];
+  const agora = Date.now();
+  const espera = Math.max(0, 1100 - (agora - ultimaChamadaNominatimAdmin));
+  if(espera > 0) await new Promise(r => setTimeout(r, espera));
+  ultimaChamadaNominatimAdmin = Date.now();
+  try{
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(enderecoTexto)}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if(data?.[0]?.lat){
+      const resultado = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), tipo: 'estimado' };
+      cacheGeocodingAdmin[enderecoTexto] = resultado;
+      return resultado;
+    }
+  } catch(e){ console.warn('[Nominatim admin]', e); }
+  return null;
+}
+
+function interpolarEntreVizinhasAdmin(pacote, doConjunto, faixa){
+  const casaNum = parseInt(pacote.casa, 10);
+  if(isNaN(casaNum) || !doConjunto.length) return null;
+  let comNumero = doConjunto.map(r => ({ ...r, casaNum: parseInt(r.casa, 10) })).filter(r => !isNaN(r.casaNum));
+  if(!comNumero.length) return null;
+  if(faixa?.tipo === 'pares' || faixa?.tipo === 'impares'){
+    const alvo = faixa.tipo === 'pares' ? 0 : 1;
+    const filtrado = comNumero.filter(r => r.casaNum % 2 === alvo);
+    if(filtrado.length) comNumero = filtrado;
+  }
+  if(comNumero.length === 1){ const u=comNumero[0]; return { lat:u.lat, lng:u.lng, tipo:'estimado_conjunto' }; }
+  const inferior = comNumero.filter(r => r.casaNum <= casaNum).sort((a,b)=>b.casaNum-a.casaNum)[0];
+  const superior = comNumero.filter(r => r.casaNum >= casaNum).sort((a,b)=>a.casaNum-b.casaNum)[0];
+  if(inferior && superior && inferior.casaNum !== superior.casaNum){
+    const proporcao = (casaNum - inferior.casaNum) / (superior.casaNum - inferior.casaNum);
+    return { lat: inferior.lat+(superior.lat-inferior.lat)*proporcao, lng: inferior.lng+(superior.lng-inferior.lng)*proporcao, tipo:'estimado_conjunto' };
+  }
+  const maisProxima = comNumero.sort((a,b) => Math.abs(a.casaNum-casaNum) - Math.abs(b.casaNum-casaNum))[0];
+  return maisProxima ? { lat:maisProxima.lat, lng:maisProxima.lng, tipo:'estimado_conjunto' } : null;
+}
+
+async function encontrarGPSAdmin(pacote){
+  const norm = normalizarTexto;
+  const matchExato = registros.find(r => norm(r.quadra)===norm(pacote.quadra) && compararValor(r.conjunto,pacote.conjunto) && (compararValor(r.casa,pacote.casa)||!pacote.casa));
+  if(matchExato?.lat) return { lat:matchExato.lat, lng:matchExato.lng, tipo:'gps' };
+  if(pacote.conjunto){
+    const doConjunto = registros.filter(r => norm(r.quadra)===norm(pacote.quadra) && compararValor(r.conjunto,pacote.conjunto) && r.lat);
+    if(doConjunto.length){
+      const faixa = FAIXAS[idFaixa(pacote.cidade,pacote.bairro,pacote.quadra,pacote.conjunto)];
+      const interp = interpolarEntreVizinhasAdmin(pacote, doConjunto, faixa);
+      if(interp) return interp;
+    }
+  }
+  const coordAdmin = COORD_QUADRA[idCoordQuadra(pacote.cidade,pacote.bairro,pacote.quadra)];
+  if(coordAdmin?.lat) return { lat:coordAdmin.lat, lng:coordAdmin.lng, tipo:'estimado' };
+  const geo = await geocodificarComNominatimAdmin(pacote);
+  if(geo) return geo;
+  return null;
+}
+
+function validarCasaNaFaixaAdmin(pacote){
+  if(!pacote.casa) return null;
+  const faixa = FAIXAS[idFaixa(pacote.cidade,pacote.bairro,pacote.quadra,pacote.conjunto)];
+  if(!faixa || faixa.min==null || faixa.max==null) return null;
+  const casaNum = parseInt(pacote.casa,10);
+  if(isNaN(casaNum)) return null;
+  const dentro = casaNum>=faixa.min && casaNum<=faixa.max;
+  const paridadeOk = faixa.tipo==='pares'?casaNum%2===0:faixa.tipo==='impares'?casaNum%2===1:true;
+  if(!dentro || !paridadeOk) return `Fora da faixa esperada (${faixa.min}–${faixa.max}${faixa.tipo!=='todas'?', '+faixa.tipo:''})`;
+  return null;
+}
+
+function infoTipoGPSAdmin(tipo){
+  if(tipo==='gps') return {cor:'#1D9E75', txt:'GPS'};
+  if(tipo==='estimado_conjunto') return {cor:'#378ADD', txt:'Aprox.'};
+  if(tipo==='estimado') return {cor:'#EF9F27', txt:'Estimado'};
+  return {cor:'#E24B4A', txt:'Não enc.'};
+}
+
+let radmPacotesAnalisados = [];
+let radmRotaAtual = [];
+let radmMap = null, radmMarkers = null, radmLinha = null, radmMapReady = false;
+let radmBoundsAjustados = false, radmOrdemTravada = false;
+let radmDuracaoOSRM = null;
+
+function admImportarCSV(e){
+  const file = e.target.files[0]; e.target.value='';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { document.getElementById('radm-input').value = ev.target.result; admAnalisarLista(); };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function admAnalisarLista(){
+  const input = document.getElementById('radm-input').value.trim();
+  if(!input){ alert('Cole ou importe a lista de pacotes primeiro.'); return; }
+
+  const transportadora = document.getElementById('radm-transportadora').value.trim();
+  if(transportadora) localStorage.setItem('rotasqno_ultima_transportadora', transportadora);
+
+  const btn = document.getElementById('radm-analisar-btn');
+  btn.disabled = true;
+  const linhas = input.split('\n').filter(l => l.trim() && !l.startsWith('Address,'));
+  const pacotes = [];
+  let naoReconhecidos = 0;
+  for(const linha of linhas){
+    const p = parsearLinhaAdmin(linha);
+    if(!p){ naoReconhecidos++; continue; }
+    btn.textContent = `Analisando... (${pacotes.length+1}/${linhas.length})`;
+    const gps = await encontrarGPSAdmin(p);
+    const avisoFaixa = validarCasaNaFaixaAdmin(p);
+    const idPacote = 'p'+Date.now()+'_'+pacotes.length+'_'+Math.random().toString(36).slice(2,6);
+    pacotes.push({ ...p, coords: gps, tipoGPS: gps?.tipo||'nao_encontrado', avisoFaixa, idPacote, transportadora });
+  }
+  radmPacotesAnalisados = pacotes;
+  btn.disabled = false; btn.textContent = '🔍 Analisar lista';
+  admRenderRevisao(pacotes, naoReconhecidos);
+}
+
+function admRenderRevisao(pacotes, naoReconhecidos){
+  document.getElementById('radm-resultado').style.display = 'block';
+  document.getElementById('radm-mapa-card').style.display = 'none';
+  document.getElementById('radm-busca-card').style.display = 'none';
+  document.getElementById('radm-envio-card').style.display = 'none';
+  document.getElementById('radm-fechar-wrap').style.display = 'none';
+  document.getElementById('radm-reotimizar-wrap').style.display = 'none';
+  radmOrdemTravada = false;
+
+  const pendentes = pacotes.filter(p=>p.casaPendente);
+  const forasFaixa = pacotes.filter(p=>p.avisoFaixa);
+  document.getElementById('radm-stats').innerHTML = `
+    <div class="stat-mini"><span class="num">${pacotes.length}</span><span class="lbl">pacotes</span></div>
+    <div class="stat-mini"><span class="num" style="color:var(--green)">${pacotes.length-pendentes.length}</span><span class="lbl">casa ok</span></div>
+    <div class="stat-mini"><span class="num" style="color:#EF9F27">${pendentes.length}</span><span class="lbl">sem nº casa</span></div>
+    ${forasFaixa.length?`<div class="stat-mini"><span class="num" style="color:var(--red)">${forasFaixa.length}</span><span class="lbl">fora da faixa</span></div>`:''}
+    ${naoReconhecidos?`<div class="stat-mini"><span class="num" style="color:var(--red)">${naoReconhecidos}</span><span class="lbl">não reconh.</span></div>`:''}
+  `;
+
+  const aviso = document.getElementById('radm-aviso');
+  if(forasFaixa.length){ aviso.style.display='block'; aviso.style.background='var(--red-light,#FCEBEB)'; aviso.style.color='var(--red)'; aviso.textContent = `🚨 ${forasFaixa.length} endereço(s) com casa fora da faixa esperada — confira antes de otimizar.`; }
+  else if(pendentes.length){ aviso.style.display='block'; aviso.style.background='#FFF3CD'; aviso.style.color='#856404'; aviso.textContent = `⚠️ ${pendentes.length} endereço(s) sem número de casa — preencha manualmente abaixo.`; }
+  else { aviso.style.display='block'; aviso.style.background='var(--green-light,#E1F5EE)'; aviso.style.color='var(--green-dark,#0F6E56)'; aviso.textContent = '✓ Todos os endereços tiveram a casa identificada.'; }
+
+  document.getElementById('radm-lista-revisao').innerHTML = pacotes.map((p,i)=>{
+    const info = infoTipoGPSAdmin(p.tipoGPS);
+    const transpTag = p.transportadora ? `<span style="background:#EAF2FB;color:#1B5A8A;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;margin-left:4px;">${p.transportadora}</span>` : '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;${p.avisoFaixa?'background:var(--red-light,#FCEBEB);':''}">
+      <div style="width:26px;height:26px;border-radius:50%;background:${info.cor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${i+1}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;">${p.quadra} · Cj.${p.conjunto||'?'} <span style="font-size:10px;padding:2px 6px;border-radius:8px;background:${info.cor}22;color:${info.cor};">${info.txt}</span>${transpTag}</div>
+        <div style="font-size:11px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.enderecoOriginal.slice(0,70)}</div>
+        ${p.avisoFaixa?`<div style="font-size:11px;color:var(--red);font-weight:600;">🚨 ${p.avisoFaixa}</div>`:''}
+      </div>
+      ${p.casaPendente?`<input type="text" data-idx="${i}" class="radm-casa-input" placeholder="casa?" style="width:80px;padding:6px 8px;border:1px solid #EF9F27;border-radius:6px;font-size:12px;"/>`:`<div style="font-size:12px;font-weight:700;">Casa ${p.casa}</div>`}
+    </div>`;
+  }).join('');
+}
+
+function admDistancia(a,b){ const dlat=a.lat-b.lat, dlng=a.lng-b.lng; return Math.sqrt(dlat*dlat+dlng*dlng); }
+function admOtimizarVizinhoProximo(origem, pacotes){
+  const restantes=[...pacotes], ordenados=[]; let posAtual=origem;
+  while(restantes.length){
+    let melhorIdx=0, melhorDist=Infinity;
+    restantes.forEach((p,i)=>{ if(!p.coords) return; const d=admDistancia(posAtual,p.coords); if(d<melhorDist){melhorDist=d;melhorIdx=i;} });
+    const prox = restantes.splice(melhorIdx,1)[0];
+    ordenados.push(prox);
+    if(prox.coords) posAtual=prox.coords;
+  }
+  return ordenados;
+}
+function admAplicar2opt(rota, maxIt){
+  if(rota.length<4) return rota;
+  let atual=rota.slice(), melhorou=true, tentativas=0;
+  const limite = maxIt||300;
+  while(melhorou && tentativas<limite){
+    melhorou=false; tentativas++;
+    for(let i=0;i<atual.length-2;i++){
+      for(let j=i+2;j<atual.length-1;j++){
+        const a=atual[i],b=atual[i+1],c=atual[j],d=atual[j+1];
+        const distAtual = distanciaMetrosAdmin(a.coords,b.coords)+distanciaMetrosAdmin(c.coords,d.coords);
+        const distNova = distanciaMetrosAdmin(a.coords,c.coords)+distanciaMetrosAdmin(b.coords,d.coords);
+        if(distNova < distAtual-1){
+          const meio = atual.slice(i+1,j+1).reverse();
+          atual = [...atual.slice(0,i+1), ...meio, ...atual.slice(j+1)];
+          melhorou=true;
+        }
+      }
+    }
+  }
+  return atual;
+}
+async function admOtimizarRotaComOSRM(pacotes){
+  if(pacotes.length<=1) return pacotes;
+  const coordsStr = pacotes.map(p=>p.coords.lng+','+p.coords.lat).join(';');
+  const url = `https://router.project-osrm.org/trip/v1/driving/${coordsStr}?roundtrip=false&overview=false`;
+  const resp = await fetch(url);
+  const data = await resp.json();
+  if(data.code!=='Ok'||!data.waypoints) throw new Error('OSRM: '+data.code);
+  radmDuracaoOSRM = data.trips?.[0]?.duration || null;
+  const comOrdem = data.waypoints.map((wp,i)=>({pacote:pacotes[i], ordem:wp.waypoint_index}));
+  comOrdem.sort((a,b)=>a.ordem-b.ordem);
+  return comOrdem.map(x=>x.pacote);
+}
+
+async function admOtimizarRota(){
+  for(const inp of document.querySelectorAll('.radm-casa-input')){
+    const idx = parseInt(inp.getAttribute('data-idx'));
+    const val = inp.value.trim();
+    if(val && radmPacotesAnalisados[idx]){
+      const p = radmPacotesAnalisados[idx];
+      p.casa = normalizarCasa(val); p.casaPendente=false;
+      const gps = await encontrarGPSAdmin(p);
+      p.coords=gps; p.tipoGPS=gps?.tipo||'nao_encontrado';
+      p.avisoFaixa = validarCasaNaFaixaAdmin(p);
+    }
+  }
+  const comCoords = radmPacotesAnalisados.filter(p=>p.coords);
+  const semCoords = radmPacotesAnalisados.filter(p=>!p.coords);
+  const btn = document.getElementById('radm-otimizar-btn');
+  btn.disabled=true; btn.textContent='🛣 Calculando...';
+  let otimizados;
+  try{ otimizados = await admOtimizarRotaComOSRM(comCoords); }
+  catch(e){ console.warn('[Rota admin] fallback local', e); radmDuracaoOSRM=null; otimizados = admAplicar2opt(admOtimizarVizinhoProximo(comCoords[0]?.coords||CENTER, comCoords)); }
+  radmRotaAtual = [...otimizados, ...semCoords];
+  radmBoundsAjustados = false;
+  radmOrdemTravada = false;
+  btn.disabled=false; btn.textContent='🛣 Otimizar rota';
+  admRenderMapaRota();
+  admRenderListaFinal();
+  admPopularSelectEntregadores();
+  document.getElementById('radm-mapa-card').style.display='block';
+  document.getElementById('radm-busca-card').style.display='block';
+  document.getElementById('radm-fechar-wrap').style.display='block';
+  document.getElementById('radm-envio-card').style.display='none';
+}
+
+// Trava a ordem atual — a partir daqui, reotimizar automaticamente fica bloqueado,
+// evitando que o sistema embaralhe de novo o que já foi ajustado manualmente com cuidado.
+async function admFecharRota(){
+  if(!radmRotaAtual.length){ alert('Otimize a rota antes de fechar.'); return; }
+  const btn = document.querySelector('#radm-fechar-wrap .btn-acao');
+  if(btn){ btn.disabled = true; btn.textContent = '🔒 Salvando confirmações...'; }
+
+  const corrigidos = radmRotaAtual.filter(p => p.posicaoCorrigidaManualmente);
+  for(const p of corrigidos){
+    await admSalvarConfirmacaoDefinitiva(p);
+  }
+
+  radmOrdemTravada = true;
+  if(btn){ btn.disabled = false; btn.textContent = '🔒 Fechar rota (trava a ordem definida)'; }
+  document.getElementById('radm-reotimizar-wrap').style.display = 'none';
+  document.getElementById('radm-fechar-wrap').style.display = 'none';
+  document.getElementById('radm-envio-card').style.display = 'block';
+  admTracarLinhaRota();
+  admRenderMapaRota(); // renumera os pins na ordem final travada
+  admRenderListaFinal();
+  showMsgAdmin(corrigidos.length ? `🔒 Rota fechada — ${corrigidos.length} correção(ões) salva(s) no banco.` : '🔒 Ordem da rota travada — pronta pra enviar.');
+}
+
+function admRenderMapaRota(){
+  const comCoords = radmRotaAtual.filter(p=>p.coords);
+  if(!comCoords.length) return;
+  if(!radmMapReady){
+    radmMap = L.map('radm-mapa',{zoomControl:true}).setView(CENTER,14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(radmMap);
+    radmMarkers = L.layerGroup().addTo(radmMap);
+    radmMapReady = true;
+  }
+  setTimeout(()=>radmMap.invalidateSize(),100);
+  radmMarkers.clearLayers();
+
+  comCoords.forEach(p=>{
+    const info = infoTipoGPSAdmin(p.tipoGPS);
+    const idx = radmRotaAtual.indexOf(p);
+    const icon = L.divIcon({ html:`<div style="background:${info.cor};border:2px solid white;border-radius:50%;width:27px;height:27px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;box-shadow:0 2px 6px rgba(0,0,0,.3);">${idx+1}</div>`, className:'', iconSize:[27,27], iconAnchor:[13,13] });
+    const popupHtml = `<b>${idx+1}. ${p.quadra} · Cj.${p.conjunto||'?'} · Casa ${p.casa||'?'}</b>`
+      + `<br><span style="font-size:11px;color:#888;">🖐 Arraste pra corrigir a posição</span>`
+      + `<div style="margin-top:8px;display:flex;align-items:center;gap:6px;">
+           <label style="font-size:11px;">Ordem de entrega:</label>
+           <input type="number" min="1" max="${radmRotaAtual.length}" value="${idx+1}" id="pos-input-${p.idPacote}" style="width:50px;padding:4px 6px;font-size:12px;border:1px solid #ddd;border-radius:5px;"/>
+           <button onclick="admMoverParaPosicao('${p.idPacote}')" style="padding:4px 10px;background:#1D9E75;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">✓</button>
+         </div>`;
+    const marker = L.marker([p.coords.lat,p.coords.lng],{icon,draggable:true}).addTo(radmMarkers).bindPopup(popupHtml);
+    marker.on('dragend', ()=>{ const pos=marker.getLatLng(); admCorrigirPosicao(idx,pos.lat,pos.lng); });
+  });
+
+  // Só reajusta o zoom/centro na primeira vez — evita o mapa "pulando" a cada pequena
+  // correção manual (arrastar pin, mudar posição), o que atrapalharia o trabalho fino.
+  if(!radmBoundsAjustados){
+    const bounds = L.latLngBounds(comCoords.map(p=>[p.coords.lat,p.coords.lng]));
+    radmMap.fitBounds(bounds,{padding:[30,30]});
+    radmBoundsAjustados = true;
+  }
+
+  // A linha de direção NÃO é desenhada aqui de propósito — só depois de "Fechar rota",
+  // pra não atrapalhar visualmente enquanto os pins ainda estão sendo ajustados manualmente.
+}
+
+// Traça a linha conectando a rota na ordem final — chamada só ao fechar a rota
+function admTracarLinhaRota(){
+  if(!radmMap) return;
+  if(radmLinha){ radmMap.removeLayer(radmLinha); radmLinha=null; }
+  const comCoords = radmRotaAtual.filter(p=>p.coords);
+  if(comCoords.length < 2) return;
+  const coordsStr = comCoords.map(p=>p.coords.lng+','+p.coords.lat).join(';');
+  fetch(`https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`)
+    .then(r=>r.json()).then(data=>{
+      const pontos = (data.code==='Ok'&&data.routes?.[0]) ? data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]) : comCoords.map(p=>[p.coords.lat,p.coords.lng]);
+      radmLinha = L.polyline(pontos,{color:'#378ADD',weight:4,opacity:0.75}).addTo(radmMap);
+      radmLinha.bringToBack();
+    }).catch(()=>{});
+}
+
+// Move um pacote pra uma posição específica na sequência, digitada manualmente no popup do pin
+function admMoverParaPosicao(idPacote){
+  const input = document.getElementById('pos-input-'+idPacote);
+  if(!input) return;
+  const novaPos = parseInt(input.value, 10);
+  if(isNaN(novaPos) || novaPos<1 || novaPos>radmRotaAtual.length){ alert('Posição inválida — use um número entre 1 e '+radmRotaAtual.length+'.'); return; }
+  const idxAtual = radmRotaAtual.findIndex(p=>p.idPacote===idPacote);
+  if(idxAtual===-1) return;
+  const [pacote] = radmRotaAtual.splice(idxAtual,1);
+  radmRotaAtual.splice(novaPos-1, 0, pacote);
+  admRenderMapaRota();
+  admRenderListaFinal();
+  showMsgAdmin('✓ '+pacote.quadra+' · Casa '+(pacote.casa||'?')+' agora é a entrega nº '+novaPos);
+}
+
+function admCorrigirPosicao(idx, lat, lng){
+  const p = radmRotaAtual[idx]; if(!p) return;
+  p.coords = { lat, lng, tipo:'gps' }; p.tipoGPS='gps';
+  // NÃO salva no banco aqui — só marca a intenção. O salvamento de verdade só acontece
+  // quando a rota é fechada de propósito, evitando gravar testes/ajustes exploratórios.
+  p.posicaoCorrigidaManualmente = true;
+  if(!radmOrdemTravada) document.getElementById('radm-reotimizar-wrap').style.display='block';
+  admRenderMapaRota();
+  showMsgAdmin('📍 Posição ajustada nesta rota (será salva ao fechar a rota).');
+}
+
+// Salva de fato uma correção manual como confirmação no banco — chamada só a partir
+// de admFecharRota(), nunca direto no evento de arrastar.
+async function admSalvarConfirmacaoDefinitiva(p){
+  if(!fb || !p.casa) return;
+  const nCidade=normalizarTexto(p.cidade),nBairro=normalizarTexto(p.bairro),nQuadra=normalizarTexto(p.quadra);
+  const existente = registros.find(r=>normalizarTexto(r.cidade)===nCidade&&normalizarTexto(r.bairro)===nBairro&&normalizarTexto(r.quadra)===nQuadra&&compararValor(r.conjunto,p.conjunto)&&compararValor(r.casa,p.casa));
+  if(existente?.localizacaoTravada) return; // travado pelo admin, não sobrescreve
+  try{
+    const docId = existente?.id || (p.cidade+'_'+p.bairro+'_'+p.quadra+'_'+p.conjunto+'_'+p.casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+    const novaConf = { lat:p.coords.lat, lng:p.coords.lng, uid:UID_ADMIN, email:usuarioAtual?.email||'admin', ts:new Date().toISOString() };
+    const confs = [...(existente?.confirmacoes||[]), novaConf];
+    await fb.setDoc(fb.doc(fb.db,'registros',docId), {
+      cidade:p.cidade,bairro:p.bairro,quadra:p.quadra,conjunto:p.conjunto,casa:p.casa,
+      obs:existente?.obs||'', foto:existente?.foto||null, lat:p.coords.lat, lng:p.coords.lng,
+      confirmacoes:confs, totalConfirmacoes:confs.length, verificado:existente?.verificado||false,
+      ts: existente?.ts || new Date().toLocaleDateString('pt-BR')
+    }, {merge:true});
+  } catch(e){ console.warn('[Confirmação definitiva]', e); }
+}
+
+async function admReotimizarComCorrecoes(){
+  if(radmOrdemTravada){ showMsgAdmin('🔒 Ordem travada — não reotimiza mais automaticamente.'); return; }
+  const comCoords = radmRotaAtual.filter(p=>p.coords);
+  const semCoords = radmRotaAtual.filter(p=>!p.coords);
+  let otimizados;
+  try{ otimizados = await admOtimizarRotaComOSRM(comCoords); }
+  catch(e){ otimizados = admAplicar2opt(admOtimizarVizinhoProximo(comCoords[0]?.coords||CENTER, comCoords)); }
+  radmRotaAtual = [...otimizados, ...semCoords];
+  document.getElementById('radm-reotimizar-wrap').style.display='none';
+  admRenderMapaRota();
+  admRenderListaFinal();
+  showMsgAdmin('🔄 Rota recalculada.');
+}
+
+function admRenderListaFinal(){
+  document.getElementById('radm-lista-final').innerHTML = radmRotaAtual.map((p,i)=>{
+    const info = infoTipoGPSAdmin(p.tipoGPS);
+    const transpTag = p.transportadora ? `<span style="background:#EAF2FB;color:#1B5A8A;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;margin-left:4px;">${p.transportadora}</span>` : '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--border);">
+      <div style="width:22px;height:22px;border-radius:50%;background:${info.cor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">${i+1}</div>
+      <div style="flex:1;font-size:12px;">${p.quadra} · Cj.${p.conjunto||'?'} · Casa ${p.casa||'?'}${transpTag}</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Busca de endereço cadastrado (referência visual acima do mapa) ───────────
+function radmOnBuscaCidadeChange(){
+  const cidade=document.getElementById('radm-busca-cidade').value;
+  const selB=document.getElementById('radm-busca-bairro');
+  selB.innerHTML='<option value="">Bairro...</option>';
+  const cid=Object.values(CIDADES).find(c=>c.nome===cidade);
+  if(cid?.bairros) ordenar(Object.keys(cid.bairros)).forEach(b=>{ const o=document.createElement('option'); o.value=b; o.textContent=b; selB.appendChild(o); });
+  document.getElementById('radm-busca-quadra').innerHTML='<option value="">Quadra...</option>';
+  document.getElementById('radm-busca-cj').innerHTML='<option value="">Conjunto...</option>';
+  radmBuscarEndereco();
+}
+function radmOnBuscaBairroChange(){
+  const cidade=document.getElementById('radm-busca-cidade').value;
+  const bairro=document.getElementById('radm-busca-bairro').value;
+  const selQ=document.getElementById('radm-busca-quadra');
+  selQ.innerHTML='<option value="">Quadra...</option>';
+  const cid=Object.values(CIDADES).find(c=>c.nome===cidade);
+  if(cid?.bairros?.[bairro]?.quadras) ordenar(Object.keys(cid.bairros[bairro].quadras)).forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; selQ.appendChild(o); });
+  document.getElementById('radm-busca-cj').innerHTML='<option value="">Conjunto...</option>';
+  radmBuscarEndereco();
+}
+function radmOnBuscaQuadraChange(){
+  const cidade=document.getElementById('radm-busca-cidade').value;
+  const bairro=document.getElementById('radm-busca-bairro').value;
+  const quadra=document.getElementById('radm-busca-quadra').value;
+  const selCj=document.getElementById('radm-busca-cj');
+  selCj.innerHTML='<option value="">Conjunto...</option>';
+  const cid=Object.values(CIDADES).find(c=>c.nome===cidade);
+  const cjs = cid?.bairros?.[bairro]?.quadras?.[quadra] || [];
+  ordenar(cjs).forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; selCj.appendChild(o); });
+  radmBuscarEndereco();
+}
+
+let radmMarcadorBusca = null;
+
+function radmBuscarEndereco(){
+  const cidade=document.getElementById('radm-busca-cidade').value;
+  const bairro=document.getElementById('radm-busca-bairro').value;
+  const quadra=document.getElementById('radm-busca-quadra').value;
+  const conjunto=document.getElementById('radm-busca-cj').value;
+  const casa=normalizarCasa(document.getElementById('radm-busca-casa').value);
+  const div = document.getElementById('radm-busca-resultado');
+  if(!cidade||!bairro||!quadra||!casa){ div.style.display='none'; return; }
+
+  const nCidade=normalizarTexto(cidade), nBairro=normalizarTexto(bairro), nQuadra=normalizarTexto(quadra);
+  const reg = registros.find(r=>
+    normalizarTexto(r.cidade)===nCidade && normalizarTexto(r.bairro)===nBairro &&
+    normalizarTexto(r.quadra)===nQuadra && compararValor(r.conjunto,conjunto) && compararValor(r.casa,casa)
+  );
+
+  div.style.display='block';
+  if(!reg){
+    div.innerHTML = '<div style="padding:12px;background:var(--bg-alt,#f5f5f5);border-radius:8px;font-size:12px;color:var(--text-3);">📭 Ainda não cadastrado no banco.</div>';
+    if(radmMarcadorBusca && radmMap){ radmMap.removeLayer(radmMarcadorBusca); radmMarcadorBusca=null; }
+    return;
+  }
+
+  div.innerHTML = `<div style="display:flex;gap:10px;align-items:center;padding:10px;background:var(--bg-alt,#f5f5f5);border-radius:8px;">
+    ${reg.foto?`<img src="${reg.foto}" onclick="verFoto('${reg.foto}')" style="width:50px;height:50px;object-fit:cover;border-radius:8px;cursor:pointer;">`:''}
+    <div style="flex:1;font-size:12px;">
+      <b>${reg.quadra} · Cj.${reg.conjunto||'?'} · Casa ${reg.casa}</b><br>
+      ${reg.obs||'Sem observação'}<br>
+      <span style="color:var(--green);">${reg.verificado?'✅ Verificado':'📍 '+(reg.totalConfirmacoes||0)+'/3 confirmações'}</span>
+    </div>
+    ${reg.lat?`<button class="btn-acao" onclick="radmVerNoMapa(${reg.lat},${reg.lng})">🗺 Ver</button>`:''}
+  </div>`;
+
+  if(reg.lat && radmMap){
+    const icone = L.divIcon({ html:'<div style="width:24px;height:24px;background:#8B5CF6;border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,.4);"></div>', className:'', iconSize:[24,24], iconAnchor:[12,24] });
+    if(!radmMarcadorBusca) radmMarcadorBusca = L.marker([reg.lat,reg.lng],{icon:icone}).addTo(radmMap);
+    else radmMarcadorBusca.setLatLng([reg.lat,reg.lng]).setIcon(icone);
+  }
+}
+
+function radmVerNoMapa(lat,lng){
+  if(!radmMap) return;
+  radmMap.setView([lat,lng], 19);
+}
+
+function admPopularSelectEntregadores(){
+  const sel = document.getElementById('radm-entregador-select');
+  sel.innerHTML = '<option value="">Selecione...</option>';
+  Object.values(USUARIOS).filter(u=>u.role==='entregador').forEach(u=>{
+    const o = document.createElement('option'); o.value=u.id; o.textContent=u.email||u.id; sel.appendChild(o);
+  });
+}
+
+async function admEnviarRota(){
+  const uid = document.getElementById('radm-entregador-select').value;
+  if(!uid){ alert('Escolha um entregador antes de enviar.'); return; }
+  const entregador = USUARIOS[uid];
+  if(!radmRotaAtual.length){ alert('Nenhuma rota otimizada ainda.'); return; }
+  try{
+    await fb.setDoc(fb.doc(fb.db,'rotasEnviadas', Date.now()+'_'+Math.random().toString(36).slice(2,8)), {
+      entregadorUid: uid, entregadorEmail: entregador?.email||'',
+      pacotes: radmRotaAtual,
+      enviadoPor: usuarioAtual?.email||'admin', enviadoEm: new Date().toISOString(),
+      status: 'pendente'
+    });
+    alert('✓ Rota enviada! O entregador vai ver o aviso ao abrir o app.');
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
+function showMsgAdmin(txt){
+  // feedback simples via título temporário do botão de sync (sem modal extra)
+  const el = document.getElementById('sync-text');
+  const original = el.textContent;
+  el.textContent = txt;
+  setTimeout(()=>{ el.textContent = original; }, 2000);
+}
+
+// ─── Exportação genérica pra CSV (abre certinho no Excel/Google Sheets) ───────
+function exportarCSV(dados, colunas, nomeArquivo){
+  if(!dados || !dados.length){ alert('Nada para exportar.'); return; }
+  const cabecalho = colunas.map(c => c.titulo).join(',');
+  const linhas = dados.map(item =>
+    colunas.map(c => {
+      let valor = item[c.chave];
+      if(valor == null) valor = '';
+      valor = String(valor).replace(/"/g, '""');
+      return `"${valor}"`;
+    }).join(',')
+  );
+  // \uFEFF (BOM) garante que o Excel abra os acentos corretamente
+  const csv = '\uFEFF' + [cabecalho, ...linhas].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nomeArquivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showMsgAdmin('✓ Exportado: '+nomeArquivo);
+}
+
+function dataParaNomeArquivo(){
+  const d = new Date();
+  return d.toISOString().slice(0,10); // AAAA-MM-DD
+}
+
+function exportarRegistrosCSV(){
+  exportarCSV(registros, [
+    {chave:'cidade',titulo:'Cidade'}, {chave:'bairro',titulo:'Bairro'}, {chave:'quadra',titulo:'Quadra'},
+    {chave:'conjunto',titulo:'Conjunto'}, {chave:'casa',titulo:'Casa'}, {chave:'obs',titulo:'Observação'},
+    {chave:'lat',titulo:'Latitude'}, {chave:'lng',titulo:'Longitude'},
+    {chave:'verificado',titulo:'Verificado'}, {chave:'totalConfirmacoes',titulo:'Confirmações'},
+    {chave:'registradoPor',titulo:'Registrado por'}, {chave:'ts',titulo:'Data'}
+  ], `registros_${dataParaNomeArquivo()}.csv`);
+}
+
+function exportarTelemetriaCSV(){
+  exportarCSV(TELEMETRIA, [
+    {chave:'quadra',titulo:'Quadra'}, {chave:'conjunto',titulo:'Conjunto'}, {chave:'casa',titulo:'Casa'},
+    {chave:'tempoAteChegarSeg',titulo:'Tempo até chegar (s)'}, {chave:'tempoParadoSeg',titulo:'Tempo parado (s)'},
+    {chave:'velocidadeMediaKmh',titulo:'Velocidade (km/h)'}, {chave:'precisaoGpsM',titulo:'Precisão GPS (m)'},
+    {chave:'motoristaEmail',titulo:'Motorista'}, {chave:'ts',titulo:'Data'}
+  ], `telemetria_${dataParaNomeArquivo()}.csv`);
+}
+
+function exportarHistoricoCSV(){
+  exportarCSV(HISTORICO, [
+    {chave:'motoristaEmail',titulo:'Motorista'}, {chave:'totalEntregues',titulo:'Entregues'},
+    {chave:'totalPuladas',titulo:'Puladas'}, {chave:'duracaoTotalMin',titulo:'Duração (min)'},
+    {chave:'distanciaTotalKm',titulo:'Distância (km)'}, {chave:'dataInicio',titulo:'Início'}, {chave:'dataFim',titulo:'Fim'}
+  ], `historico_rotas_${dataParaNomeArquivo()}.csv`);
+}
+
+function exportarCorrecoesCSV(){
+  exportarCSV(CORRECOES, [
+    {chave:'enderecoOriginal',titulo:'Endereço original'}, {chave:'quadra',titulo:'Quadra'},
+    {chave:'conjunto',titulo:'Conjunto'}, {chave:'casaDigitadaManualmente',titulo:'Casa digitada'},
+    {chave:'corrigidoPor',titulo:'Corrigido por'}, {chave:'ts',titulo:'Data'}
+  ], `correcoes_parser_${dataParaNomeArquivo()}.csv`);
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+function renderDashboard(){
+  const total=registros.length,comGps=registros.filter(r=>r.lat).length,comFoto=registros.filter(r=>r.foto).length;
+  document.getElementById('d-total').textContent=total;
+  document.getElementById('d-gps').textContent=comGps;
+  document.getElementById('d-gps-pct').textContent=total?Math.round(comGps/total*100)+'% do total':'—';
+  document.getElementById('d-foto').textContent=comFoto;
+  document.getElementById('d-foto-pct').textContent=total?Math.round(comFoto/total*100)+'% do total':'—';
+  document.getElementById('d-sem-gps').textContent=total-comGps;
+
+  // Progresso por bairro
+  const progressDiv=document.getElementById('bairro-progress');
+  const bairros=new Set(registros.map(r=>r.bairro).filter(Boolean));
+  if(!bairros.size){ progressDiv.innerHTML='<div style="color:var(--text-3);font-size:13px;">Nenhum registro.</div>'; return; }
+  progressDiv.innerHTML=[...bairros].map(b=>{
+    const regs=registros.filter(r=>r.bairro===b);
+    const cidade=regs[0]?.cidade||'';
+    const comG=regs.filter(r=>r.lat).length;
+    const pct=regs.length?Math.round(comG/regs.length*100):0;
+    const cor=corBairro(cidade,b);
+    return `<div class="quadra-row">
+      <div class="quadra-row-head">
+        <div class="quadra-name"><div class="quadra-badge" style="background:${cor}"></div>${b}</div>
+        <div class="quadra-pct">${comG}/${regs.length} · ${pct}%</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${cor};"></div></div>
+    </div>`;
+  }).join('');
+
+  const recentes=[...registros].filter(r=>r.ts).sort((a,b)=>(b.ts||'').localeCompare(a.ts||'')).slice(0,6);
+  document.getElementById('recent-list').innerHTML=recentes.length
+    ?recentes.map(r=>`<div class="recent-item">
+      ${r.foto?`<img class="recent-thumb" src="${r.foto}" onclick="verFoto('${r.foto}')">` :'<div class="recent-thumb-empty">📦</div>'}
+      <div class="recent-info">
+        <div class="recent-addr">${r.bairro||''} · ${r.quadra||''} ${r.conjunto?'Cj.'+r.conjunto:''} · Casa ${r.casa}</div>
+        <div class="recent-obs">${r.obs||'Sem observação'}</div>
+        <div class="recent-ts">${r.ts||''} ${r.lat?'<span class="badge badge-gps">GPS</span>':''}</div>
+      </div></div>`).join('')
+    :'<div style="color:var(--text-3);font-size:13px;padding:20px 0;text-align:center;">Nenhum registro.</div>';
+}
+
+// ─── Tabela ───────────────────────────────────────────────────────────────────
+// Região aproximada de cobertura (Ceilândia/DF, com margem de folga) — fora disso é suspeito
+const LIMITES_REGIAO = { latMin:-16.2, latMax:-15.4, lngMin:-48.4, lngMax:-47.7 };
+
+function coordenadaSuspeita(r){
+  if(!r.lat && r.lat !== 0) return false; // sem GPS ainda — não é "suspeito", é só "sem GPS"
+  if(r.lat === 0 || r.lng === 0) return true; // coordenada zerada
+  if(r.lat < LIMITES_REGIAO.latMin || r.lat > LIMITES_REGIAO.latMax) return true;
+  if(r.lng < LIMITES_REGIAO.lngMin || r.lng > LIMITES_REGIAO.lngMax) return true;
+  return false;
+}
+
+function renderTabela(){
+  const busca=document.getElementById('tabela-busca').value.toLowerCase();
+  const cidade=document.getElementById('tab-cidade').value;
+  const bairro=document.getElementById('tab-bairro').value;
+  const quadra=document.getElementById('tab-quadra').value;
+  const extra=document.getElementById('tab-extra').value;
+  let f=[...registros];
+  if(cidade) f=f.filter(r=>r.cidade===cidade);
+  if(bairro) f=f.filter(r=>r.bairro===bairro);
+  if(quadra) f=f.filter(r=>r.quadra===quadra);
+  if(extra==='gps')f=f.filter(r=>r.lat);
+  if(extra==='semgps')f=f.filter(r=>!r.lat);
+  if(extra==='foto')f=f.filter(r=>r.foto);
+  if(extra==='semfoto')f=f.filter(r=>!r.foto);
+  if(extra==='suspeita')f=f.filter(r=>coordenadaSuspeita(r));
+  if(busca)f=f.filter(r=>(r.cidade||'').toLowerCase().includes(busca)||(r.bairro||'').toLowerCase().includes(busca)||(r.quadra||'').toLowerCase().includes(busca)||(r.conjunto||'').toLowerCase().includes(busca)||r.casa.toString().includes(busca)||(r.obs||'').toLowerCase().includes(busca));
+  f.sort((a,b)=>(a.cidade||'').localeCompare(b.cidade||'')||(a.bairro||'').localeCompare(b.bairro||'')||(a.quadra||'').localeCompare(b.quadra||'',undefined,{numeric:true})||parseInt(a.casa)-parseInt(b.casa));
+  const total=f.length,totalPags=Math.max(1,Math.ceil(total/POR_PAG));
+  if(pag>totalPags)pag=1;
+  const pagina=f.slice((pag-1)*POR_PAG,pag*POR_PAG);
+  document.getElementById('tabela-body').innerHTML=pagina.map(r=>{
+    const suspeita = coordenadaSuspeita(r);
+    return `<tr ${suspeita?'style="background:var(--red-light,#FCEBEB);"':''}>
+    <td>${r.foto?`<img src="${r.foto}" onclick="verFoto('${r.foto}')" style="width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid var(--border);cursor:pointer;">`:'<span style="color:var(--text-3)">—</span>'}</td>
+    <td style="font-size:12px;">${r.cidade||'—'}</td>
+    <td><span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:50%;background:${corBairro(r.cidade,r.bairro)};flex-shrink:0;"></span>${r.bairro||'—'}</span></td>
+    <td>${r.quadra||'—'}</td>
+    <td>${r.conjunto||'—'}</td>
+    <td>${r.casa}</td>
+    <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-2);">${r.obs||'—'}</td>
+    <td>${r.localizacaoTravada?'<span title="Localização travada pelo admin" style="cursor:help;">🔒</span>':suspeita?'<span title="Coordenada fora da região esperada ou zerada" style="cursor:help;">⚠️</span>':(r.lat?'<span class="badge badge-gps">✓</span>':'<span style="color:var(--text-3);">—</span>')}</td>
+    <td style="font-size:11px;color:var(--text-3);">${r.ts||'—'}</td>
+    <td><div class="td-acoes">
+      <button class="btn-acao" onclick="abrirPerfilEndereco('${r.id}')" title="Ver perfil do endereço">⭐</button>
+      ${(ehAdminRaiz||permissoesAtuais.editarReg)?`<button class="btn-acao" onclick="abrirEditModal('${r.id}')">✏️</button>`:''}
+      ${(ehAdminRaiz||permissoesAtuais.excluirReg)?`<button class="btn-acao del" onclick="excluir('${r.id}')">🗑</button>`:''}
+      ${(!ehAdminRaiz&&!permissoesAtuais.editarReg&&!permissoesAtuais.excluirReg)?`<span style="font-size:11px;color:var(--text-3);">Somente leitura</span>`:''}
+    </div></td>
+  </tr>`;
+  }).join('');
+  let pags=`<span>${total} registros</span>`;
+  if(totalPags>1)pags+=Array.from({length:totalPags},(_,i)=>`<button class="page-btn ${i+1===pag?'active':''}" onclick="irPara(${i+1})">${i+1}</button>`).join('');
+  document.getElementById('paginacao').innerHTML=pags;
+}
+function irPara(p){pag=p;renderTabela();}
+
+// ─── Mapa ─────────────────────────────────────────────────────────────────────
+function iniciarMapaAdmin(){
+  if(adminMapReady){setTimeout(()=>adminMap.invalidateSize(),100);filtrarMapaAdmin();return;}
+  setTimeout(()=>{
+    adminMap=L.map('admin-map').setView(CENTER,15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(adminMap);
+    adminLayer=L.layerGroup().addTo(adminMap);
+    L.polyline([[-15.8440,-48.0950],[-15.8440,-48.1250]],{color:'#854F0B',weight:2,dashArray:'6,4',opacity:.6}).addTo(adminMap);
+    adminMapReady=true;
+    filtrarMapaAdmin();
+    renderLegendaMapa();
+  },150);
+}
+function filtrarMapaAdmin(){
+  if(!adminLayer) return;
+  adminLayer.clearLayers();
+  const cidade=document.getElementById('map-cidade').value;
+  const bairro=document.getElementById('map-bairro').value;
+  const quadra=document.getElementById('map-quadra').value;
+  let f=registros;
+  if(cidade)f=f.filter(r=>r.cidade===cidade);
+  if(bairro)f=f.filter(r=>r.bairro===bairro);
+  if(quadra)f=f.filter(r=>r.quadra===quadra);
+  f.forEach(r=>{
+    if(!r.lat) return;
+    const cor=corBairro(r.cidade,r.bairro);
+    const icon=L.divIcon({html:`<div style="background:${cor};border:2px solid white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:white;box-shadow:0 2px 5px rgba(0,0,0,.25);">${r.conjunto||r.quadra?.slice(-2)||'?'}</div>`,className:'',iconSize:[24,24],iconAnchor:[12,12]});
+    let popup=`<b>${r.cidade||''} · ${r.bairro||''}</b><br>${r.quadra||''} ${r.conjunto?'Cj.'+r.conjunto:''} · Casa ${r.casa}`;
+    if(r.obs)popup+=`<br><span style="font-size:12px;color:#666;">${r.obs}</span>`;
+    if(r.foto)popup+=`<br><img src="${r.foto}" style="width:120px;margin-top:5px;border-radius:5px;">`;
+    L.marker([r.lat,r.lng],{icon}).addTo(adminLayer).bindPopup(popup);
+  });
+}
+function renderLegendaMapa(){
+  const bairros=new Map();
+  Object.values(CIDADES).forEach(c=>{ Object.entries(c.bairros||{}).forEach(([b,data])=>bairros.set(b,data.cor||c.cor||'#888')); });
+  document.getElementById('map-legend').innerHTML=[...bairros.entries()].map(([b,cor])=>
+    `<div class="legend-item"><div class="legend-dot" style="background:${cor}"></div>${b}</div>`).join('');
+}
+
+// ─── Gerenciar Cidades ────────────────────────────────────────────────────────
+function renderCidadesList(){
+  const podeEditar = ehAdminRaiz || permissoesAtuais.editarCid;
+  const btnAddCidade = document.getElementById('btn-add-cidade');
+  if(btnAddCidade) btnAddCidade.style.display = podeEditar?'flex':'none';
+  const div=document.getElementById('cidades-list');
+  const lista=Object.values(CIDADES);
+  document.getElementById('cidades-count').textContent=lista.length?`(${lista.length})`:'';
+  if(!lista.length){ div.innerHTML='<div class="empty-panel"><span class="icon">🏙</span>Nenhuma cidade ainda.</div>'; return; }
+  div.innerHTML=ordenar(lista.map(c=>c.nome||c.id)).map(nome=>{
+    const cid=Object.values(CIDADES).find(c=>c.nome===nome);
+    const nBairros=Object.keys(cid?.bairros||{}).length;
+    return `<div class="list-item ${cidSel===cid?.id?'active':''}" onclick="selecionarCidade('${cid?.id}')">
+      <div class="list-item-dot" style="background:${cid?.cor||'#888'}"></div>
+      <div class="list-item-name">${nome}</div>
+      <div class="list-item-count">${nBairros} bairros</div>
+      ${podeEditar?`<button class="list-item-del" onclick="event.stopPropagation();excluirCidade('${cid?.id}')" title="Excluir">✕</button>`:''}
+    </div>`;
+  }).join('');
+}
+
+function selecionarCidade(id){
+  cidSel=id; bairSel=null;
+  renderCidadesList();
+  renderBairrosList();
+  document.getElementById('btn-add-bairro').style.display=(ehAdminRaiz||permissoesAtuais.editarCid)?'block':'none';
+  document.getElementById('quadras-col').innerHTML='<div class="empty-panel"><span class="icon">👈</span>Selecione um bairro</div>';
+}
+
+function renderBairrosList(){
+  const podeEditar = ehAdminRaiz || permissoesAtuais.editarCid;
+  const div=document.getElementById('bairros-list');
+  if(!cidSel){ div.innerHTML='<div class="empty-panel"><span class="icon">👈</span>Selecione uma cidade</div>'; return; }
+  const cid=CIDADES[cidSel];
+  if(!cid){ div.innerHTML=''; return; }
+  const bairros=cid.bairros||{};
+  const lista=ordenar(Object.keys(bairros));
+  document.getElementById('bairros-count').textContent=lista.length?`(${lista.length})`:'';
+  if(!lista.length){ div.innerHTML='<div class="empty-panel"><span class="icon">🏘</span>Nenhum bairro ainda.</div>'; return; }
+  div.innerHTML=lista.map(b=>`<div class="list-item ${bairSel===b?'active':''}" onclick="selecionarBairro('${b}')">
+    <div class="list-item-dot" style="background:${bairros[b]?.cor||cid.cor||'#888'}"></div>
+    <div class="list-item-name">${b}</div>
+    <div class="list-item-count">${Object.keys(bairros[b]?.quadras||{}).length} quadras</div>
+    ${podeEditar?`<button class="list-item-del" onclick="event.stopPropagation();excluirBairro('${b}')" title="Excluir">✕</button>`:''}
+  </div>`).join('');
+}
+
+function selecionarBairro(bairro){
+  bairSel=bairro;
+  renderBairrosList();
+  renderQuadrasCol();
+}
+
+function renderQuadrasCol(){
+  const podeEditar = ehAdminRaiz || permissoesAtuais.editarCid;
+  const col=document.getElementById('quadras-col');
+  if(!cidSel||!bairSel){ col.innerHTML='<div class="empty-panel"><span class="icon">👈</span>Selecione um bairro</div>'; return; }
+  const cid=CIDADES[cidSel];
+  const quadras=cid?.bairros?.[bairSel]?.quadras||{};
+  const lista=ordenar(Object.keys(quadras));
+  let html=`<div class="col-panel-title" style="margin-bottom:12px;">🗺 ${bairSel}</div>`;
+  if(!lista.length) html+='<div style="color:var(--text-3);font-size:13px;margin-bottom:12px;">Nenhuma quadra ainda.</div>';
+  html+=lista.map(q=>{
+    const cjs=quadras[q]||[];
+    const safeQ=q.replace(/['"]/g,'');
+    const idCoord = idCoordQuadra(cid.nome, bairSel, q);
+    const coordAtual = COORD_QUADRA[idCoord];
+    return `<div class="quadra-row-edit">
+      <div class="quadra-row-edit-header">
+        <div class="quadra-row-edit-name">${q} <span style="font-size:11px;color:var(--text-3);font-weight:400;">(${cjs.length} conj.)</span></div>
+        ${podeEditar?`<button class="btn-acao del" style="font-size:11px;padding:3px 8px;" onclick="excluirQuadra('${safeQ}')">🗑 Excluir</button>`:''}
+      </div>
+      <div class="conjuntos-grid" id="cjs-${safeQ.replace(/\s/g,'_')}">
+        ${cjs.map(c=>`<div class="cj-tag">${c}${podeEditar?`<button class="cj-tag-del" onclick="excluirConjunto('${safeQ}','${c}')">✕</button>`:''}</div>`).join('')}
+        ${!cjs.length?'<span style="font-size:12px;color:var(--text-3);">Sem conjuntos.</span>':''}
+      </div>
+      ${podeEditar?`<div class="inline-add" style="margin-top:8px;">
+        <input type="text" placeholder="Novo conjunto..." id="inp-${safeQ.replace(/\s/g,'_')}"
+          onkeydown="if(event.key==='Enter')adicionarConjunto('${safeQ}')"/>
+        <button onclick="adicionarConjunto('${safeQ}')">+ Add</button>
+      </div>`:''}
+      <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
+        <div style="font-size:11px;color:var(--text-3);margin-bottom:5px;">📍 Coordenada de fallback (usada quando não há endereço exato nem vizinho no conjunto)</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="number" step="0.000001" placeholder="Latitude" id="lat-${safeQ.replace(/\s/g,'_')}" value="${coordAtual?.lat ?? ''}" ${podeEditar?'':'disabled'} style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;"/>
+          <input type="number" step="0.000001" placeholder="Longitude" id="lng-${safeQ.replace(/\s/g,'_')}" value="${coordAtual?.lng ?? ''}" ${podeEditar?'':'disabled'} style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;"/>
+          ${podeEditar?`<button class="btn-acao" style="font-size:11px;padding:6px 10px;white-space:nowrap;" onclick="salvarCoordQuadra('${cid.nome}','${bairSel}','${safeQ}')">💾</button>`:''}
+        </div>
+        <div style="font-size:10px;color:var(--text-3);margin-top:4px;">Dica: abra o Google Maps, toque e segure no ponto desejado, copie as coordenadas mostradas.</div>
+      </div>
+    </div>`;
+  }).join('');
+  if(podeEditar) html+=`<button class="add-btn" style="margin-top:8px;" onclick="abrirModalNovaQuadra()">＋ Nova quadra/rua</button>`;
+  col.innerHTML=html;
+}
+
+// ─── CRUD Cidades ─────────────────────────────────────────────────────────────
+function abrirModalNovaCidade(){
+  document.getElementById('nova-cidade-nome').value='';
+  document.getElementById('nova-cidade-cor').value=CORES_PAD[Object.keys(CIDADES).length%CORES_PAD.length];
+  abrirModal('modal-nova-cidade');
+}
+async function salvarNovaCidade(){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
+  const nome=document.getElementById('nova-cidade-nome').value.trim();
+  const cor=document.getElementById('nova-cidade-cor').value;
+  if(!nome){alert('Digite o nome.');return;}
+  if(Object.values(CIDADES).find(c=>c.nome===nome)){alert('Cidade já existe.');return;}
+  try{ await fb.addDoc(fb.colCid,{nome,cor,bairros:{}}); fecharModal('modal-nova-cidade'); }
+  catch(e){alert('Erro: '+(e.message||e.code));}
+}
+async function excluirCidade(id){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
+  const cid=CIDADES[id];
+  if(registros.some(r=>r.cidade===cid?.nome)){alert('Existem registros nesta cidade. Exclua-os primeiro.');return;}
+  if(!confirm('Excluir "'+cid?.nome+'" e todos seus bairros?'))return;
+  try{ await fb.deleteDoc(fb.doc(fb.db,'cidades',id)); if(cidSel===id){cidSel=null;bairSel=null;} }
+  catch(e){alert('Erro: '+e.message);}
+}
+
+function abrirModalNovoBairro(){
+  if(!cidSel){alert('Selecione uma cidade primeiro.');return;}
+  novaBairroParaCidade=cidSel;
+  document.getElementById('modal-novo-bairro-title').textContent='Novo bairro em "'+CIDADES[cidSel]?.nome+'"';
+  document.getElementById('novo-bairro-nome').value='';
+  document.getElementById('novo-bairro-cor').value=CORES_PAD[(Object.keys(CIDADES[cidSel]?.bairros||{}).length+2)%CORES_PAD.length];
+  abrirModal('modal-novo-bairro');
+}
+async function salvarNovoBairro(){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
+  const nome=document.getElementById('novo-bairro-nome').value.trim();
+  const cor=document.getElementById('novo-bairro-cor').value;
+  if(!nome){alert('Digite o nome.');return;}
+  const cid=CIDADES[novaBairroParaCidade];
+  if(cid?.bairros?.[nome]!==undefined){alert('Bairro já existe.');return;}
+  const novos={...(cid?.bairros||{}),[nome]:{cor,quadras:{}}};
+  try{ await fb.setDoc(fb.doc(fb.db,'cidades',novaBairroParaCidade),{...cid,bairros:novos}); fecharModal('modal-novo-bairro'); }
+  catch(e){alert('Erro: '+e.message);}
+}
+async function excluirBairro(bairro){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
+  const cid=CIDADES[cidSel];
+  if(registros.some(r=>r.bairro===bairro)){alert('Existem registros neste bairro. Exclua-os primeiro.');return;}
+  if(!confirm('Excluir bairro "'+bairro+'"?'))return;
+  const novos={...(cid?.bairros||{})};
+  delete novos[bairro];
+  try{ await fb.setDoc(fb.doc(fb.db,'cidades',cidSel),{...cid,bairros:novos}); if(bairSel===bairro){bairSel=null;document.getElementById('quadras-col').innerHTML='<div class="empty-panel"><span class="icon">👈</span>Selecione um bairro</div>';} }
+  catch(e){alert('Erro: '+e.message);}
+}
+
+function abrirModalNovaQuadra(){
+  if(!cidSel||!bairSel){alert('Selecione cidade e bairro.');return;}
+  novaQuadraParaBairro=bairSel; novaQuadraParaCidade=cidSel;
+  document.getElementById('modal-nova-quadra-title').textContent='Nova quadra em "'+bairSel+'"';
+  document.getElementById('nova-quadra-nome').value='';
+  abrirModal('modal-nova-quadra');
+}
+async function salvarNovaQuadra(){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
+  const nome=document.getElementById('nova-quadra-nome').value.trim();
+  if(!nome){alert('Digite o nome.');return;}
+  const cid=CIDADES[novaQuadraParaCidade];
+  const bairros={...(cid?.bairros||{})};
+  const bairro=bairros[novaQuadraParaBairro]||{cor:'#888',quadras:{}};
+  if(bairro.quadras?.[nome]!==undefined){alert('Quadra já existe.');return;}
+  bairro.quadras={...bairro.quadras,[nome]:[]};
+  bairros[novaQuadraParaBairro]=bairro;
+  try{ await fb.setDoc(fb.doc(fb.db,'cidades',novaQuadraParaCidade),{...cid,bairros}); fecharModal('modal-nova-quadra'); }
+  catch(e){alert('Erro: '+e.message);}
+}
+async function excluirQuadra(quadra){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
+  const cid=CIDADES[cidSel];
+  if(registros.some(r=>r.quadra===quadra&&r.bairro===bairSel)){alert('Existem registros nesta quadra. Exclua-os primeiro.');return;}
+  if(!confirm('Excluir quadra "'+quadra+'"?'))return;
+  const bairros={...(cid?.bairros||{})};
+  const bairro={...bairros[bairSel]};
+  const novasQ={...bairro.quadras}; delete novasQ[quadra];
+  bairro.quadras=novasQ; bairros[bairSel]=bairro;
+  try{ await fb.setDoc(fb.doc(fb.db,'cidades',cidSel),{...cid,bairros}); }
+  catch(e){alert('Erro: '+e.message);}
+}
+async function adicionarConjunto(quadra){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
+  const key='inp-'+quadra.replace(/\s/g,'_');
+  const inp=document.getElementById(key);
+  const val=(inp?.value||'').trim();
+  if(!val){inp?.focus();return;}
+  const cid=CIDADES[cidSel];
+  const bairros={...(cid?.bairros||{})};
+  const bairro={...bairros[bairSel]};
+  const cjsAtual=bairro.quadras?.[quadra]||[];
+  if(cjsAtual.includes(val)){alert('Conjunto já existe.');return;}
+  const novos=[...cjsAtual,val].sort((a,b)=>{ const aL=isNaN(a),bL=isNaN(b); if(aL&&!bL)return -1; if(!aL&&bL)return 1; return aL?a.localeCompare(b):parseInt(a)-parseInt(b); });
+  bairro.quadras={...bairro.quadras,[quadra]:novos};
+  bairros[bairSel]=bairro;
+  try{ await fb.setDoc(fb.doc(fb.db,'cidades',cidSel),{...cid,bairros}); if(inp)inp.value=''; }
+  catch(e){alert('Erro: '+e.message);}
+}
+async function excluirConjunto(quadra,cj){
+  if(!ehAdminRaiz && !permissoesAtuais.editarCid){ alert('Você não tem permissão para editar cidades.'); return; }
+  if(!confirm('Remover "'+cj+'" de "'+quadra+'"?'))return;
+  const cid=CIDADES[cidSel];
+  const bairros={...(cid?.bairros||{})};
+  const bairro={...bairros[bairSel]};
+  bairro.quadras={...bairro.quadras,[quadra]:(bairro.quadras[quadra]||[]).filter(c=>c!==cj)};
+  bairros[bairSel]=bairro;
+  try{ await fb.setDoc(fb.doc(fb.db,'cidades',cidSel),{...cid,bairros}); }
+  catch(e){alert('Erro: '+e.message);}
+}
+
+// ─── Editar / Excluir registros ───────────────────────────────────────────────
+// ─── Modal de edição completo ──────────────────────────────────────────────────
+let editMap = null, editMarker = null, editFotoBase64Novo = null;
+
+function comprimirImagemAdmin(src, maxW, q){
+  return new Promise(res=>{
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if(w > maxW){ h = Math.round(h*maxW/w); w = maxW; }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      res(c.toDataURL('image/jpeg', q));
+    };
+    img.src = src;
+  });
+}
+
+function previewFotoEdit(e){
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ev => comprimirImagemAdmin(ev.target.result, 1024, .7).then(c => {
+    editFotoBase64Novo = c;
+    document.getElementById('edit-foto-preview').src = c;
+    document.getElementById('edit-foto-preview').style.display = 'block';
+    document.getElementById('edit-foto-status').textContent = 'Nova foto selecionada (salva ao confirmar)';
+  });
+  r.readAsDataURL(f);
+}
+
+async function uploadFotoAdmin(b64){
+  const fd = new FormData();
+  fd.append('file', b64);
+  fd.append('upload_preset', CLOUDINARY_PRESET);
+  const r = await fetch('https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/image/upload', { method:'POST', body:fd });
+  if(!r.ok) throw new Error('Cloudinary '+r.status);
+  return (await r.json()).secure_url;
+}
+
+// ─── Perfil Inteligente do Endereço ─────────────────────────────────────────────
+function distanciaMetrosAdmin(a,b){
+  const R = 6371000;
+  const dLat = (b.lat-a.lat)*Math.PI/180, dLng = (b.lng-a.lng)*Math.PI/180;
+  const la1 = a.lat*Math.PI/180, la2 = b.lat*Math.PI/180;
+  const h = Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+
+function calcularPerfilEndereco(r){
+  // Precisão GPS (%): baseada na dispersão entre as confirmações registradas
+  let precisaoGps = null;
+  if(r.confirmacoes && r.confirmacoes.length >= 2){
+    const latMedio = r.confirmacoes.reduce((s,c)=>s+c.lat,0)/r.confirmacoes.length;
+    const lngMedio = r.confirmacoes.reduce((s,c)=>s+c.lng,0)/r.confirmacoes.length;
+    const centroide = { lat: latMedio, lng: lngMedio };
+    const maxDist = Math.max(...r.confirmacoes.map(c=>distanciaMetrosAdmin(c,centroide)));
+    precisaoGps = Math.max(0, Math.round(100 - (maxDist/40)*100));
+  } else if(r.lat){
+    precisaoGps = r.verificado ? 100 : 50;
+  }
+
+  // Tempo médio parado: usa o campo já calculado no app (média móvel), com fallback
+  // pra calcular na hora a partir da telemetria bruta, caso ainda não tenha sido preenchido
+  let tempoMedioSeg = r.tempoMedioParadaSeg || null;
+  const telemetriaDoEndereco = TELEMETRIA.filter(t =>
+    t.cidade===r.cidade && t.bairro===r.bairro && t.quadra===r.quadra &&
+    (''+t.conjunto)===(''+r.conjunto) && (''+t.casa)===(''+r.casa)
+  );
+  if(tempoMedioSeg == null && telemetriaDoEndereco.length){
+    const comTempo = telemetriaDoEndereco.filter(t=>t.tempoParadoSeg!=null);
+    if(comTempo.length) tempoMedioSeg = Math.round(comTempo.reduce((s,t)=>s+t.tempoParadoSeg,0)/comTempo.length);
+  }
+
+  // Melhor horário: agrupa a telemetria em faixas de 3h e acha a de menor tempo médio
+  let melhorHorario = null;
+  if(telemetriaDoEndereco.length >= 2){
+    const faixas = {};
+    telemetriaDoEndereco.forEach(t=>{
+      if(!t.ts) return;
+      const hora = new Date(t.ts).getHours();
+      const faixaIni = Math.floor(hora/3)*3;
+      const chave = faixaIni+'h–'+(faixaIni+3)+'h';
+      const tempo = (t.tempoAteChegarSeg||0)+(t.tempoParadoSeg||0);
+      (faixas[chave] = faixas[chave]||[]).push(tempo);
+    });
+    let melhorMedia = Infinity;
+    Object.entries(faixas).forEach(([chave, tempos])=>{
+      const media = tempos.reduce((a,b)=>a+b,0)/tempos.length;
+      if(media < melhorMedia){ melhorMedia = media; melhorHorario = chave; }
+    });
+  }
+
+  // Estrelas: composto de verificação + confirmações + precisão
+  let estrelas = 1;
+  if(r.verificado) estrelas += 2;
+  if((r.totalConfirmacoes||0) >= 3) estrelas += 1;
+  if(precisaoGps!=null && precisaoGps >= 80) estrelas += 1;
+  estrelas = Math.min(5, estrelas);
+
+  return { precisaoGps, tempoMedioSeg, melhorHorario, estrelas, amostrasTelemetria: telemetriaDoEndereco.length };
+}
+
+function abrirPerfilEndereco(id){
+  const r = registros.find(x=>x.id===id); if(!r) return;
+  const perfil = calcularPerfilEndereco(r);
+
+  document.getElementById('perfil-modal-title').textContent = r.quadra+' · Cj.'+(r.conjunto||'?')+' · Casa '+r.casa;
+  document.getElementById('perfil-estrelas').textContent = '⭐'.repeat(perfil.estrelas) + '☆'.repeat(5-perfil.estrelas);
+  document.getElementById('perfil-precisao').textContent = perfil.precisaoGps!=null ? perfil.precisaoGps+'%' : '—';
+  document.getElementById('perfil-tempo').textContent = perfil.tempoMedioSeg!=null
+    ? (perfil.tempoMedioSeg < 60 ? perfil.tempoMedioSeg+'s' : Math.floor(perfil.tempoMedioSeg/60)+'min'+(perfil.tempoMedioSeg%60?(perfil.tempoMedioSeg%60)+'s':''))
+    : '—';
+  document.getElementById('perfil-horario').textContent = perfil.melhorHorario || 'Ainda sem dados suficientes';
+  document.getElementById('perfil-detalhe').textContent =
+    `Baseado em ${r.totalConfirmacoes||0} confirmação(ões) de localização e ${perfil.amostrasTelemetria} entrega(s) registrada(s).`;
+
+  abrirModal('perfil-modal');
+}
+
+function abrirEditModal(id){
+  if(!ehAdminRaiz && !permissoesAtuais.editarReg){ alert('Você não tem permissão para editar registros.'); return; }
+  const r = registros.find(x=>x.id===id); if(!r) return;
+  editandoId = id;
+  editFotoBase64Novo = null;
+
+  document.getElementById('edit-modal-title').textContent = 'Editar · '+r.quadra+' · Cj.'+(r.conjunto||'?')+' · Casa '+r.casa;
+  document.getElementById('edit-obs-input').value = r.obs || '';
+  document.getElementById('edit-lat-input').value = r.lat ?? '';
+  document.getElementById('edit-lng-input').value = r.lng ?? '';
+  document.getElementById('edit-travar-checkbox').checked = !!r.localizacaoTravada;
+  document.getElementById('edit-foto-status').textContent = '';
+
+  const fotoPreview = document.getElementById('edit-foto-preview');
+  if(r.foto){ fotoPreview.src = r.foto; fotoPreview.style.display = 'block'; }
+  else { fotoPreview.style.display = 'none'; fotoPreview.src=''; }
+
+  // Todos os dados do registro, pra visão geral
+  document.getElementById('edit-info-extra').innerHTML = `
+    Cidade: <b>${r.cidade||'—'}</b> · Bairro: <b>${r.bairro||'—'}</b><br>
+    Status: <b>${r.verificado?'✅ Verificado':'⏳ Não verificado'}</b> · Confirmações: <b>${r.totalConfirmacoes||0}</b><br>
+    Registrado por: <b>${r.registradoPor||'—'}</b> em <b>${r.ts||'—'}</b>
+    ${r.localizacaoTravada?'<br><span style="color:var(--green);font-weight:700;">🔒 Localização travada — só muda se destravar aqui</span>':''}
+  `;
+
+  abrirModal('edit-modal');
+
+  // Inicializa (ou reaproveita) o mini-mapa com pin arrastável
+  setTimeout(() => {
+    const lat = r.lat || CENTER[0], lng = r.lng || CENTER[1];
+    if(!editMap){
+      editMap = L.map('edit-map').setView([lat,lng], 18);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(editMap);
+      editMarker = L.marker([lat,lng], { draggable:true }).addTo(editMap);
+      editMarker.on('dragend', () => {
+        const pos = editMarker.getLatLng();
+        document.getElementById('edit-lat-input').value = pos.lat.toFixed(6);
+        document.getElementById('edit-lng-input').value = pos.lng.toFixed(6);
+      });
+    } else {
+      editMap.setView([lat,lng], 18);
+      editMarker.setLatLng([lat,lng]);
+      editMap.invalidateSize();
+    }
+    // Também sincroniza o pin se o usuário digitar direto nos campos de lat/lng
+    ['edit-lat-input','edit-lng-input'].forEach(elId => {
+      document.getElementById(elId).oninput = () => {
+        const novaLat = parseFloat(document.getElementById('edit-lat-input').value);
+        const novaLng = parseFloat(document.getElementById('edit-lng-input').value);
+        if(!isNaN(novaLat) && !isNaN(novaLng)){ editMarker.setLatLng([novaLat,novaLng]); editMap.panTo([novaLat,novaLng]); }
+      };
+    });
+  }, 100);
+}
+
+async function salvarEdicaoCompleta(){
+  if(!editandoId || !fb) return;
+  const r = registros.find(x=>x.id===editandoId); if(!r) return;
+
+  const obs = document.getElementById('edit-obs-input').value.trim();
+  const lat = parseFloat(document.getElementById('edit-lat-input').value);
+  const lng = parseFloat(document.getElementById('edit-lng-input').value);
+  const localizacaoTravada = document.getElementById('edit-travar-checkbox').checked;
+
+  if(isNaN(lat) || isNaN(lng)){ alert('Latitude/Longitude inválidas.'); return; }
+
+  const dados = { ...r, obs, lat, lng, localizacaoTravada };
+
+  try{
+    if(editFotoBase64Novo){
+      document.getElementById('edit-foto-status').textContent = 'Enviando foto...';
+      dados.foto = await uploadFotoAdmin(editFotoBase64Novo);
+    }
+    await fb.setDoc(fb.doc(fb.db,'registros',editandoId), dados);
+    fecharModal('edit-modal');
+    showMsgAdmin('✓ Registro atualizado');
+  } catch(e){
+    alert('Erro: '+(e.code||e.message));
+  }
+}
+
+async function excluir(id){
+  if(!ehAdminRaiz && !permissoesAtuais.excluirReg){ alert('Você não tem permissão para excluir registros.'); return; }
+  if(!confirm('Excluir este registro?'))return;
+  try{ await fb.deleteDoc(fb.doc(fb.db,'registros',id)); }
+  catch(e){alert('Erro: '+(e.code||e.message));}
+}
+function verFoto(url){ document.getElementById('foto-modal-img').src=url; document.getElementById('foto-modal').classList.add('open'); }
+function abrirModal(id){document.getElementById(id).classList.add('open');}
+function fecharModal(id){document.getElementById(id).classList.remove('open');}
+
+// ─── Gerenciar Usuários (supervisores e entregadores) — apenas admin raiz ─────
+function onNovoUsuarioRoleChange(){
+  const ehSupervisor = document.getElementById('novo-usr-role').value === 'supervisor';
+  document.getElementById('novo-usr-permissoes-wrap').style.display = ehSupervisor ? 'flex' : 'none';
+}
+
+async function salvarNovoSupervisor(){
+  const role = document.getElementById('novo-usr-role').value;
+  const uid = document.getElementById('novo-sup-uid').value.trim();
+  const email = document.getElementById('novo-sup-email').value.trim();
+  if(!uid || !email){ alert('Preencha o UID e o nome/e-mail.'); return; }
+  if(USUARIOS[uid]){ alert('Já existe um usuário com esse UID.'); return; }
+
+  const dados = { email, role, criadoEm: new Date().toISOString() };
+  if(role === 'supervisor'){
+    dados.permissoes = {
+      editarReg: document.getElementById('novo-sup-p-editarReg').checked,
+      excluirReg: document.getElementById('novo-sup-p-excluirReg').checked,
+      editarCid: document.getElementById('novo-sup-p-editarCid').checked,
+      editarFaixas: document.getElementById('novo-sup-p-editarFaixas').checked,
+    };
+  }
+  try{
+    await fb.setDoc(fb.doc(fb.db,'usuarios',uid), dados);
+    document.getElementById('novo-sup-uid').value='';
+    document.getElementById('novo-sup-email').value='';
+    ['editarReg','excluirReg','editarCid','editarFaixas'].forEach(k=>{ document.getElementById('novo-sup-p-'+k).checked=false; });
+    alert((role==='supervisor'?'Supervisor':'Entregador')+' adicionado com sucesso!');
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
+function renderListaEntregadores(){
+  const div = document.getElementById('lista-entregadores');
+  const lista = Object.values(USUARIOS).filter(u=>u.role==='entregador');
+  if(!lista.length){ div.innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:10px 0;">Nenhum entregador cadastrado ainda.</div>'; return; }
+  div.innerHTML = lista.map(u=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+    <div>
+      <div style="font-size:13px;font-weight:600;">${u.email||u.id}</div>
+      <div style="font-size:10px;color:var(--text-3);">UID: ${u.id}</div>
+    </div>
+    <button class="btn-acao del" onclick="removerSupervisor('${u.id}')">🗑 Remover</button>
+  </div>`).join('');
+}
+
+function renderListaSupervisores(){
+  const div = document.getElementById('lista-supervisores');
+  const lista = Object.values(USUARIOS).filter(u=>u.role==='supervisor');
+  if(!lista.length){ div.innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:10px 0;">Nenhum supervisor cadastrado ainda.</div>'; return; }
+  div.innerHTML = lista.map(u=>{
+    const p = u.permissoes||{};
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div>
+          <div style="font-size:13px;font-weight:600;">${u.email||u.id}</div>
+          <div style="font-size:10px;color:var(--text-3);">UID: ${u.id}</div>
+        </div>
+        <button class="btn-acao del" onclick="removerSupervisor('${u.id}')">🗑 Remover acesso</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="edit-sup-${u.id}-editarReg" ${p.editarReg?'checked':''}/> ✏️ Editar Registros</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="edit-sup-${u.id}-excluirReg" ${p.excluirReg?'checked':''}/> 🗑 Excluir Registros</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="edit-sup-${u.id}-editarCid" ${p.editarCid?'checked':''}/> 🏙 Editar Cidades</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="edit-sup-${u.id}-editarFaixas" ${p.editarFaixas?'checked':''}/> 📏 Editar Faixas</label>
+      </div>
+      <button class="btn-acao" style="margin-top:10px;background:var(--green);color:#fff;border-color:var(--green-dark);" onclick="salvarPermissoesSupervisor('${u.id}')">💾 Salvar permissões</button>
+    </div>`;
+  }).join('');
+}
+
+async function salvarPermissoesSupervisor(uid){
+  const u = USUARIOS[uid];
+  if(!u) return;
+  const permissoes = {
+    editarReg: document.getElementById('edit-sup-'+uid+'-editarReg').checked,
+    excluirReg: document.getElementById('edit-sup-'+uid+'-excluirReg').checked,
+    editarCid: document.getElementById('edit-sup-'+uid+'-editarCid').checked,
+    editarFaixas: document.getElementById('edit-sup-'+uid+'-editarFaixas').checked,
+  };
+  try{
+    await fb.setDoc(fb.doc(fb.db,'usuarios',uid), { ...u, permissoes });
+    alert('Permissões atualizadas!');
+  } catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
+async function removerSupervisor(uid){
+  if(!confirm('Remover o acesso deste supervisor ao painel? Ele continuará podendo usar o app de entregas normalmente.')) return;
+  try{ await fb.deleteDoc(fb.doc(fb.db,'usuarios',uid)); }
+  catch(e){ alert('Erro: '+(e.message||e.code)); }
+}
+
+async function sairAdmin(){
+  if(!confirm('Deseja sair do painel?')) return;
+  localStorage.removeItem(CHAVE_SESSAO_ADMIN);
+  if(fb) await fb.signOut(fb.auth);
+  location.reload();
+}
+
+window.entrar=entrar; window.navTo=navTo; window.irPara=irPara; window.sairAdmin=sairAdmin;
+window.salvarNovoSupervisor=salvarNovoSupervisor; window.salvarPermissoesSupervisor=salvarPermissoesSupervisor;
+window.onNovoUsuarioRoleChange=onNovoUsuarioRoleChange; window.renderListaEntregadores=renderListaEntregadores;
+window.admImportarCSV=admImportarCSV; window.admAnalisarLista=admAnalisarLista; window.admOtimizarRota=admOtimizarRota;
+window.admReotimizarComCorrecoes=admReotimizarComCorrecoes; window.admEnviarRota=admEnviarRota;
+window.admMoverParaPosicao=admMoverParaPosicao; window.admFecharRota=admFecharRota;
+window.radmOnBuscaCidadeChange=radmOnBuscaCidadeChange; window.radmOnBuscaBairroChange=radmOnBuscaBairroChange;
+window.radmOnBuscaQuadraChange=radmOnBuscaQuadraChange; window.radmBuscarEndereco=radmBuscarEndereco;
+window.radmVerNoMapa=radmVerNoMapa;
+window.removerSupervisor=removerSupervisor; window.renderListaSupervisores=renderListaSupervisores;
+window.onFaixasCidadeChange=onFaixasCidadeChange; window.renderFaixasTabela=renderFaixasTabela;
+window.salvarFaixa=salvarFaixa; window.irParaFaixas=irParaFaixas;
+window.renderCorrecoes=renderCorrecoes; window.irParaCorrecoes=irParaCorrecoes;
+window.renderTelemetria=renderTelemetria; window.irParaTelemetria=irParaTelemetria;
+window.salvarCoordQuadra=salvarCoordQuadra;
+window.renderHistorico=renderHistorico; window.irParaHistorico=irParaHistorico;
+window.renderConfirmacoes=renderConfirmacoes; window.irParaConfirmacoes=irParaConfirmacoes; window.removerConfirmacao=removerConfirmacao;
+window.abrirEditarConfirmacao=abrirEditarConfirmacao; window.salvarEdicaoConfirmacao=salvarEdicaoConfirmacao;
+window.renderAprovacoes=renderAprovacoes; window.aprovarPendente=aprovarPendente; window.rejeitarPendente=rejeitarPendente;
+window.exportarRegistrosCSV=exportarRegistrosCSV; window.exportarTelemetriaCSV=exportarTelemetriaCSV;
+window.exportarHistoricoCSV=exportarHistoricoCSV; window.exportarCorrecoesCSV=exportarCorrecoesCSV;
+window.renderTabela=renderTabela; window.onTabCidadeChange=onTabCidadeChange; window.onTabBairroChange=onTabBairroChange;
+window.onMapCidadeChange=onMapCidadeChange; window.onMapBairroChange=onMapBairroChange; window.filtrarMapaAdmin=filtrarMapaAdmin;
+window.selecionarCidade=selecionarCidade; window.selecionarBairro=selecionarBairro;
+window.abrirModalNovaCidade=abrirModalNovaCidade; window.salvarNovaCidade=salvarNovaCidade; window.excluirCidade=excluirCidade;
+window.abrirModalNovoBairro=abrirModalNovoBairro; window.salvarNovoBairro=salvarNovoBairro; window.excluirBairro=excluirBairro;
+window.abrirModalNovaQuadra=abrirModalNovaQuadra; window.salvarNovaQuadra=salvarNovaQuadra; window.excluirQuadra=excluirQuadra;
+window.adicionarConjunto=adicionarConjunto; window.excluirConjunto=excluirConjunto;
+window.abrirEditModal=abrirEditModal; window.salvarEdicaoCompleta=salvarEdicaoCompleta; window.excluir=excluir;
+window.abrirPerfilEndereco=abrirPerfilEndereco;
+window.previewFotoEdit=previewFotoEdit;
+window.verFoto=verFoto; window.fecharModal=fecharModal;
+</script>
+</body>
+</html>
