@@ -188,6 +188,17 @@ html,body{height:100%;background:var(--bg-alt);font-family:-apple-system,BlinkMa
 .rota-textarea{width:100%;height:120px;font-size:12px;padding:10px;border:.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);resize:none;font-family:monospace}
 .rota-btn{width:100%;padding:11px;background:#1D9E75;color:var(--surface);border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
 .rota-btn:disabled{background:var(--muted);cursor:not-allowed}
+.rota-sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--border);margin:2px auto 0}
+.rota-searchbar{display:flex;align-items:center;gap:10px;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;padding:11px 14px}
+.rota-searchbar-icon{font-size:15px;flex-shrink:0;opacity:.8}
+.rota-searchbar-input{flex:1;min-width:0;border:none;background:none;font-size:13px;color:var(--text);outline:none;font-family:inherit}
+.rota-searchbar-input::placeholder{color:var(--text-3)}
+.rota-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 20px;gap:10px;text-align:center}
+.rota-empty-icon{width:46px;height:46px;border:2px dashed var(--muted);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--text-3);font-weight:300}
+.rota-empty-text{font-size:12.5px;color:var(--text-3);max-width:230px;line-height:1.4}
+.rota-cta-primary{width:100%;padding:14px;background:#1D9E75;color:#fff;border:none;border-radius:26px;font-size:14.5px;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(29,158,117,.28)}
+.rota-cta-secondary{width:100%;padding:12px;background:none;color:#1D9E75;border:1.5px solid var(--border);border-radius:26px;font-size:13px;font-weight:600;cursor:pointer}
+.rota-hint{font-size:11px;color:var(--text-3);margin-top:4px;line-height:1.4}
 .rota-stats{display:flex;gap:8px}
 .rota-stat{flex:1;text-align:center;background:var(--bg-alt);border-radius:8px;padding:8px;border:.5px solid var(--border-light);font-size:11px;color:var(--text-2)}
 .rota-stat .n{font-size:20px;font-weight:700;color:#1D9E75;display:block}
@@ -390,9 +401,11 @@ html,body{height:100%;background:var(--bg-alt);font-family:-apple-system,BlinkMa
   <!-- ROTA -->
   <div id="screen-rota" class="screen">
     <div class="rota-screen" id="rota-screen-inner">
-      <div>
-        <div class="section-label">Transportadora dessa lista</div>
-        <input list="transportadoras-sugestoes" id="rota-transportadora" placeholder="Ex: Anjun Express, iMile, Shopee, J&amp;T Express..." style="width:100%;padding:10px 12px;margin-bottom:12px;border:1px solid #ddd;border-radius:8px;font-size:13px;"/>
+      <div class="rota-sheet-handle"></div>
+
+      <div class="rota-searchbar">
+        <span class="rota-searchbar-icon">🚚</span>
+        <input list="transportadoras-sugestoes" id="rota-transportadora" class="rota-searchbar-input" placeholder="Transportadora dessa lista (opcional)"/>
         <datalist id="transportadoras-sugestoes">
           <option value="Anjun Express"></option>
           <option value="iMile"></option>
@@ -402,19 +415,26 @@ html,body{height:100%;background:var(--bg-alt);font-family:-apple-system,BlinkMa
           <option value="Loggi"></option>
           <option value="Correios"></option>
         </datalist>
-        <div class="section-label">Lista de pacotes do dia</div>
-        <button class="btn" style="width:100%;padding:10px;margin-bottom:8px;background:#f5f5f5;border:1.5px dashed #ccc;color:#555;font-size:13px;" onclick="document.getElementById('rota-csv-input').click()">
-          📁 Importar arquivo CSV
-        </button>
-        <input type="file" id="rota-csv-input" accept=".csv,text/csv" style="display:none;" onchange="importarCSV(event)"/>
-        <div style="text-align:center;font-size:11px;color:#aaa;margin-bottom:8px;">ou cole o conteúdo manualmente abaixo</div>
+      </div>
+
+      <div id="rota-empty-state" class="rota-empty-state">
+        <div class="rota-empty-icon">+</div>
+        <div class="rota-empty-text">Adicione a lista de pacotes pra começar a montar a rota</div>
+      </div>
+
+      <div id="rota-paste-wrap" style="display:none;">
         <textarea class="rota-textarea" id="rota-input" placeholder='Cole aqui o CSV de pacotes. Exemplo:&#10;"QNO 18 Cj 25, 30, Ceilândia...",Brasília,DF,556199...&#10;"QNO 17 Cj 59, 03, Brasília...",Brasília,DF,556198...'></textarea>
-        <div style="font-size:11px;color:#aaa;margin-top:4px;">Pode importar mais de um CSV: cada novo arquivo se soma à lista já carregada (não zera). Pacotes na mesma casa ganham um aviso "itens no local".</div>
+        <div class="rota-hint">Pode importar mais de um CSV: cada novo arquivo se soma à lista já carregada (não zera). Pacotes na mesma casa ganham um aviso "itens no local".</div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="rota-btn" id="rota-btn" style="flex:1;" onclick="analisarLista()">🔍 Analisar lista</button>
+          <button class="rota-btn" style="background:var(--bg-alt);color:var(--text-2);flex:0 0 auto;padding:0 16px;" onclick="limparListaImportada()" title="Apaga tudo que foi importado até agora">🗑</button>
+        </div>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="rota-btn" id="rota-btn" style="flex:1;" onclick="analisarLista()">🔍 Analisar lista</button>
-        <button class="rota-btn" style="background:#f5f5f5;color:#666;flex:0 0 auto;padding:0 16px;" onclick="limparListaImportada()" title="Apaga tudo que foi importado até agora">🗑</button>
-      </div>
+
+      <button class="rota-cta-primary" onclick="esconderEmptyStateRota();document.getElementById('rota-csv-input').click()">＋ Importar arquivo CSV</button>
+      <input type="file" id="rota-csv-input" accept=".csv,text/csv" style="display:none;" onchange="importarCSV(event)"/>
+      <button class="rota-cta-secondary" onclick="toggleColarManual()" id="rota-colar-manual-btn">📋 Colar lista manualmente</button>
+
       <div id="rota-resultado" style="display:none;">
         <div class="rota-stats" id="rota-stats"></div>
         <div class="rota-aviso" id="rota-aviso" style="display:none;"></div>
@@ -1432,6 +1452,20 @@ function tagDuplicado(p, contagem){
   return `<span style="background:#FFF3CD;color:#856404;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;margin-right:4px;">📦 ${n} itens no local</span>`;
 }
 
+// ─── Controle do novo layout (empty state + colagem manual escondida) ────────
+function esconderEmptyStateRota(){
+  const el = document.getElementById('rota-empty-state');
+  if(el) el.style.display = 'none';
+}
+function toggleColarManual(){
+  const wrap = document.getElementById('rota-paste-wrap');
+  const btn = document.getElementById('rota-colar-manual-btn');
+  const vaiAbrir = wrap.style.display === 'none' || !wrap.style.display;
+  wrap.style.display = vaiAbrir ? 'block' : 'none';
+  btn.textContent = vaiAbrir ? '✕ Fechar colagem manual' : '📋 Colar lista manualmente';
+  if(vaiAbrir){ esconderEmptyStateRota(); document.getElementById('rota-input').focus(); }
+}
+
 // ─── Importar arquivo CSV ──────────────────────────────────────────────────────
 function importarCSV(e){
   const file = e.target.files[0];
@@ -1519,10 +1553,14 @@ function limparListaImportada(){
   rotaBoundsAjustadosRevisao = false;
   document.getElementById('rota-input').value = '';
   document.getElementById('rota-resultado').style.display = 'none';
+  document.getElementById('rota-paste-wrap').style.display = 'none';
+  document.getElementById('rota-colar-manual-btn').textContent = '📋 Colar lista manualmente';
+  document.getElementById('rota-empty-state').style.display = 'flex';
   showMsg('🗑 Lista de importação limpa.', 'ok');
 }
 
 function renderAnalise(pacotes, naoReconhecidos){
+  esconderEmptyStateRota();
   const div = document.getElementById('rota-resultado');
   div.style.display = 'block';
   document.getElementById('rota-revisao-wrap').style.display = 'block';
@@ -2620,7 +2658,7 @@ function registrarTelemetriaParadaAtual(){
 
 // ─── Globais ───────────────────────────────────────────────────────────────────
 window.showTab=showTab; window.fazerLogin=fazerLogin;
-window.analisarLista=analisarLista; window.importarCSV=importarCSV; window.fecharRota=fecharRota; window.copiarRota=copiarRota; window.limparListaImportada=limparListaImportada;
+window.analisarLista=analisarLista; window.importarCSV=importarCSV; window.fecharRota=fecharRota; window.copiarRota=copiarRota; window.limparListaImportada=limparListaImportada; window.toggleColarManual=toggleColarManual; window.esconderEmptyStateRota=esconderEmptyStateRota;
 window.selecionarPontoPartida=selecionarPontoPartida;
 window.removerParadaDaRota=removerParadaDaRota;
 window.reotimizarComCorrecoes=reotimizarComCorrecoes;
