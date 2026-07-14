@@ -1,0 +1,2807 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#1D9E75"/>
+<title>Rotas QNO</title>
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#1D9E75"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root{
+  --bg-alt:#f5f5f5; --surface:#fff; --text:#111; --text-2:#666; --text-3:#888;
+  --border:#e5e5e5; --border-light:#eee; --muted:#ccc;
+}
+html.dark-mode{
+  --bg-alt:#15171c; --surface:#1e2128; --text:#f0f0f0; --text-2:#b8bcc4; --text-3:#8a8f99;
+  --border:#33363f; --border-light:#2a2d35; --muted:#555;
+}
+html.dark-mode body{ background:var(--bg-alt); }
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg-alt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+#app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto;background:var(--surface)}
+
+/* Login */
+#login-screen{position:fixed;inset:0;background:var(--bg-alt);display:flex;align-items:center;justify-content:center;padding:20px;z-index:9999}
+.login-card{background:var(--surface);border-radius:16px;padding:32px;width:100%;max-width:360px;box-shadow:0 4px 24px rgba(0,0,0,.1);text-align:center}
+.login-logo{width:52px;height:52px;background:#1D9E75;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 14px}
+.login-card h2{font-size:19px;margin-bottom:4px}
+.login-card p{font-size:12px;color:var(--text-3);margin-bottom:22px}
+.login-input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:9px;font-size:14px;margin-bottom:10px;outline:none;text-align:left}
+.login-input:focus{border-color:#1D9E75}
+.login-btn{width:100%;padding:12px;background:#1D9E75;color:var(--surface);border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;margin-top:2px}
+.login-btn:disabled{background:var(--muted);cursor:not-allowed}
+.login-err{font-size:12px;color:#E24B4A;margin-top:8px;display:none;text-align:center}
+.login-link{font-size:12px;color:var(--text-3);margin-top:14px;cursor:pointer;text-decoration:underline}
+
+/* Header */
+.header{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface);border-bottom:.5px solid var(--border)}
+.header-icon{width:32px;height:32px;background:#1D9E75;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.header-title{font-size:14px;font-weight:600;color:var(--text)}
+.header-sub{font-size:10px;color:var(--text-3)}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+.user-badge{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:600}
+.user-badge.admin{background:#E1F5EE;color:#0F6E56}
+.user-badge.entregador{background:#EEF2FF;color:#3730A3}
+.user-badge.visitante{background:var(--bg-alt);color:var(--text-3)}
+.logout-btn{font-size:11px;padding:4px 9px;border:.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-2);cursor:pointer}
+
+/* Sync */
+.sync-bar{display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:11px;background:var(--bg-alt);border-bottom:.5px solid var(--border)}
+.sync-bar .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--muted)}
+.sync-bar .dot.ok{background:#1D9E75}
+.sync-bar .dot.buscando{background:#EF9F27;animation:pulse 1s infinite}
+.sync-bar .dot.erro{background:#E24B4A}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* Tabs */
+.tab-bar{display:flex;gap:4px;padding:7px;background:var(--surface);border-bottom:.5px solid var(--border)}
+.tab{flex:1;padding:7px 4px;font-size:11px;font-weight:500;border:.5px solid var(--border);background:var(--bg-alt);cursor:pointer;border-radius:7px;color:var(--text-2)}
+.tab.active{background:#1D9E75;color:var(--surface);border-color:#0F6E56}
+
+/* Screens */
+.screen{display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0;position:relative}
+.screen.active{display:flex}
+#map{flex:1;z-index:0;min-height:0}
+
+/* Stats */
+.stats-bar{display:flex;padding:7px;background:var(--bg-alt);border-bottom:.5px solid var(--border);gap:5px}
+.stat{flex:1;text-align:center;background:var(--surface);border-radius:7px;padding:5px 4px;border:.5px solid var(--border-light)}
+.stat .num{font-size:18px;font-weight:600;color:#1D9E75}
+.stat .lbl{font-size:9px;color:var(--text-3);margin-top:1px}
+
+/* Map toolbar */
+.map-toolbar{display:flex;gap:5px;padding:7px;background:var(--surface);border-bottom:.5px solid var(--border);flex-wrap:wrap}
+.map-toolbar select{flex:1;min-width:70px;font-size:11px;padding:6px 7px;border:.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text)}
+.btn-icon{padding:6px 10px;font-size:12px;border:.5px solid var(--border);border-radius:7px;background:var(--surface);cursor:pointer}
+.btn-green{background:#1D9E75;color:var(--surface);border-color:#0F6E56}
+
+/* Forms */
+.reg-screen{padding:12px;overflow-y:auto;flex:1}
+.section-label{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.form-group{margin-bottom:11px}
+.form-group label{font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;font-weight:500}
+.form-group input,.form-group select,.form-group textarea{width:100%;font-size:14px;padding:9px 11px;border:.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);-webkit-appearance:none}
+.form-group textarea{height:65px;resize:none}
+.form-row{display:flex;gap:8px}
+.form-row .form-group{flex:1}
+
+/* Foto */
+.photo-area{border:1.5px dashed var(--muted);border-radius:10px;padding:16px;text-align:center;font-size:13px;color:var(--text-3);cursor:pointer;background:var(--bg-alt)}
+.photo-area .icon{font-size:24px;display:block;margin-bottom:4px}
+#foto-preview{margin-top:8px;display:none;position:relative}
+#foto-preview img{width:100%;border-radius:10px;border:.5px solid var(--border-light)}
+#foto-remove{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.5);color:var(--surface);border:none;border-radius:50%;width:26px;height:26px;font-size:14px;cursor:pointer}
+
+/* GPS */
+.gps-box{background:var(--bg-alt);border-radius:8px;padding:9px 11px;font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:8px;margin-bottom:11px;border:.5px solid var(--border)}
+.gps-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.gps-dot.ok{background:#1D9E75}
+
+/* Buttons */
+.save-btn{width:100%;padding:12px;font-size:14px;font-weight:600;background:#1D9E75;color:var(--surface);border:none;border-radius:10px;cursor:pointer;margin-top:4px}
+.save-btn:disabled{background:var(--muted);cursor:not-allowed}
+.msg{margin-top:10px;font-size:13px;text-align:center;padding:8px;border-radius:8px;display:none}
+.msg.ok{background:#E1F5EE;color:#0F6E56}
+.msg.err{background:#FCEBEB;color:#A32D2D}
+.toast-msg{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);max-width:90%;padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;text-align:center;z-index:6000;display:none;box-shadow:0 4px 16px rgba(0,0,0,.15)}
+.toast-msg.ok{background:#1D9E75;color:var(--surface)}
+.toast-msg.err{background:#E24B4A;color:var(--surface)}
+
+/* Lista */
+.list-toolbar{padding:8px;border-bottom:.5px solid var(--border);background:var(--surface)}
+.list-toolbar input{width:100%;font-size:13px;padding:8px 11px;border:.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)}
+.list-screen{padding:8px;overflow-y:auto;flex:1}
+.entry-card{background:var(--surface);border:.5px solid var(--border-light);border-radius:11px;padding:9px 11px;margin-bottom:8px;display:flex;gap:9px;align-items:center}
+.entry-thumb{width:50px;height:50px;border-radius:8px;object-fit:cover;border:.5px solid var(--border-light);flex-shrink:0}
+.entry-thumb-empty{width:50px;height:50px;border-radius:8px;background:var(--bg-alt);border:.5px solid var(--border-light);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.entry-info{flex:1;min-width:0}
+.entry-addr{font-size:12px;font-weight:600;color:var(--text)}
+.entry-obs{font-size:11px;color:var(--text-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry-ts{font-size:10px;color:var(--text-3);margin-top:2px}
+.badge-gps{font-size:9px;padding:1px 5px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:3px;font-weight:500}
+.action-btn{background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);padding:5px;flex-shrink:0}
+
+/* Busca */
+.busca-result{background:var(--surface);border:.5px solid var(--border-light);border-radius:10px;padding:12px;margin-top:12px}
+
+/* Navegação com bússola */
+.nav-overlay{position:fixed;inset:0;background:var(--surface);z-index:5000;display:none;flex-direction:column;max-width:480px;margin:0 auto}
+.nav-overlay.open{display:flex}
+#nav-map{flex:1;min-height:0;position:relative}
+
+/* Faixa de instrução de manobra (topo, estilo Google) */
+.nav-instrucao{position:absolute;top:12px;left:12px;right:12px;z-index:20;background:#1A2332;border-radius:16px;padding:14px 16px;display:none;align-items:center;gap:14px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.nav-instrucao.show{display:flex}
+.nav-instrucao-icone{width:38px;height:38px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--surface);transition:transform .25s}
+.nav-instrucao-textos{flex:1;min-width:0}
+.nav-instrucao-dist{font-size:19px;font-weight:800;color:var(--surface);line-height:1.1}
+.nav-instrucao-rua{font-size:13px;color:rgba(255,255,255,.75);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Botão fechar flutuante */
+.nav-close-fab{position:absolute;top:14px;right:14px;z-index:25;width:36px;height:36px;border-radius:50%;background:var(--surface);border:none;font-size:16px;color:var(--text-2);box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* Badge de horário previsto de chegada */
+.nav-eta-badge{position:absolute;top:66px;right:14px;z-index:20;background:var(--surface);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.2);display:none;align-items:center;gap:5px}
+.nav-eta-badge.show{display:flex}
+
+/* Velocímetro */
+.nav-speedometer{position:absolute;left:14px;bottom:14px;z-index:20;width:64px;height:64px;border-radius:50%;background:var(--surface);border:3px solid var(--border-light);box-shadow:0 3px 10px rgba(0,0,0,.2);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.nav-speedometer #nav-speed-val{font-size:20px;font-weight:800;color:var(--text);line-height:1}
+.nav-speedometer small{font-size:9px;color:#999;font-weight:600}
+
+/* Botão flutuante de recentralizar */
+.nav-fab-recenter{position:absolute;right:14px;bottom:14px;z-index:20;width:44px;height:44px;border-radius:50%;background:var(--surface);border:none;font-size:18px;box-shadow:0 3px 10px rgba(0,0,0,.2);cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+.nav-arrived-banner{background:#0F6E56;color:var(--surface);padding:8px 16px;font-size:13px;font-weight:700;text-align:center;display:none;animation:pulse-arr 1s infinite}
+@keyframes pulse-arr{0%,100%{opacity:1}50%{opacity:.7}}
+
+/* Card branco inferior (endereço + ações) */
+.nav-card-inferior{background:var(--surface);border-radius:18px 18px 0 0;padding:14px 16px 10px;box-shadow:0 -4px 14px rgba(0,0,0,.08);position:relative;z-index:15;margin-top:-18px}
+.nav-card-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.nav-addr{font-size:15px;font-weight:700;color:var(--text);line-height:1.3}
+.nav-progress{font-size:12px;color:var(--text-3);margin-top:3px;font-weight:500}
+.nav-obs{font-size:13px;color:var(--text-2);margin-top:6px;line-height:1.4}
+.nav-contato{font-size:12px;color:#1D9E75;margin-top:4px;font-weight:600}
+.nav-foto-wrap{flex-shrink:0}
+.nav-foto-wrap img{width:52px;height:52px;object-fit:cover;border-radius:10px;border:.5px solid var(--border-light)}
+.nav-buttons{display:flex;gap:10px;padding:14px 0 6px}
+.nav-btn{flex:1;padding:14px;border-radius:14px;font-size:22px;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center}
+.nav-btn-skip{background:#F4F4F4;color:var(--text-3);border:1px solid var(--border)}
+.nav-btn-confirm{background:#E1F5EE;color:#1D9E75;border:1px solid #BEE8D6}
+.nav-btn-confirm.chegou{background:#1D9E75;color:var(--surface);border-color:#0F6E56}
+
+/* Barra preta inferior (tempo/distância totais) */
+.nav-barra-inferior{background:#1A2332;color:var(--surface);padding:12px 18px;display:flex;align-items:center;justify-content:space-between}
+.nav-barra-tempo{font-size:17px;font-weight:800}
+.nav-barra-dist{font-size:12px;color:rgba(255,255,255,.65)}
+.nav-barra-lista{background:rgba(255,255,255,.12);border:none;color:var(--surface);width:34px;height:34px;border-radius:10px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+.nav-start-btn{width:100%;padding:12px;background:#378ADD;color:var(--surface);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px}
+#rota-mapa-overview{width:100%;height:260px;border-radius:12px;overflow:hidden;border:.5px solid var(--border);margin:10px 0}
+.nav-loading{position:absolute;inset:0;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text-2);z-index:5}
+.rota-screen{padding:12px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px}
+.rota-textarea{width:100%;height:120px;font-size:12px;padding:10px;border:.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);resize:none;font-family:monospace}
+.rota-btn{width:100%;padding:11px;background:#1D9E75;color:var(--surface);border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+.rota-btn:disabled{background:var(--muted);cursor:not-allowed}
+.rota-sheet{position:absolute;top:0;left:0;right:0;height:100%;background:var(--surface);border-radius:20px 20px 0 0;box-shadow:0 -6px 28px rgba(0,0,0,.18);display:flex;flex-direction:column;z-index:600;transition:transform .32s cubic-bezier(.32,.72,0,1);will-change:transform}
+.rota-sheet-drag-zone{flex-shrink:0;padding:9px 16px 12px;cursor:grab;touch-action:none;user-select:none}
+.rota-sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--muted);margin:0 auto 10px}
+.rota-sheet-body{flex:1;min-height:0;overflow-y:auto;padding:0 16px 18px;display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch}
+.rota-searchbar{display:flex;align-items:center;gap:10px;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;padding:11px 14px}
+.rota-searchbar-icon{font-size:15px;flex-shrink:0;opacity:.8}
+.rota-searchbar-input{flex:1;min-width:0;border:none;background:none;font-size:13px;color:var(--text);outline:none;font-family:inherit}
+.rota-searchbar-input::placeholder{color:var(--text-3)}
+.rota-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 20px;gap:10px;text-align:center}
+.rota-empty-icon{width:46px;height:46px;border:2px dashed var(--muted);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--text-3);font-weight:300}
+.rota-empty-text{font-size:12.5px;color:var(--text-3);max-width:230px;line-height:1.4}
+.rota-cta-primary{width:100%;padding:14px;background:#1D9E75;color:#fff;border:none;border-radius:26px;font-size:14.5px;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(29,158,117,.28)}
+.rota-cta-secondary{width:100%;padding:12px;background:none;color:#1D9E75;border:1.5px solid var(--border);border-radius:26px;font-size:13px;font-weight:600;cursor:pointer}
+.rota-hint{font-size:11px;color:var(--text-3);margin-top:4px;line-height:1.4}
+.rota-stats{display:flex;gap:8px}
+.rota-stat{flex:1;text-align:center;background:var(--bg-alt);border-radius:8px;padding:8px;border:.5px solid var(--border-light);font-size:11px;color:var(--text-2)}
+.rota-stat .n{font-size:20px;font-weight:700;color:#1D9E75;display:block}
+.rota-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:.5px solid var(--border-light);border-radius:10px}
+.rota-num{width:28px;height:28px;border-radius:50%;background:#1D9E75;color:var(--surface);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rota-num.sem-gps{background:#EF9F27}
+.rota-num.estimado{background:var(--text-3)}
+.rota-info{flex:1;min-width:0}
+.rota-addr{font-size:13px;font-weight:600;color:var(--text)}
+.rota-detalhe{font-size:11px;color:var(--text-3);margin-top:2px}
+.rota-contato{font-size:11px;color:#1D9E75;margin-top:1px}
+.rota-badge{font-size:9px;padding:1px 5px;border-radius:10px;margin-left:4px;font-weight:500}
+.rota-badge.gps{background:#E1F5EE;color:#0F6E56}
+.rota-badge.estc{background:#E3F0FC;color:#1B5A8A}
+.rota-badge.est{background:#FFF3CD;color:#856404}
+.rota-badge.nf{background:#FCEBEB;color:#A32D2D}
+.rota-sep{font-size:10px;color:var(--text-3);text-align:center;padding:2px 0}
+.rota-copy-btn{padding:5px 10px;font-size:11px;border:.5px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;flex-shrink:0}
+.rota-empty{text-align:center;padding:30px 20px;color:var(--text-3);font-size:13px}
+.rota-aviso{background:#FFF8E1;border:.5px solid #FFE082;border-radius:8px;padding:10px 12px;font-size:12px;color:#856404;line-height:1.5}{position:absolute;inset:0;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;z-index:1000;font-size:13px;color:var(--text-2)}
+.empty{text-align:center;padding:40px 20px;color:var(--text-3);font-size:13px;line-height:1.8}
+.empty .icon{font-size:34px;display:block;margin-bottom:10px}
+
+/* Modais */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:none;align-items:center;justify-content:center;padding:16px}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border-radius:16px;padding:20px;max-width:380px;width:100%;text-align:center}
+.modal .icon{font-size:30px;margin-bottom:8px}
+.modal h3{font-size:15px;margin-bottom:6px;color:var(--text)}
+.modal p{font-size:12px;color:var(--text-2);line-height:1.5;margin-bottom:14px}
+.modal button{width:100%;padding:11px;background:#1D9E75;color:var(--surface);border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+.modal .link-btn{background:none;color:var(--text-3);font-weight:400;font-size:12px;margin-top:8px;padding:5px}
+
+/* Pin modal */
+#pin-modal-bg{z-index:6000}
+#pin-modal-bg .modal{max-width:420px;padding:14px;text-align:left}
+.pin-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+.pin-sub{font-size:11px;color:var(--text-3);margin-bottom:8px}
+#pin-mapa{width:100%;height:210px;border-radius:10px;border:.5px solid var(--border);overflow:hidden;margin-bottom:8px}
+.dpad{display:grid;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,42px);gap:4px;justify-content:center;margin:8px auto}
+.dpad-btn{width:42px;height:42px;background:var(--bg-alt);border:.5px solid var(--border);border-radius:8px;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none}
+.dpad-btn:active{background:#1D9E75;color:var(--surface);transform:scale(.93)}
+.dpad-btn.vazio{background:transparent;border:none;cursor:default}
+.dpad-step{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px}
+.dpad-step label{font-size:11px;color:var(--text-3)}
+.dpad-step select{font-size:12px;padding:4px 8px;border:.5px solid var(--border);border-radius:6px;background:var(--surface)}
+.pin-coords{font-size:10px;color:var(--text-3);text-align:center;margin-bottom:8px}
+.pin-btns{display:flex;gap:8px}
+.pin-btns button{flex:1;padding:10px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;border:.5px solid var(--border)}
+.pin-confirm{background:#1D9E75;color:var(--surface);border-color:#0F6E56}
+.pin-reset{background:var(--bg-alt);color:var(--text-2)}
+.foto-zoom-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9000;display:none;align-items:center;justify-content:center;padding:20px;}
+.foto-zoom-bg.open{display:flex}
+.foto-zoom-bg img{max-width:100%;max-height:85vh;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+.foto-zoom-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.15);color:var(--surface);border:none;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.foto-clicavel{cursor:pointer;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">📦</div>
+    <h2>Rotas QNO</h2>
+    <p>Ceilândia · Expansão Setor O</p>
+    <input class="login-input" type="email" id="login-email" placeholder="E-mail" autocomplete="email"/>
+    <input class="login-input" type="password" id="login-senha" placeholder="Senha" onkeydown="if(event.key==='Enter')fazerLogin()"/>
+    <button class="login-btn" id="login-btn" onclick="fazerLogin()">Entrar</button>
+    <div class="login-err" id="login-err"></div>
+    <div class="login-link" onclick="abrirCadastro()">Não tem conta? Solicite acesso</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;">
+  <div class="toast-msg" id="toast-msg"></div>
+  <div id="offline-banner" style="display:none;background:#EF9F27;color:#fff;text-align:center;font-size:12px;padding:7px 10px;font-weight:600;">
+    📡 Sem conexão — o app continua funcionando, os dados serão sincronizados automaticamente quando a internet voltar
+  </div>
+  <div id="rota-enviada-banner" onclick="abrirRotaEnviada()" style="display:none;background:#1D9E75;color:#fff;text-align:center;font-size:13px;padding:10px 12px;font-weight:700;cursor:pointer;">
+    📬 O administrador te enviou uma rota — toque pra abrir
+  </div>
+  <div class="header">
+    <div class="header-icon">📦</div>
+    <div><div class="header-title">Rotas QNO</div><div class="header-sub">Ceilândia · DF</div></div>
+    <div class="header-right">
+      <span class="user-badge visitante" id="user-badge">...</span>
+      <button class="logout-btn" onclick="fazerLogout()">Sair</button>
+    </div>
+  </div>
+
+  <div class="sync-bar">
+    <div class="dot" id="sync-dot"></div>
+    <span id="sync-text">Conectando...</span>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab active" onclick="showTab('mapa')">🗺 Mapa</button>
+    <button class="tab" id="tab-rota" onclick="abrirRota()">🛣 Rota</button>
+    <button class="tab" id="tab-registrar" onclick="showTab('registrar')">📍 Registrar</button>
+    <button class="tab" id="tab-lista" onclick="showTab('lista')">📋 Lista</button>
+  </div>
+
+  <!-- MAPA (com busca integrada) -->
+  <div id="screen-mapa" class="screen active">
+    <div class="stats-bar" id="stats-bar-admin">
+      <div class="stat"><div class="num" id="stat-total">0</div><div class="lbl">mapeadas</div></div>
+      <div class="stat"><div class="num" id="stat-gps">0</div><div class="lbl">com GPS</div></div>
+      <div class="stat"><div class="num" id="stat-foto">0</div><div class="lbl">com foto</div></div>
+    </div>
+
+    <div class="map-toolbar" id="map-toolbar-admin">
+      <select id="filtro-cidade" onchange="onFiltroCidadeChange()"><option value="">Todas cidades</option></select>
+      <select id="filtro-bairro" onchange="onFiltroBairroChange()"><option value="">Todos bairros</option></select>
+      <select id="filtro-quadra" onchange="filtrarMapa()"><option value="">Todas quadras</option></select>
+      <button class="btn-icon btn-green" onclick="centralizarMapa()">📍</button>
+    </div>
+
+    <div class="busca-inline" style="padding:8px;background:#fff;border-bottom:.5px solid #e5e5e5;">
+      <div class="form-row" style="margin-bottom:6px;">
+        <select id="busca-cidade" onchange="onCidadeChange('busca-cidade','busca-bairro','busca-quadra','busca-cj');buscarEndereco()" style="flex:1;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:7px;"><option value="">Cidade...</option></select>
+        <select id="busca-bairro" onchange="onBairroChange('busca-bairro','busca-quadra','busca-cj');buscarEndereco()" style="flex:1;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:7px;"><option value="">Bairro...</option></select>
+      </div>
+      <div class="form-row" style="margin-bottom:6px;">
+        <select id="busca-quadra" onchange="onQuadraChange('busca-quadra','busca-cj');buscarEndereco()" style="flex:1;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:7px;"><option value="">Quadra...</option></select>
+        <select id="busca-cj" onchange="buscarEndereco()" style="flex:1;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:7px;"><option value="">Conjunto...</option></select>
+        <input type="text" inputmode="text" id="busca-casa" placeholder="Casa (ex: 15 ou 11A)" oninput="buscarEndereco()" style="width:90px;font-size:12px;padding:7px 8px;border:.5px solid #ddd;border-radius:7px;"/>
+      </div>
+      <div id="busca-resultado" style="display:none;">
+        <div id="busca-sem" style="display:none;" class="empty" style="padding:12px;"><span class="icon">📭</span>Não cadastrado ainda.</div>
+        <div id="busca-com" style="display:none;" class="busca-result" style="margin-top:6px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;">
+            <div id="busca-foto-wrap" style="display:none;flex-shrink:0;">
+              <img id="busca-foto" class="foto-clicavel" onclick="abrirFotoZoom(this.src)" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:.5px solid #eee;"/>
+            </div>
+            <div style="flex:1;">
+              <div id="busca-addr" style="font-size:13px;font-weight:600;color:#111;margin-bottom:3px;"></div>
+              <div id="busca-obs" style="font-size:12px;color:#666;line-height:1.4;"></div>
+              <div id="busca-gps-info" style="font-size:11px;color:#1D9E75;margin-top:3px;"></div>
+              <div id="busca-ts" style="font-size:10px;color:#bbb;margin-top:2px;"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="save-btn" style="font-size:12px;padding:8px;flex:1;" onclick="verNoMapa()">🗺 Ver no mapa</button>
+            <button class="save-btn" style="font-size:12px;padding:8px;flex:1;background:#378ADD;border:none;" id="btn-editar-pin-busca" onclick="editarPinEncontrado()">📍 Editar pin</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="map" style="position:relative;">
+      <div class="loading-overlay" id="map-loading">⏳ Carregando mapa...</div>
+      <button id="fab-centralizar" onclick="centralizarMapa()" style="display:none;position:absolute;right:14px;bottom:18px;width:48px;height:48px;border-radius:50%;background:#1D9E75;color:#fff;border:none;font-size:20px;box-shadow:0 3px 10px rgba(0,0,0,.3);z-index:500;cursor:pointer;align-items:center;justify-content:center;transition:opacity .25s;">📍</button>
+    </div>
+
+    <!-- Bottom sheet de rota — arrastável, sobre o mapa (igual Google Maps) -->
+    <div id="rota-sheet" class="rota-sheet">
+      <div id="rota-sheet-drag-zone" class="rota-sheet-drag-zone">
+        <div class="rota-sheet-handle"></div>
+        <div class="rota-searchbar">
+          <span class="rota-searchbar-icon">🚚</span>
+          <input list="transportadoras-sugestoes" id="rota-transportadora" class="rota-searchbar-input" placeholder="Transportadora dessa lista (opcional)" onfocus="abrirSheetRota('mid')"/>
+          <datalist id="transportadoras-sugestoes">
+            <option value="Anjun Express"></option>
+            <option value="iMile"></option>
+            <option value="Shopee"></option>
+            <option value="J&amp;T Express"></option>
+            <option value="Total Express"></option>
+            <option value="Loggi"></option>
+            <option value="Correios"></option>
+          </datalist>
+        </div>
+      </div>
+
+      <div class="rota-sheet-body" id="rota-sheet-body">
+        <div id="rota-empty-state" class="rota-empty-state">
+          <div class="rota-empty-icon">+</div>
+          <div class="rota-empty-text">Adicione a lista de pacotes pra começar a montar a rota</div>
+        </div>
+
+        <div id="rota-paste-wrap" style="display:none;">
+          <textarea class="rota-textarea" id="rota-input" placeholder='Cole aqui o CSV de pacotes. Exemplo:&#10;"QNO 18 Cj 25, 30, Ceilândia...",Brasília,DF,556199...&#10;"QNO 17 Cj 59, 03, Brasília...",Brasília,DF,556198...'></textarea>
+          <div class="rota-hint">Pode importar mais de um CSV: cada novo arquivo se soma à lista já carregada (não zera). Pacotes na mesma casa ganham um aviso "itens no local".</div>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button class="rota-btn" id="rota-btn" style="flex:1;" onclick="analisarLista()">🔍 Analisar lista</button>
+            <button class="rota-btn" style="background:var(--bg-alt);color:var(--text-2);flex:0 0 auto;padding:0 16px;" onclick="limparListaImportada()" title="Apaga tudo que foi importado até agora">🗑</button>
+          </div>
+        </div>
+
+        <button class="rota-cta-primary" onclick="esconderEmptyStateRota();abrirSheetRota('mid');document.getElementById('rota-csv-input').click()">＋ Importar arquivo CSV</button>
+        <input type="file" id="rota-csv-input" accept=".csv,text/csv" style="display:none;" onchange="importarCSV(event)"/>
+        <button class="rota-cta-secondary" onclick="toggleColarManual()" id="rota-colar-manual-btn">📋 Colar lista manualmente</button>
+
+        <div id="rota-resultado" style="display:none;">
+          <div class="rota-stats" id="rota-stats"></div>
+          <div class="rota-aviso" id="rota-aviso" style="display:none;"></div>
+
+          <!-- Etapa 1: revisão + preenchimento manual (some depois de otimizar) -->
+          <div id="rota-revisao-wrap">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0;">
+              <span style="font-size:12px;font-weight:600;color:#555;">Revisão dos endereços</span>
+            </div>
+            <div id="rota-lista"></div>
+            <div id="rota-mapa-revisao-wrap" style="display:none;margin-top:10px;">
+              <div style="font-size:11px;color:#888;margin-bottom:6px;">🗺 Arraste os pins pra corrigir a posição antes de otimizar</div>
+              <div id="rota-mapa-revisao" style="width:100%;height:260px;border-radius:10px;border:1px solid #ddd;position:relative;"></div>
+            </div>
+            <div id="rota-fechar-wrap" style="display:none;">
+              <div style="margin:10px 0 4px;font-size:12px;font-weight:600;color:#555;">📍 Ponto de partida</div>
+              <div style="display:flex;gap:6px;margin-bottom:6px;">
+                <button class="ponto-partida-btn ativo" id="pp-gps" onclick="selecionarPontoPartida('gps')" style="flex:1;padding:8px;font-size:11px;border-radius:8px;border:1.5px solid #1D9E75;background:#E1F5EE;color:#0F6E56;font-weight:600;">📡 GPS atual</button>
+                <button class="ponto-partida-btn" id="pp-ultima" onclick="selecionarPontoPartida('ultima')" style="flex:1;padding:8px;font-size:11px;border-radius:8px;border:1.5px solid #ddd;background:#fff;color:#666;">🏁 Última entrega</button>
+              </div>
+              <button class="rota-btn" style="background:#378ADD;margin-top:6px;" onclick="fecharRota()">🛣 Otimizar a rota</button>
+            </div>
+          </div>
+
+          <!-- Etapa 2: rota final otimizada — mapa primeiro, lista depois -->
+          <div id="rota-tempo-total-wrap" style="display:none;margin:10px 0;padding:10px 12px;background:#EAF2FB;border-radius:10px;font-size:12px;color:#1B5A8A;">
+            ⏱ <b id="rota-tempo-total-texto"></b>
+          </div>
+          <div id="rota-nav-start-wrap" style="display:none;">
+            <button class="nav-start-btn" onclick="iniciarNavegacao()">🧭 Iniciar navegação guiada</button>
+          </div>
+          <div id="rota-mapa-wrap" style="display:none;">
+            <div id="rota-mapa-overview" style="position:relative;">
+              <div class="nav-loading" id="rota-mapa-loading" style="display:none;">⏳ Traçando rota no mapa...</div>
+            </div>
+            <div id="rota-reotimizar-wrap" style="display:none;margin-top:8px;">
+              <button id="rota-reotimizar-btn" class="rota-btn" style="background:#378ADD;" onclick="reotimizarComCorrecoes()">🔄 Reotimizar rota com correções</button>
+            </div>
+          </div>
+          <div id="rota-lista-final-wrap" style="display:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 4px;">
+              <span style="font-size:12px;font-weight:600;color:#555;">Sequência de entrega</span>
+              <button class="rota-copy-btn" onclick="copiarRota()">📋 Copiar</button>
+            </div>
+            <div id="rota-lista-final"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGISTRAR -->
+  <div id="screen-registrar" class="screen">
+    <div class="reg-screen">
+      <div class="gps-box">
+        <div class="gps-dot" id="gps-dot"></div>
+        <span id="gps-text">Aguardando localização...</span>
+      </div>
+      <div class="section-label">Novo registro</div>
+      <div class="form-row">
+        <div class="form-group"><label>Cidade</label>
+          <select id="reg-cidade" onchange="onCidadeChange('reg-cidade','reg-bairro','reg-quadra','reg-cj')"><option value="">...</option></select>
+        </div>
+        <div class="form-group"><label>Bairro</label>
+          <select id="reg-bairro" onchange="onBairroChange('reg-bairro','reg-quadra','reg-cj')"><option value="">...</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Quadra/Rua</label>
+          <select id="reg-quadra" onchange="onQuadraChange('reg-quadra','reg-cj')"><option value="">...</option></select>
+        </div>
+        <div class="form-group"><label>Conjunto</label>
+          <select id="reg-cj"><option value="">...</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>Casa nº</label>
+        <input type="text" inputmode="text" id="reg-casa" placeholder="Ex: 15 ou 11A"/>
+      </div>
+      <div class="form-group"><label>Observação</label>
+        <textarea id="reg-obs" placeholder="Casa azul, portão preto, sem placa..."></textarea>
+      </div>
+      <div class="form-group"><label>Foto da fachada</label>
+        <div class="photo-area" onclick="document.getElementById('foto-input').click()">
+          <span class="icon">📷</span>Tirar foto da fachada
+        </div>
+        <div id="foto-preview"><img id="foto-img" src="" alt=""/><button id="foto-remove" onclick="removerFoto()">✕</button></div>
+        <input type="file" id="foto-input" accept="image/*" capture="environment" style="display:none;" onchange="previewFoto(event)"/>
+      </div>
+      <button class="save-btn" id="btn-salvar" onclick="iniciarSalvar()">💾 Salvar e confirmar posição</button>
+      <div class="msg" id="save-msg"></div>
+    </div>
+  </div>
+  <!-- LISTA -->
+  <div id="screen-lista" class="screen">
+    <div class="list-toolbar">
+      <input type="text" id="busca-lista" placeholder="🔍  Buscar..." oninput="renderLista()"/>
+    </div>
+    <div class="list-screen" id="lista-content">
+      <div class="empty"><span class="icon">📭</span>Carregando...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal GPS -->
+<div class="modal-bg" id="perm-modal">
+  <div class="modal">
+    <div class="icon">📍</div>
+    <h3>Ativar localização</h3>
+    <p>Para o app saber sua posição durante as entregas, permita o acesso. No Android, escolha <b>"Permitir o tempo todo"</b>.</p>
+    <button onclick="ativarGPS()">Ativar localização</button>
+  </div>
+</div>
+
+<!-- Modal Solicitar acesso -->
+<div class="modal-bg" id="acesso-modal">
+  <div class="modal">
+    <div class="icon">📋</div>
+    <h3>Solicitar acesso</h3>
+    <p>Entre em contato com o administrador do sistema para receber seu e-mail e senha de acesso.</p>
+    <button onclick="fecharModal('acesso-modal')">Entendi</button>
+  </div>
+</div>
+
+<!-- Modal Pin -->
+<div class="modal-bg" id="pin-modal-bg">
+  <div class="modal">
+    <div class="pin-title" id="pin-titulo">Confirmar posição</div>
+    <div class="pin-sub" id="pin-sub">Ajuste o pin se necessário.</div>
+    <div id="pin-mapa"></div>
+    <div class="pin-coords" id="pin-coords">—</div>
+    <div class="dpad-step">
+      <label>Passo:</label>
+      <select id="dpad-step">
+        <option value="0.000050">Muito fino (~5m)</option>
+        <option value="0.000150" selected>Fino (~15m)</option>
+        <option value="0.000400">Médio (~40m)</option>
+        <option value="0.001000">Largo (~100m)</option>
+      </select>
+    </div>
+    <div class="dpad">
+      <div class="dpad-btn vazio"></div><div class="dpad-btn" onclick="moverPin(0,1)">▲</div><div class="dpad-btn vazio"></div>
+      <div class="dpad-btn" onclick="moverPin(-1,0)">◀</div>
+      <div class="dpad-btn vazio" style="font-size:10px;color:#aaa;display:flex;align-items:center;justify-content:center;">pin</div>
+      <div class="dpad-btn" onclick="moverPin(1,0)">▶</div>
+      <div class="dpad-btn vazio"></div><div class="dpad-btn" onclick="moverPin(0,-1)">▼</div><div class="dpad-btn vazio"></div>
+    </div>
+    <div class="pin-btns">
+      <button class="pin-reset" onclick="resetarPin()">↺ GPS</button>
+      <button class="pin-confirm" onclick="confirmarPin()">✓ Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Foto ampliada (lightbox) -->
+<div class="foto-zoom-bg" id="foto-zoom-bg" onclick="fecharFotoZoom()">
+  <button class="foto-zoom-close" onclick="fecharFotoZoom()">✕</button>
+  <img id="foto-zoom-img" src="" alt="Fachada ampliada" onclick="event.stopPropagation()"/>
+</div>
+
+<!-- Navegação no mapa -->
+<div class="nav-overlay" id="nav-overlay">
+  <div id="nav-map" style="position:relative;">
+    <div class="nav-loading" id="nav-loading" style="display:none;">⏳ Calculando rota...</div>
+
+    <div class="nav-instrucao" id="nav-instrucao">
+      <div class="nav-instrucao-icone" id="nav-instrucao-icone">⬆️</div>
+      <div class="nav-instrucao-textos">
+        <div class="nav-instrucao-dist" id="nav-instrucao-dist">—</div>
+        <div class="nav-instrucao-rua" id="nav-instrucao-rua">Calculando rota...</div>
+      </div>
+    </div>
+
+    <button class="nav-close-fab" onclick="sairNavegacao()">✕</button>
+    <div class="nav-eta-badge" id="nav-eta-badge">🏁 <span id="nav-eta-hora">—</span></div>
+
+    <div class="nav-speedometer"><span id="nav-speed-val">0</span><small>km/h</small></div>
+    <button class="nav-fab-recenter" onclick="recentralizarNavMap()">🧭</button>
+  </div>
+
+  <div class="nav-arrived-banner" id="nav-arrived-banner">🎉 Você chegou!</div>
+
+  <div class="nav-card-inferior">
+    <div class="nav-card-topo">
+      <div style="flex:1;min-width:0;">
+        <div class="nav-addr" id="nav-addr">—</div>
+        <div class="nav-progress" id="nav-progress">Parada 1 de 1</div>
+        <div class="nav-obs" id="nav-obs"></div>
+        <div class="nav-contato" id="nav-contato"></div>
+      </div>
+      <div class="nav-foto-wrap" id="nav-foto-wrap" style="display:none;"><img id="nav-foto" class="foto-clicavel" onclick="abrirFotoZoom(this.src)" src="" alt=""/></div>
+    </div>
+    <div class="nav-buttons">
+      <button class="nav-btn nav-btn-skip" id="nav-btn-skip">⏭</button>
+      <button class="nav-btn nav-btn-confirm" id="nav-btn-confirm">✓</button>
+    </div>
+  </div>
+
+  <div class="nav-barra-inferior">
+    <div>
+      <div class="nav-barra-tempo" id="nav-barra-tempo">— min</div>
+      <div class="nav-barra-dist" id="nav-distance">—</div>
+    </div>
+    <button class="nav-barra-lista" onclick="ajustarZoomNavCompleto()" title="Ver todas as paradas">☰</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const cfg = {
+  apiKey:"AIzaSyDEYEDwbcEDpGwM9DeOtOl2ur5mZkoD3kQ",
+  authDomain:"app-rotas-68cf4.firebaseapp.com",
+  projectId:"app-rotas-68cf4",
+  storageBucket:"app-rotas-68cf4.firebasestorage.app",
+  messagingSenderId:"400409767391",
+  appId:"1:400409767391:web:0bcebe50738d6d3450a86a"
+};
+
+const fapp = initializeApp(cfg);
+const db   = getFirestore(fapp);
+const auth = getAuth(fapp);
+
+// Habilita persistência offline: leituras continuam funcionando com o último dado
+// sincronizado, e escritas feitas offline (confirmações, telemetria, etc.) ficam
+// guardadas localmente e sincronizam sozinhas assim que a internet voltar.
+enableIndexedDbPersistence(db).catch(err => {
+  if(err.code === 'failed-precondition'){
+    console.warn('[Offline] Persistência não ativada — provavelmente outra aba do app já está aberta.');
+  } else if(err.code === 'unimplemented'){
+    console.warn('[Offline] Este navegador não suporta persistência offline.');
+  }
+});
+
+window.__fb = {
+  db, auth, collection, doc, setDoc, deleteDoc, onSnapshot, query,
+  signInWithEmailAndPassword, signOut, onAuthStateChanged,
+  colRegistros: collection(db,'registros'),
+  colCidades:   collection(db,'cidades'),
+  colFaixas:    collection(db,'faixas'),
+  colCoordQuadra: collection(db,'coordenadasQuadra'),
+  colRegistrosPendentes: collection(db,'registrosPendentes'),
+  colRotasEnviadas: collection(db,'rotasEnviadas')
+};
+
+// Garante persistência explícita (mantém login salvo no navegador entre acessos)
+setPersistence(auth, browserLocalPersistence).finally(()=>{
+  window.__fbReady = true;
+  window.dispatchEvent(new Event('fb-ready'));
+});
+</script>
+<script>
+const UID_ADMIN = "vepKTSZjEiVNtPyzXG9CcPagnk83";
+const CLOUDINARY_CLOUD  = "dxbxm3rpd";
+const CLOUDINARY_PRESET = "h90fdbtd";
+const CENTER = [-15.8485, -48.1080];
+
+let fb = null;
+let usuarioAtual = null;   // objeto do Firebase Auth
+let nivelAcesso  = 'visitante'; // 'admin' | 'entregador' | 'visitante'
+let registros = [], CIDADES = {}, FAIXAS = {}, COORD_QUADRA_ADMIN = {}, registrosPendentes = [];
+let rotasEnviadasRecebidas = [], rotaEnviadaAbertaId = null;
+let posicaoAtual = null, trackingAtivo = false, primeiraLoc = true;
+let map, markersLayer, meuPin, meuCirculo, mapReady = false;
+let fotoBase64 = null;
+let pinMapa = null, pinMarcador = null, posicaoPin = null, pinCallback = null;
+let pendente = null, resultadoBusca = null;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+function ordenar(k){ return [...k].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'})); }
+function getCidade(nome){ return Object.values(CIDADES).find(c=>c.nome===nome); }
+function corBairro(cidade,bairro){
+  const cid = getCidade(cidade);
+  return cid?.bairros?.[bairro]?.cor || cid?.cor || '#888';
+}
+function showMsg(t,c){ const m=$('toast-msg'); m.textContent=t; m.className='toast-msg '+c; m.style.display='block'; setTimeout(()=>m.style.display='none',3500); }
+function fecharModal(id){ $(id).classList.remove('open'); }
+
+// ─── Foto ampliada (lightbox) ──────────────────────────────────────────────────
+function abrirFotoZoom(src){
+  if(!src) return;
+  $('foto-zoom-img').src = src;
+  $('foto-zoom-bg').classList.add('open');
+}
+function fecharFotoZoom(){
+  $('foto-zoom-bg').classList.remove('open');
+}
+function abrirModal(id){ $(id).classList.add('open'); }
+
+const SESSAO_DURACAO_MS = 24 * 60 * 60 * 1000; // 24 horas
+const CHAVE_SESSAO = 'rotasqno_login_ts';
+
+// ─── Firebase Init ─────────────────────────────────────────────────────────────
+function initFirebase(){
+  fb = window.__fb;
+
+  // Observa estado de autenticação
+  fb.onAuthStateChanged(fb.auth, usuario => {
+    if(usuario){
+      const inicio = parseInt(localStorage.getItem(CHAVE_SESSAO) || '0', 10);
+      const agora = Date.now();
+      if(!inicio){
+        // Primeira vez que vemos essa sessão (login novo ou sessão anterior à esta atualização) — inicia o cronômetro agora
+        localStorage.setItem(CHAVE_SESSAO, agora.toString());
+      } else if(agora - inicio > SESSAO_DURACAO_MS){
+        // Sessão expirada (mais de 24h) — força logout
+        localStorage.removeItem(CHAVE_SESSAO);
+        fb.signOut(fb.auth);
+        showMsg('Sessão expirada. Faça login novamente.', 'err');
+        return;
+      }
+    } else {
+      localStorage.removeItem(CHAVE_SESSAO);
+    }
+    usuarioAtual = usuario;
+    if(usuario){
+      nivelAcesso = usuario.uid === UID_ADMIN ? 'admin' : 'entregador';
+      mostrarApp(usuario);
+    } else {
+      nivelAcesso = 'visitante';
+      mostrarLogin();
+    }
+  });
+
+  // Escuta cidades
+  fb.onSnapshot(fb.query(fb.colCidades), snap=>{
+    CIDADES = {};
+    snap.docs.forEach(d=>{ CIDADES[d.id]={id:d.id,...d.data()}; });
+    renderSelectsCidades();
+  });
+
+  // Escuta faixas de numeração (validação de rota)
+  fb.onSnapshot(fb.query(fb.colFaixas), snap=>{
+    FAIXAS = {};
+    snap.docs.forEach(d=>{ FAIXAS[d.id]={id:d.id,...d.data()}; });
+  });
+
+  fb.onSnapshot(fb.query(fb.colCoordQuadra), snap=>{
+    COORD_QUADRA_ADMIN = {};
+    snap.docs.forEach(d=>{ COORD_QUADRA_ADMIN[d.id]={id:d.id,...d.data()}; });
+  });
+
+  fb.onSnapshot(fb.query(fb.colRegistrosPendentes), snap=>{
+    registrosPendentes = snap.docs.map(d=>({id:d.id,...d.data()}));
+  });
+
+  fb.onSnapshot(fb.query(fb.colRotasEnviadas), snap=>{
+    const todas = snap.docs.map(d=>({id:d.id,...d.data()}));
+    rotasEnviadasRecebidas = todas.filter(r => r.entregadorUid === usuarioAtual?.uid && r.status !== 'concluida');
+    atualizarBannerRotaEnviada();
+  });
+
+  // Escuta registros
+  const t = setTimeout(()=>atualizarSync('erro','Timeout.'),8000);
+  fb.onSnapshot(fb.query(fb.colRegistros), snap=>{
+    clearTimeout(t);
+    registros = snap.docs.map(d=>({id:d.id,...d.data()}));
+    atualizarStats();
+    if(mapReady) filtrarMapa();
+    if($('screen-lista').classList.contains('active')) renderLista();
+    atualizarSync('ok', nivelAcesso==='admin' ? (registros.length+' endereços') : 'Conectado');
+  }, err=>{ clearTimeout(t); atualizarSync('erro','Erro: '+err.code); });
+}
+
+if(window.__fbReady) initFirebase();
+else window.addEventListener('fb-ready', initFirebase);
+
+function atualizarSync(e,t){
+  $('sync-dot').className='dot '+(e==='ok'?'ok':e==='buscando'?'buscando':e==='erro'?'erro':'');
+  $('sync-text').textContent=t;
+}
+function atualizarStats(){
+  $('stat-total').textContent=registros.length;
+  $('stat-gps').textContent=registros.filter(r=>r.lat).length;
+  $('stat-foto').textContent=registros.filter(r=>r.foto).length;
+}
+
+// ─── Auth ──────────────────────────────────────────────────────────────────────
+function mostrarLogin(){
+  $('login-screen').style.display='flex';
+  $('app').style.display='none';
+}
+function mostrarApp(usuario){
+  $('login-screen').style.display='none';
+  $('app').style.display='flex';
+  const badge = $('user-badge');
+  const ehAdmin = nivelAcesso === 'admin';
+  if(ehAdmin){
+    badge.textContent='Admin'; badge.className='user-badge admin';
+  } else {
+    badge.textContent='Entregador'; badge.className='user-badge entregador';
+  }
+  $('map-toolbar-admin').style.display = ehAdmin ? 'flex' : 'none';
+  $('stats-bar-admin').style.display = ehAdmin ? 'flex' : 'none';
+  $('fab-centralizar').style.display = ehAdmin ? 'none' : 'flex';
+  $('tab-registrar').style.display = ehAdmin ? 'block' : 'none';
+  $('tab-lista').style.display = ehAdmin ? 'block' : 'none';
+  if(!ehAdmin && $('sync-text').textContent.includes('endereços')) $('sync-text').textContent='Conectado';
+  const ultimaTransportadora = localStorage.getItem('rotasqno_ultima_transportadora');
+  if(ultimaTransportadora && $('rota-transportadora')) $('rota-transportadora').value = ultimaTransportadora;
+  if(mapReady) filtrarMapa(); // reaplica a regra de visibilidade dos pins se o mapa já estava carregado
+  else esperarLeaflet(); // primeira vez: app já está visível aqui, então o mapa nasce com o tamanho certo
+  configurarArrasteSheet();
+  setTimeout(()=>aplicarSheet(pacotesAnalisados.length ? sheetEstadoAtual : 'peek', true), 50);
+  solicitarGPS();
+}
+async function fazerLogin(){
+  const email=$('login-email').value.trim();
+  const senha=$('login-senha').value;
+  const btn=$('login-btn');
+  const err=$('login-err');
+  err.style.display='none';
+  if(!email||!senha){ err.textContent='Preencha e-mail e senha.'; err.style.display='block'; return; }
+  btn.disabled=true; btn.textContent='Entrando...';
+  try {
+    const f = window.__fb;
+    if(!f){ throw new Error('Firebase não carregado (window.__fb indefinido)'); }
+    if(!f.auth){ throw new Error('Firebase Auth não inicializado (f.auth indefinido)'); }
+    await f.signInWithEmailAndPassword(f.auth, email, senha);
+    localStorage.setItem(CHAVE_SESSAO, Date.now().toString());
+  } catch(e){
+    console.error('[Login] Erro completo:', e);
+    const msgs = {
+      'auth/user-not-found':'Usuário não encontrado.',
+      'auth/wrong-password':'Senha incorreta.',
+      'auth/invalid-email':'E-mail inválido.',
+      'auth/invalid-credential':'E-mail ou senha incorretos.',
+      'auth/too-many-requests':'Muitas tentativas. Aguarde um momento.'
+    };
+    err.textContent = msgs[e.code] || ('Erro: ' + (e.code || e.message || 'desconhecido'));
+    err.style.display='block';
+  }
+  btn.disabled=false; btn.textContent='Entrar';
+}
+async function fazerLogout(){
+  if(!confirm('Deseja sair?')) return;
+  localStorage.removeItem(CHAVE_SESSAO);
+  await fb.signOut(fb.auth);
+}
+function abrirCadastro(){ abrirModal('acesso-modal'); }
+
+// ─── Permissões ────────────────────────────────────────────────────────────────
+function podeRegistrar(){ return nivelAcesso==='admin'||nivelAcesso==='entregador'; }
+function podeExcluir(){ return nivelAcesso==='admin'; }
+
+// ─── Tabs ──────────────────────────────────────────────────────────────────────
+function showTab(t, prog){
+  if(t==='registrar'&&!podeRegistrar()){
+    showMsg('Faça login para registrar endereços.','err'); return;
+  }
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  $('screen-'+t).classList.add('active');
+  if(!prog&&event?.target) event.target.classList.add('active');
+  else document.querySelectorAll('.tab').forEach(b=>{ if((b.getAttribute('onclick')||'').includes("'"+t+"'")) b.classList.add('active'); });
+  if(t==='mapa'){ if(!mapReady) esperarLeaflet(); else{ setTimeout(()=>map.invalidateSize(),100); filtrarMapa(); } }
+  if(t==='lista') renderLista();
+}
+
+// ─── Selects encadeados ────────────────────────────────────────────────────────
+function renderSelectsCidades(){
+  ['filtro-cidade','busca-cidade','reg-cidade'].forEach(id=>{
+    const sel=$(id); if(!sel) return;
+    const val=sel.value;
+    const isFilter=id.startsWith('filtro');
+    sel.innerHTML=isFilter?'<option value="">Todas cidades</option>':'<option value="">...</option>';
+    ordenar(Object.values(CIDADES).map(c=>c.nome||c.id)).forEach(nome=>{
+      const o=document.createElement('option'); o.value=nome; o.textContent=nome; sel.appendChild(o);
+    });
+    if(val) sel.value=val;
+  });
+}
+function getCidade(nome){ return Object.values(CIDADES).find(c=>c.nome===nome); }
+
+function onCidadeChange(cidId,bairId,quadId,cjId){
+  const cidade=$(cidId).value;
+  const selB=$(bairId);
+  selB.innerHTML='<option value="">...</option>';
+  const cid=getCidade(cidade);
+  if(cid?.bairros) ordenar(Object.keys(cid.bairros)).forEach(b=>{ const o=document.createElement('option'); o.value=b; o.textContent=b; selB.appendChild(o); });
+  limpar(quadId); limpar(cjId);
+}
+function onBairroChange(bairId,quadId,cjId){
+  const bairro=$(bairId).value;
+  const selQ=$(quadId);
+  selQ.innerHTML='<option value="">...</option>';
+  // Encontra cidade pai
+  let quadras={};
+  Object.values(CIDADES).forEach(c=>{ if(c.bairros?.[bairro]) quadras=c.bairros[bairro].quadras||{}; });
+  ordenar(Object.keys(quadras)).forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; selQ.appendChild(o); });
+  limpar(cjId);
+}
+function onQuadraChange(quadId,cjId){
+  const quadra=$(quadId).value;
+  const selCj=$(cjId);
+  selCj.innerHTML='<option value="">...</option>';
+  selCj.disabled=false;
+  let cjs=[];
+  Object.values(CIDADES).forEach(c=>{ Object.values(c.bairros||{}).forEach(b=>{ if(b.quadras?.[quadra]!==undefined) cjs=b.quadras[quadra]; }); });
+  if(cjs.length){ cjs.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; selCj.appendChild(o); }); }
+  else { selCj.innerHTML='<option value="">—</option>'; selCj.disabled=true; }
+}
+function onFiltroCidadeChange(){
+  const cidade=$('filtro-cidade').value;
+  const selB=$('filtro-bairro');
+  selB.innerHTML='<option value="">Todos bairros</option>';
+  const cid=getCidade(cidade);
+  if(cid?.bairros) ordenar(Object.keys(cid.bairros)).forEach(b=>{ const o=document.createElement('option'); o.value=b; o.textContent=b; selB.appendChild(o); });
+  $('filtro-quadra').innerHTML='<option value="">Todas quadras</option>';
+  filtrarMapa();
+}
+function onFiltroBairroChange(){
+  const cidade=$('filtro-cidade').value, bairro=$('filtro-bairro').value;
+  const selQ=$('filtro-quadra');
+  selQ.innerHTML='<option value="">Todas quadras</option>';
+  const cid=getCidade(cidade);
+  if(cid?.bairros?.[bairro]?.quadras) ordenar(Object.keys(cid.bairros[bairro].quadras)).forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; selQ.appendChild(o); });
+  filtrarMapa();
+}
+function limpar(id){ const s=$(id); if(s){s.innerHTML='<option value="">...</option>';s.disabled=false;} }
+
+// ─── GPS ───────────────────────────────────────────────────────────────────────
+function solicitarGPS(){ if(trackingAtivo) return; abrirModal('perm-modal'); }
+function ativarGPS(){
+  fecharModal('perm-modal');
+  if(!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(pos=>{
+    trackingAtivo=true;
+    posicaoAtual={lat:pos.coords.latitude,lng:pos.coords.longitude,acc:pos.coords.accuracy};
+    $('gps-dot').className='gps-dot ok';
+    $('gps-text').textContent='✓ GPS ativo · ~'+Math.round(pos.coords.accuracy)+'m';
+    atualizarPinMapa();
+    atualizarVelocimetro(pos.coords.speed);
+    atualizarSetaNav();
+    if(primeiraLoc&&map){ map.setView([posicaoAtual.lat,posicaoAtual.lng],17); primeiraLoc=false; }
+  }, err=>{
+    $('gps-text').textContent=err.code===1?'Permissão negada.':'Erro GPS.';
+  },{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+}
+function atualizarVelocimetro(speedMs){
+  const el = document.getElementById('nav-speed-val');
+  if(!el) return;
+  const kmh = (speedMs!=null && speedMs>=0) ? Math.round(speedMs*3.6) : 0;
+  el.textContent = kmh;
+}
+function atualizarPinMapa(){
+  if(!map||!posicaoAtual) return;
+  const ll=[posicaoAtual.lat,posicaoAtual.lng];
+  if(!meuPin){
+    const icon=L.divIcon({html:'<div style="width:14px;height:14px;background:#378ADD;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px rgba(55,138,221,.4);"></div>',className:'',iconSize:[14,14],iconAnchor:[7,7]});
+    meuPin=L.marker(ll,{icon,zIndexOffset:1000}).addTo(map).bindPopup('Você está aqui');
+    meuCirculo=L.circle(ll,{radius:posicaoAtual.acc,color:'#378ADD',fillColor:'#378ADD',fillOpacity:.1,weight:1}).addTo(map);
+  } else { meuPin.setLatLng(ll); meuCirculo.setLatLng(ll); meuCirculo.setRadius(posicaoAtual.acc); }
+}
+
+// ─── Mapa ──────────────────────────────────────────────────────────────────────
+function initMap(){
+  map=L.map('map',{zoomControl:true}).setView(CENTER,16);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+  markersLayer=L.layerGroup().addTo(map);
+  L.polyline([[-15.8440,-48.0950],[-15.8440,-48.1250]],{color:'#854F0B',weight:3,dashArray:'8,5',opacity:.7}).addTo(map).bindPopup('BR-070');
+  $('map-loading').style.display='none';
+  mapReady=true;
+  filtrarMapa();
+  if(posicaoAtual) atualizarPinMapa();
+  setTimeout(()=>map.invalidateSize(),200);
+}
+function centralizarMapa(){ if(!map)return; if(posicaoAtual) map.setView([posicaoAtual.lat,posicaoAtual.lng],17); else map.setView(CENTER,16); }
+function filtrarMapa(){
+  if(!markersLayer)return;
+  markersLayer.clearLayers();
+  if(nivelAcesso !== 'admin') return; // pins do mapa geral visíveis apenas para o administrador
+  const cidade=$('filtro-cidade').value, bairro=$('filtro-bairro').value, quadra=$('filtro-quadra').value;
+  let f=registros;
+  if(cidade) f=f.filter(r=>r.cidade===cidade);
+  if(bairro) f=f.filter(r=>r.bairro===bairro);
+  if(quadra) f=f.filter(r=>r.quadra===quadra);
+  f.forEach(adicionarPin);
+}
+function adicionarPin(r){
+  if(!r.lat||!map)return;
+  const cor=corBairro(r.cidade,r.bairro);
+  const icon=L.divIcon({html:`<div style="background:${cor};border:2px solid white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:white;box-shadow:0 2px 5px rgba(0,0,0,.25);">${r.conjunto||r.quadra?.slice(-2)||'?'}</div>`,className:'',iconSize:[24,24],iconAnchor:[12,12]});
+  let p=`<b>${r.cidade||''} · ${r.bairro||''}</b><br>${r.quadra||''} ${r.conjunto?'· Cj.'+r.conjunto:''} · Casa ${r.casa}`;
+  if(r.obs) p+=`<br><span style="font-size:12px;color:#666;">${r.obs}</span>`;
+  if(r.foto) p+=`<br><img src="${r.foto}" style="width:120px;margin-top:5px;border-radius:6px;">`;
+  L.marker([r.lat,r.lng],{icon}).addTo(markersLayer).bindPopup(p);
+}
+function esperarLeaflet(){ if(mapReady) return; if(typeof L!=='undefined'){ initMap(); } else setTimeout(esperarLeaflet,100); }
+
+// ─── Modal Pin ─────────────────────────────────────────────────────────────────
+function abrirModalPin(lat,lng,titulo,sub,callback){
+  posicaoPin={lat,lng}; pinCallback=callback;
+  $('pin-titulo').textContent=titulo;
+  $('pin-sub').textContent=sub;
+  abrirModal('pin-modal-bg');
+  atualizarCoords();
+  setTimeout(()=>{
+    if(!pinMapa){
+      pinMapa=L.map('pin-mapa',{zoomControl:true,attributionControl:false}).setView([lat,lng],19);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:21}).addTo(pinMapa);
+      const icon=L.divIcon({html:'<div style="width:26px;height:26px;background:#E24B4A;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:grab;"></div>',className:'',iconSize:[26,26],iconAnchor:[13,13]});
+      pinMarcador=L.marker([lat,lng],{icon,draggable:true}).addTo(pinMapa);
+      pinMarcador.on('drag dragend',()=>{ const p=pinMarcador.getLatLng(); posicaoPin={lat:p.lat,lng:p.lng}; atualizarCoords(); });
+    } else { pinMapa.setView([lat,lng],19); pinMarcador.setLatLng([lat,lng]); }
+    setTimeout(()=>pinMapa.invalidateSize(),100);
+  },100);
+}
+function atualizarCoords(){ if(posicaoPin) $('pin-coords').textContent=posicaoPin.lat.toFixed(6)+', '+posicaoPin.lng.toFixed(6); }
+function moverPin(dLng,dLat){
+  if(!pinMarcador||!posicaoPin)return;
+  const s=parseFloat($('dpad-step').value);
+  posicaoPin={lat:posicaoPin.lat+dLat*s,lng:posicaoPin.lng+dLng*s};
+  pinMarcador.setLatLng([posicaoPin.lat,posicaoPin.lng]);
+  pinMapa.panTo([posicaoPin.lat,posicaoPin.lng]);
+  atualizarCoords();
+}
+function resetarPin(){
+  if(!posicaoAtual)return;
+  posicaoPin={lat:posicaoAtual.lat,lng:posicaoAtual.lng};
+  pinMarcador.setLatLng([posicaoPin.lat,posicaoPin.lng]);
+  pinMapa.setView([posicaoPin.lat,posicaoPin.lng],19);
+  atualizarCoords();
+}
+async function confirmarPin(){ if(!posicaoPin||!pinCallback)return; fecharModal('pin-modal-bg'); await pinCallback(posicaoPin); }
+
+// ─── Foto ──────────────────────────────────────────────────────────────────────
+function previewFoto(e){
+  const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>comprimir(ev.target.result,1024,.7).then(c=>{ fotoBase64=c; $('foto-img').src=c; $('foto-preview').style.display='block'; });
+  r.readAsDataURL(f);
+}
+function comprimir(src,maxW,q){ return new Promise(res=>{ const img=new Image(); img.onload=()=>{ let w=img.width,h=img.height; if(w>maxW){h=Math.round(h*maxW/w);w=maxW;} const c=document.createElement('canvas'); c.width=w;c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); res(c.toDataURL('image/jpeg',q)); }; img.src=src; }); }
+function removerFoto(){ fotoBase64=null; $('foto-preview').style.display='none'; $('foto-input').value=''; }
+async function uploadFoto(b64){
+  const fd=new FormData(); fd.append('file',b64); fd.append('upload_preset',CLOUDINARY_PRESET);
+  const r=await fetch('https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/image/upload',{method:'POST',body:fd});
+  if(!r.ok) throw new Error('Cloudinary '+r.status);
+  return (await r.json()).secure_url;
+}
+
+// ─── Salvar ────────────────────────────────────────────────────────────────────
+function iniciarSalvar(){
+  if(!podeRegistrar()){ showMsg('Faça login para registrar.','err'); return; }
+  if(!fb){ showMsg('Aguarde a conexão.','err'); return; }
+  const cidade=$('reg-cidade').value, bairro=$('reg-bairro').value;
+  const quadra=$('reg-quadra').value;
+  const cjRaw=$('reg-cj').value;
+  const conjunto=(cjRaw==='—'||cjRaw==='N/A')?'':cjRaw;
+  const casa=normalizarCasa($('reg-casa').value);
+  if(!cidade||!bairro||!quadra||!casa){ showMsg('Preencha cidade, bairro, quadra e casa.','err'); return; }
+  const lat=posicaoAtual?posicaoAtual.lat:CENTER[0];
+  const lng=posicaoAtual?posicaoAtual.lng:CENTER[1];
+  pendente={cidade,bairro,quadra,conjunto,casa};
+  abrirModalPin(lat,lng,
+    cidade+' · '+bairro+' · '+quadra+(conjunto?' Cj.'+conjunto:'')+' Casa '+casa,
+    posicaoAtual?'GPS marcou este local. Ajuste se necessário.':'GPS indisponível. Posicione manualmente.',
+    async pp=>await executarSalvar(pp));
+}
+async function executarSalvar(pp){
+  const {cidade,bairro,quadra,conjunto,casa}=pendente;
+  const obs=$('reg-obs').value.trim();
+  const btn=$('btn-salvar');
+  btn.disabled=true; btn.textContent='Salvando...';
+  try {
+    let fotoUrl=null;
+    if(fotoBase64){ btn.textContent='Enviando foto...'; fotoUrl=await uploadFoto(fotoBase64); }
+    btn.textContent='Salvando...';
+    // Procura por campos (tolerante) primeiro — se já existir (mesmo com ID no esquema
+    // antigo), atualiza o mesmo documento em vez de criar um duplicado.
+    const nCidade=normalizarTexto(cidade), nBairro=normalizarTexto(bairro), nQuadra=normalizarTexto(quadra);
+    const existente = registros.find(r=>
+      normalizarTexto(r.cidade)===nCidade && normalizarTexto(r.bairro)===nBairro &&
+      normalizarTexto(r.quadra)===nQuadra && compararValor(r.conjunto, conjunto) && compararValor(r.casa, casa)
+    );
+    const docId = existente?.id || (cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+    await fb.setDoc(fb.doc(fb.db,'registros',docId),{
+      cidade,bairro,quadra,conjunto,casa,obs,foto:fotoUrl,
+      lat:pp.lat,lng:pp.lng,
+      registradoPor: usuarioAtual?.email||'',
+      registradoPorUid: usuarioAtual?.uid||'',
+      ts:new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
+    });
+    showMsg('✓ '+bairro+' · '+quadra+(conjunto?' Cj.'+conjunto:'')+' · Casa '+casa+' salvo!','ok');
+    ['reg-cidade','reg-bairro','reg-quadra','reg-cj'].forEach(id=>{ const s=$(id); if(s){s.value='';s.innerHTML='<option value="">...</option>';} });
+    $('reg-casa').value=''; $('reg-obs').value='';
+    removerFoto(); pendente=null;
+  } catch(e){ console.error('[Salvar]',e); showMsg('Erro: '+(e.code||e.message),'err'); }
+  btn.disabled=false; btn.textContent='💾 Salvar e confirmar posição';
+}
+
+// ─── Busca ─────────────────────────────────────────────────────────────────────
+let buscaPinMarker = null;
+
+function buscarEndereco(){
+  const cidade=$('busca-cidade').value, bairro=$('busca-bairro').value;
+  const quadra=$('busca-quadra').value;
+  const cjRaw=$('busca-cj').value;
+  const conjunto=(cjRaw==='—'||cjRaw==='N/A')?'':cjRaw;
+  const casa=normalizarCasa($('busca-casa').value);
+  const divRes=$('busca-resultado'), divSem=$('busca-sem'), divCom=$('busca-com');
+  if(!cidade||!bairro||!quadra||!casa){ divRes.style.display='none'; removerPinBusca(); return; }
+  // Compara pelos campos salvos (tolerante a "01"/"1", maiúsculo/minúsculo), não pelo ID
+  // reconstruído — assim continua achando endereços salvos antes da normalização de IDs.
+  const nCidade=normalizarTexto(cidade), nBairro=normalizarTexto(bairro), nQuadra=normalizarTexto(quadra);
+  const reg=registros.find(r=>
+    normalizarTexto(r.cidade)===nCidade &&
+    normalizarTexto(r.bairro)===nBairro &&
+    normalizarTexto(r.quadra)===nQuadra &&
+    compararValor(r.conjunto, conjunto) &&
+    compararValor(r.casa, casa)
+  );
+  divRes.style.display='block'; resultadoBusca=reg||null;
+  if(!reg){ divSem.style.display='block'; divCom.style.display='none'; removerPinBusca(); return; }
+  divSem.style.display='none'; divCom.style.display='block';
+  $('busca-addr').textContent=bairro+' · '+quadra+(conjunto?' · Cj.'+conjunto:'')+' · Casa '+casa;
+  $('busca-obs').textContent=reg.obs||'Sem observação';
+  $('busca-ts').textContent=reg.ts?'Registrado em '+reg.ts+(reg.registradoPor?' por '+reg.registradoPor:''):'';
+  const fc=$('busca-foto-wrap');
+  if(reg.foto){ $('busca-foto').src=reg.foto; fc.style.display='block'; } else fc.style.display='none';
+  $('busca-gps-info').textContent=reg.lat?(reg.localizacaoTravada?'🔒 Localização travada pelo admin':reg.verificado?'✅ Endereço verificado ('+(reg.totalConfirmacoes||0)+' confirmações)':'📍 GPS disponível'+(reg.totalConfirmacoes?' · '+reg.totalConfirmacoes+'/3 confirmações':'')):'⚠️ Sem GPS';
+  $('btn-editar-pin-busca').style.display=podeRegistrar()?'block':'none';
+  if(reg.lat) mostrarPinBusca(reg); else removerPinBusca();
+}
+
+// Mostra um pin específico no mapa para o resultado da busca — funciona mesmo
+// para quem não é admin (que não vê os pins gerais do mapa)
+function mostrarPinBusca(reg){
+  if(!mapReady || !map) return;
+  const icon = L.divIcon({
+    html:'<div style="width:30px;height:30px;background:#E24B4A;border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,.4);"></div>',
+    className:'', iconSize:[30,30], iconAnchor:[15,30]
+  });
+  if(!buscaPinMarker){
+    buscaPinMarker = L.marker([reg.lat,reg.lng], { icon, zIndexOffset:2000 }).addTo(map);
+  } else {
+    buscaPinMarker.setLatLng([reg.lat,reg.lng]);
+    buscaPinMarker.setIcon(icon);
+  }
+  buscaPinMarker.bindPopup('<b>'+reg.quadra+' · Cj.'+(reg.conjunto||'?')+' · Casa '+reg.casa+'</b>'+(reg.obs?'<br>'+reg.obs:''));
+}
+function removerPinBusca(){
+  if(buscaPinMarker && map){ map.removeLayer(buscaPinMarker); buscaPinMarker = null; }
+}
+
+function verNoMapa(){
+  if(!resultadoBusca?.lat)return;
+  showTab('mapa',true);
+  setTimeout(()=>{
+    if(map){
+      map.setView([resultadoBusca.lat,resultadoBusca.lng],19);
+      mostrarPinBusca(resultadoBusca);
+      buscaPinMarker?.openPopup();
+    }
+  },300);
+}
+function editarPinEncontrado(){
+  if(!resultadoBusca||!podeRegistrar())return;
+  const r=resultadoBusca;
+  if(r.localizacaoTravada){ showMsg('🔒 Localização travada pelo admin — só pode ser alterada no painel administrativo.','err'); return; }
+  abrirModalPin(r.lat||CENTER[0],r.lng||CENTER[1],'Editar pin · '+r.quadra+' Casa '+r.casa,'Reposicione e confirme.',
+    async pp=>{ try{ await fb.setDoc(fb.doc(fb.db,'registros',r.id),{...r,lat:pp.lat,lng:pp.lng}); $('busca-gps-info').textContent='✓ Posição atualizada!'; mostrarPinBusca({...r,lat:pp.lat,lng:pp.lng}); }catch(e){alert('Erro: '+(e.code||e.message));} });
+}
+
+// ─── Deletar / Editar pin na lista ────────────────────────────────────────────
+async function deletar(id){
+  if(!podeExcluir()){ showMsg('Apenas administradores podem excluir.','err'); return; }
+  if(!confirm('Excluir este registro?'))return;
+  try{ await fb.deleteDoc(fb.doc(fb.db,'registros',id)); }catch(e){ alert('Erro: '+(e.code||e.message)); }
+}
+function editarPin(id){
+  if(!podeRegistrar()){ showMsg('Faça login para editar.','err'); return; }
+  const r=registros.find(x=>x.id===id); if(!r){alert('Não encontrado.');return;}
+  abrirModalPin(r.lat||CENTER[0],r.lng||CENTER[1],'Editar pin · '+r.quadra+' Casa '+r.casa,r.lat?'Ajuste com D-Pad ou arrastando.':'Sem GPS. Posicione manualmente.',
+    async pp=>{ try{ await fb.setDoc(fb.doc(fb.db,'registros',r.id),{...r,lat:pp.lat,lng:pp.lng}); renderLista(); }catch(e){alert('Erro: '+(e.code||e.message));} });
+}
+
+// ─── Lista ─────────────────────────────────────────────────────────────────────
+function renderLista(){
+  const div=$('lista-content');
+  const busca=($('busca-lista')?.value||'').toLowerCase();
+  let f=busca?registros.filter(r=>(r.cidade||'').toLowerCase().includes(busca)||(r.bairro||'').toLowerCase().includes(busca)||(r.quadra||'').toLowerCase().includes(busca)||(r.conjunto||'').toLowerCase().includes(busca)||r.casa.toString().includes(busca)||(r.obs||'').toLowerCase().includes(busca)):[...registros];
+  if(!f.length){ div.innerHTML='<div class="empty"><span class="icon">'+(busca?'🔍':'📭')+'</span>'+(busca?'Nenhum resultado.':'Nenhum registro ainda.')+'</div>'; return; }
+  f.sort((a,b)=>(a.cidade||'').localeCompare(b.cidade||'')||(a.bairro||'').localeCompare(b.bairro||'')||(a.quadra||'').localeCompare(b.quadra||'',undefined,{numeric:true})||parseInt(a.casa)-parseInt(b.casa));
+  div.innerHTML=f.map(r=>
+    '<div class="entry-card">'+
+    (r.foto?`<img class="entry-thumb" src="${r.foto}">`:'<div class="entry-thumb-empty">📦</div>')+
+    '<div class="entry-info">'+
+    `<div class="entry-addr">${r.bairro||''} · ${r.quadra||''} ${r.conjunto?'Cj.'+r.conjunto:''} · Casa ${r.casa}${r.lat?'<span class="badge-gps">GPS</span>':''}${r.verificado?'<span class="badge-gps" style="background:#E1F5EE;color:#0F6E56;">✅ Verificado</span>':''}</div>`+
+    `<div class="entry-obs">${r.obs||'Sem observação'}</div>`+
+    `<div class="entry-ts">${r.ts||''}${r.registradoPor?' · '+r.registradoPor:''}</div></div>`+
+    (podeRegistrar()?`<button class="action-btn" data-editid="${r.id}" title="Editar pin">✏️</button>`:'') +
+    (podeExcluir()?`<button class="action-btn" data-delid="${r.id}" title="Excluir">🗑</button>`:'') +
+    '</div>'
+  ).join('');
+  div.querySelectorAll('[data-delid]').forEach(btn=>btn.addEventListener('click',()=>deletar(btn.getAttribute('data-delid'))));
+  div.querySelectorAll('[data-editid]').forEach(btn=>btn.addEventListener('click',()=>editarPin(btn.getAttribute('data-editid'))));
+}
+
+// ─── Roteirização ─────────────────────────────────────────────────────────────
+
+// Coordenadas centrais aproximadas de cada quadra (fallback sem GPS)
+const COORDS_QUADRA = {
+  'QNO 16': [-15.8520, -48.1050],
+  'QNO 17': [-15.8505, -48.1065],
+  'QNO 18': [-15.8490, -48.1080],
+  'QNO 19': [-15.8475, -48.1095],
+  'QNO 20': [-15.8460, -48.1068],
+};
+
+function normalizarTexto(t){
+  return (t||'').toLowerCase()
+    .replace(/[àáâãä]/g,'a').replace(/[èéêë]/g,'e')
+    .replace(/[ìíîï]/g,'i').replace(/[òóôõö]/g,'o')
+    .replace(/[ùúûü]/g,'u').replace(/ç/g,'c')
+    .trim();
+}
+
+function normalizarConjunto(val){
+  val = (val||'').trim();
+  if(!val) return '';
+  if(/^\d+$/.test(val)) return val.replace(/^0+/,'').padStart(2,'0') || '00';
+  return val.toUpperCase(); // conjuntos com letra (A, B, C...)
+}
+
+function parsearLinha(linha){
+  linha = linha.trim();
+  if(!linha) return null;
+
+  // Extrai o campo Address (primeiro campo CSV, entre aspas)
+  let address = '';
+  if(linha.startsWith('"')){
+    const fechaAspas = linha.indexOf('"', 1);
+    address = linha.slice(1, fechaAspas === -1 ? linha.length : fechaAspas);
+  } else {
+    address = linha.split(',')[0];
+  }
+  if(!address) return null;
+
+  // Contato = último campo da linha
+  const partesLinha = linha.split(',');
+  const contato = partesLinha[partesLinha.length - 1]?.trim().replace(/"/g,'') || '';
+
+  // Trecho entre parênteses — pode haver mais de um grupo (ex: "(Ceilândia)" e
+  // depois a observação detalhada). Pega o ÚLTIMO grupo, que é o mais completo.
+  const todosParens = [...address.matchAll(/\(([^)]+)\)/g)];
+  const dentroParens = todosParens.length ? todosParens[todosParens.length - 1][1] : '';
+  // Prefixo = tudo antes do primeiro parêntese (contém "QNO X Cj Y, NUMERO, Cidade...")
+  const prefixo = address.split('(')[0];
+
+  let quadra = '', conjunto = '', casa = '';
+
+  const reQNO = /(?:qno|qn[o0])\s*(\d+)/i;
+  const reCJ  = /(?:conjunto|conj\.?|cj\.?)\s*([a-z0-9]+)/i;
+  const reCASA = /(?:casa|ca\.?)\s*(\d+[a-z]?)/i;
+
+  const mQ = prefixo.match(reQNO) || dentroParens.match(reQNO);
+  if(mQ) quadra = 'QNO ' + mQ[1];
+
+  const mCJ = prefixo.match(reCJ) || dentroParens.match(reCJ);
+  if(mCJ) conjunto = normalizarConjunto(mCJ[1]);
+
+  // ── Detecção do número da casa (aceita letra no final, ex: "11A") ────────
+  // 1) Padrão mais confiável: "QNO 16 Cj C, 9, Brasília..." → token logo após
+  //    o trecho da quadra/conjunto, antes da cidade, sendo um número (+ letra opcional)
+  const tokens = prefixo.split(',').map(t=>t.trim()).filter(Boolean);
+  if(tokens.length > 1 && /^\d{1,3}[a-z]?$/i.test(tokens[1])){
+    casa = normalizarCasa(tokens[1]);
+  }
+
+  // 2) Fallback: "casa 09" ou "casa 11A" dentro dos parênteses (número depois da palavra)
+  if(!casa){
+    const mCASA = dentroParens.match(reCASA);
+    if(mCASA) casa = normalizarCasa(mCASA[1]);
+  }
+
+  // 3) Fallback: "18 casa" ou "11A casa" — número (+ letra opcional) ANTES da palavra "casa"
+  if(!casa){
+    const reCASA_antes = /(\d{1,3}[a-z]?)\s*,?\s*(?:casa|ca\.?)\b/i;
+    const mCASA2 = dentroParens.match(reCASA_antes);
+    if(mCASA2) casa = normalizarCasa(mCASA2[1]);
+  }
+
+  // Infere bairro pela quadra
+  let bairro = 'Expansão Setor O';
+  if(/^Rua\s+\d/i.test(quadra)) bairro = 'Cond. Agrícola Privê';
+
+  if(!quadra) return null;
+
+  return {
+    quadra, conjunto, casa,
+    casaPendente: !casa,
+    bairro, cidade:'Ceilândia', contato,
+    enderecoOriginal: address
+  };
+}
+
+// Comparação tolerante — evita falhas por diferença de zero à esquerda (ex: "9" vs "09")
+function compararValor(a,b){
+  const na = normalizarTexto(a), nb = normalizarTexto(b);
+  if(na === nb) return true;
+  const ia = parseInt(a,10), ib = parseInt(b,10);
+  if(!isNaN(ia) && !isNaN(ib)) return ia === ib;
+  return false;
+}
+
+// Normaliza o valor da casa pra uma forma canônica (sem zero à esquerda, letra em
+// maiúscula) — garante que "2", "02" e "002" sempre gerem o MESMO ID de documento
+// no Firestore, em vez de criar registros duplicados pra mesma casa física.
+function normalizarCasa(valor){
+  if(!valor) return valor;
+  const str = String(valor).trim();
+  const m = str.match(/^0*(\d+)([a-zA-Z]*)$/);
+  if(m) return m[1] + m[2].toUpperCase();
+  return str; // não é número(+letra) puro — devolve como veio, sem mexer
+}
+
+// Cache simples pra não geocodificar o mesmo endereço duas vezes na mesma sessão
+const cacheGeocoding = {};
+let ultimaChamadaNominatim = 0;
+
+// Interpola a posição entre as duas casas registradas numericamente mais próximas
+// (uma pra baixo, uma pra cima) em vez de fazer média de todas as casas do conjunto.
+function interpolarEntreVizinhas(pacote, doConjunto, faixa){
+  const casaNum = parseInt(pacote.casa, 10);
+  if(isNaN(casaNum) || !doConjunto.length) return null;
+
+  let comNumero = doConjunto
+    .map(r => ({ ...r, casaNum: parseInt(r.casa, 10) }))
+    .filter(r => !isNaN(r.casaNum));
+  if(!comNumero.length) return null;
+
+  // Se existe uma faixa cadastrada com paridade definida (só pares ou só ímpares),
+  // prioriza vizinhos do mesmo lado da rua — evita interpolar entre uma casa par
+  // e uma ímpar quando sabemos que aquele conjunto só tem um dos dois tipos.
+  if(faixa?.tipo === 'pares' || faixa?.tipo === 'impares'){
+    const alvo = faixa.tipo === 'pares' ? 0 : 1;
+    const filtrado = comNumero.filter(r => r.casaNum % 2 === alvo);
+    if(filtrado.length) comNumero = filtrado; // só aplica o filtro se sobrar candidato
+  }
+
+  if(comNumero.length === 1){
+    const unica = comNumero[0];
+    return { lat: unica.lat, lng: unica.lng, tipo: 'estimado_conjunto' };
+  }
+
+  const inferior = comNumero.filter(r => r.casaNum <= casaNum).sort((a,b)=>b.casaNum-a.casaNum)[0];
+  const superior = comNumero.filter(r => r.casaNum >= casaNum).sort((a,b)=>a.casaNum-b.casaNum)[0];
+
+  if(inferior && superior && inferior.casaNum !== superior.casaNum){
+    const proporcao = (casaNum - inferior.casaNum) / (superior.casaNum - inferior.casaNum);
+    const lat = inferior.lat + (superior.lat - inferior.lat) * proporcao;
+    const lng = inferior.lng + (superior.lng - inferior.lng) * proporcao;
+    return { lat, lng, tipo: 'estimado_conjunto' };
+  }
+
+  // Casas só de um lado — usa a numericamente mais próxima
+  const maisProxima = comNumero.sort((a,b) => Math.abs(a.casaNum-casaNum) - Math.abs(b.casaNum-casaNum))[0];
+  return { lat: maisProxima.lat, lng: maisProxima.lng, tipo: 'estimado_conjunto' };
+}
+
+// Último recurso: geocodificação via Nominatim (OpenStreetMap, gratuito, sem chave de API).
+// Respeita o limite de 1 requisição/segundo exigido pela política de uso do servidor público.
+async function geocodificarComNominatim(pacote){
+  const enderecoTexto = `${pacote.quadra} Conjunto ${pacote.conjunto||''} Casa ${pacote.casa||''}, ${pacote.bairro}, ${pacote.cidade}, DF, Brasil`;
+  if(cacheGeocoding[enderecoTexto]) return cacheGeocoding[enderecoTexto];
+
+  const agora = Date.now();
+  const espera = Math.max(0, 1100 - (agora - ultimaChamadaNominatim));
+  if(espera > 0) await new Promise(r => setTimeout(r, espera));
+  ultimaChamadaNominatim = Date.now();
+
+  try{
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(enderecoTexto)}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if(data?.[0]?.lat){
+      const resultado = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), tipo: 'estimado' };
+      cacheGeocoding[enderecoTexto] = resultado;
+      return resultado;
+    }
+  } catch(e){
+    console.warn('[Nominatim] Falha ao geocodificar:', e);
+  }
+  return null;
+}
+
+async function encontrarGPS(pacote){
+  const norm = s => normalizarTexto(s||'');
+
+  // 1) Camada exata: casa específica já registrada
+  const matchExato = registros.find(r =>
+    norm(r.quadra) === norm(pacote.quadra) &&
+    compararValor(r.conjunto, pacote.conjunto) &&
+    (compararValor(r.casa, pacote.casa) || !pacote.casa)
+  );
+  if(matchExato?.lat) return { lat: matchExato.lat, lng: matchExato.lng, tipo: 'gps', tempoMedioParadaSeg: matchExato.tempoMedioParadaSeg || null };
+
+  // 2) Camada intermediária: interpolação entre casas vizinhas do mesmo conjunto
+  if(pacote.conjunto){
+    const doConjunto = registros.filter(r =>
+      norm(r.quadra) === norm(pacote.quadra) &&
+      compararValor(r.conjunto, pacote.conjunto) &&
+      r.lat
+    );
+    if(doConjunto.length){
+      const idFaixaAtual = idFaixaApp(pacote.cidade, pacote.bairro, pacote.quadra, pacote.conjunto);
+      const faixaAtual = FAIXAS[idFaixaAtual];
+      const interpolado = interpolarEntreVizinhas(pacote, doConjunto, faixaAtual);
+      if(interpolado) return interpolado;
+    }
+  }
+
+  // 3) Coordenada de fallback cadastrada pelo admin no painel (por quadra)
+  const idCoord = idCoordQuadra(pacote.cidade, pacote.bairro, pacote.quadra);
+  const coordAdmin = COORD_QUADRA_ADMIN[idCoord];
+  if(coordAdmin?.lat) return { lat: coordAdmin.lat, lng: coordAdmin.lng, tipo: 'estimado' };
+
+  // 4) Geocodificação via Nominatim (só se o admin não cadastrou nada pra essa quadra)
+  const geocodificado = await geocodificarComNominatim(pacote);
+  if(geocodificado) return geocodificado;
+
+  // 5) Último recurso — se nem o Nominatim respondeu (sem internet, fora do ar), usa o
+  // centro aproximado da quadra como fallback final, só pra não deixar o pacote sem nenhum ponto
+  const coords = COORDS_QUADRA[pacote.quadra];
+  if(coords) return { lat: coords[0], lng: coords[1], tipo: 'estimado' };
+
+  return null;
+}
+
+// Helper visual: badge/classe conforme o tipo de localização encontrada
+function infoTipoGPS(tipo){
+  if(tipo === 'gps') return { cls:'gps', txt:'GPS', numCls:'' };
+  if(tipo === 'estimado_conjunto') return { cls:'estc', txt:'Aprox.', numCls:' estimado' };
+  if(tipo === 'estimado') return { cls:'est', txt:'Estimado', numCls:' estimado' };
+  return { cls:'nf', txt:'Não enc.', numCls:' sem-gps' };
+}
+
+// ─── Etapa 1: Analisar lista ────────────────────────────────────────────────
+// ─── Bottom sheet de rota — arrastável sobre o mapa, com 3 posições (igual Google Maps) ──
+let sheetEstadoAtual = 'peek';
+let sheetArrastando = false, sheetPonteiroId = null, sheetStartY = 0, sheetStartD = 0, sheetAlturasCache = null;
+let sheetConfigurado = false;
+
+function calcularAlturasSheet(){
+  const tela = document.getElementById('screen-mapa');
+  const h = (tela && tela.clientHeight) || window.innerHeight;
+  const peekVisivel = 118;              // só a alça + busca de transportadora
+  const midVisivel = Math.round(h * 0.5);
+  const fullVisivel = Math.round(h * 0.9);
+  return { h, peek: Math.max(0, h - peekVisivel), mid: Math.max(0, h - midVisivel), full: Math.max(0, h - fullVisivel) };
+}
+
+function aplicarSheet(estado, semAnimacao){
+  const sheet = document.getElementById('rota-sheet');
+  if(!sheet) return;
+  sheetAlturasCache = calcularAlturasSheet();
+  sheet.style.transition = semAnimacao ? 'none' : '';
+  sheet.style.transform = 'translateY(' + sheetAlturasCache[estado] + 'px)';
+  sheetEstadoAtual = estado;
+  const fab = document.getElementById('fab-centralizar');
+  if(fab) fab.style.opacity = (estado === 'peek') ? '1' : '0';
+}
+
+// Abre o sheet pra um estado específico — usado pelos botões/atalhos da própria tela.
+function abrirSheetRota(estado){
+  aplicarSheet(estado || 'mid');
+}
+
+// Chamada pelo botão "🛣 Rota" da barra de abas: garante que a tela do mapa está ativa
+// e expande o sheet (em vez de trocar pra uma tela separada, igual antes).
+function abrirRota(){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('screen-mapa').classList.add('active');
+  document.getElementById('tab-rota').classList.add('active');
+  if(!mapReady) esperarLeaflet(); else setTimeout(()=>map.invalidateSize(), 100);
+  abrirSheetRota(pacotesAnalisados.length ? 'full' : 'mid');
+}
+
+function iniciarArrasteSheet(clientY){
+  sheetArrastando = true;
+  sheetStartY = clientY;
+  sheetAlturasCache = calcularAlturasSheet();
+  sheetStartD = sheetAlturasCache[sheetEstadoAtual];
+  const sheet = document.getElementById('rota-sheet');
+  if(sheet) sheet.style.transition = 'none';
+}
+function moverArrasteSheet(clientY){
+  if(!sheetArrastando || !sheetAlturasCache) return;
+  const delta = clientY - sheetStartY;
+  let novoD = sheetStartD + delta;
+  const min = sheetAlturasCache.full, max = sheetAlturasCache.peek;
+  novoD = Math.max(min, Math.min(max, novoD));
+  const sheet = document.getElementById('rota-sheet');
+  if(sheet) sheet.style.transform = 'translateY(' + novoD + 'px)';
+}
+function finalizarArrasteSheet(clientY){
+  if(!sheetArrastando || !sheetAlturasCache) return;
+  sheetArrastando = false;
+  const delta = clientY - sheetStartY;
+  const atualD = Math.max(sheetAlturasCache.full, Math.min(sheetAlturasCache.peek, sheetStartD + delta));
+  let melhor = 'peek', menorDist = Infinity;
+  ['full','mid','peek'].forEach(e=>{
+    const dist = Math.abs(sheetAlturasCache[e] - atualD);
+    if(dist < menorDist){ menorDist = dist; melhor = e; }
+  });
+  aplicarSheet(melhor);
+}
+
+function configurarArrasteSheet(){
+  if(sheetConfigurado) return;
+  const alca = document.getElementById('rota-sheet-drag-zone');
+  if(!alca) return;
+  sheetConfigurado = true;
+  alca.addEventListener('touchstart', e => iniciarArrasteSheet(e.touches[0].clientY), {passive:true});
+  alca.addEventListener('touchmove', e => moverArrasteSheet(e.touches[0].clientY), {passive:true});
+  alca.addEventListener('touchend', e => finalizarArrasteSheet(e.changedTouches[0].clientY));
+  alca.addEventListener('mousedown', e => {
+    iniciarArrasteSheet(e.clientY);
+    const mm = ev => moverArrasteSheet(ev.clientY);
+    const mu = ev => { finalizarArrasteSheet(ev.clientY); document.removeEventListener('mousemove', mm); document.removeEventListener('mouseup', mu); };
+    document.addEventListener('mousemove', mm);
+    document.addEventListener('mouseup', mu);
+  });
+  window.addEventListener('resize', () => aplicarSheet(sheetEstadoAtual, true));
+}
+
+let pacotesAnalisados = [];
+// Chave de endereço usada pra detectar pacotes duplicados na mesma casa (ex: 2 encomendas
+// pro mesmo endereço, seja da mesma transportadora ou de listas diferentes unificadas).
+function chaveEndereco(p){
+  return [normalizarTexto(p.cidade), normalizarTexto(p.bairro), normalizarTexto(p.quadra), normalizarTexto(p.conjunto||''), normalizarTexto(p.casa||'')].join('|');
+}
+function contarDuplicados(pacotes){
+  const contagem = {};
+  pacotes.forEach(p=>{ if(!p.casa) return; const k=chaveEndereco(p); contagem[k]=(contagem[k]||0)+1; });
+  return contagem;
+}
+function tagDuplicado(p, contagem){
+  if(!p.casa) return '';
+  const n = contagem[chaveEndereco(p)] || 1;
+  if(n<=1) return '';
+  return `<span style="background:#FFF3CD;color:#856404;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;margin-right:4px;">📦 ${n} itens no local</span>`;
+}
+
+// ─── Controle do novo layout (empty state + colagem manual escondida) ────────
+function esconderEmptyStateRota(){
+  const el = document.getElementById('rota-empty-state');
+  if(el) el.style.display = 'none';
+}
+function toggleColarManual(){
+  const wrap = document.getElementById('rota-paste-wrap');
+  const btn = document.getElementById('rota-colar-manual-btn');
+  const vaiAbrir = wrap.style.display === 'none' || !wrap.style.display;
+  wrap.style.display = vaiAbrir ? 'block' : 'none';
+  btn.textContent = vaiAbrir ? '✕ Fechar colagem manual' : '📋 Colar lista manualmente';
+  if(vaiAbrir){ esconderEmptyStateRota(); abrirSheetRota('full'); document.getElementById('rota-input').focus(); }
+}
+
+// ─── Importar arquivo CSV ──────────────────────────────────────────────────────
+function importarCSV(e){
+  const file = e.target.files[0];
+  e.target.value = ''; // permite selecionar o mesmo arquivo de novo depois
+  if(!file) return;
+  if(!/\.(csv|txt)$/i.test(file.name)){
+    showMsg('Selecione um arquivo .csv', 'err');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const texto = ev.target.result;
+    document.getElementById('rota-input').value = texto;
+    showMsg('✓ Arquivo "'+file.name+'" carregado! Analisando...', 'ok');
+    analisarLista();
+  };
+  reader.onerror = () => showMsg('Erro ao ler o arquivo.', 'err');
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ─── Validação com faixas de numeração ────────────────────────────────────────
+function idFaixaApp(cidade,bairro,quadra,conjunto){
+  return (cidade+'_'+bairro+'_'+quadra+'_'+conjunto).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+}
+function idCoordQuadra(cidade,bairro,quadra){
+  return (cidade+'_'+bairro+'_'+quadra).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+}
+function validarCasaNaFaixa(pacote){
+  if(!pacote.casa) return null; // sem casa, não tem o que validar aqui
+  const id = idFaixaApp(pacote.cidade, pacote.bairro, pacote.quadra, pacote.conjunto);
+  const faixa = FAIXAS[id];
+  if(!faixa || faixa.min==null || faixa.max==null) return null; // sem faixa cadastrada, não valida
+  const casaNum = parseInt(pacote.casa, 10);
+  if(isNaN(casaNum)) return null;
+  const dentroRange = casaNum >= faixa.min && casaNum <= faixa.max;
+  const paridadeOk = faixa.tipo==='pares' ? casaNum%2===0 : faixa.tipo==='impares' ? casaNum%2===1 : true;
+  if(!dentroRange || !paridadeOk){
+    return `Fora da faixa esperada (${faixa.min}–${faixa.max}${faixa.tipo!=='todas'?', '+faixa.tipo:''})`;
+  }
+  return null; // ok
+}
+
+async function analisarLista(){
+  const input = document.getElementById('rota-input').value.trim();
+  if(!input){ showMsg('Cole a lista de pacotes antes.','err'); return; }
+
+  const transportadora = document.getElementById('rota-transportadora').value.trim();
+  if(transportadora) localStorage.setItem('rotasqno_ultima_transportadora', transportadora);
+
+  const btn = document.getElementById('rota-btn');
+  btn.disabled = true; btn.textContent = 'Analisando...';
+
+  try {
+    const linhas = input.split('\n').filter(l => l.trim() && !l.startsWith('Address,'));
+    const pacotesNovos = [];
+    let naoReconhecidos = 0;
+
+    for(const linha of linhas){
+      const p = parsearLinha(linha);
+      if(!p){ naoReconhecidos++; continue; }
+      btn.textContent = `Analisando... (${pacotesNovos.length+1}/${linhas.length})`;
+      const gps = await encontrarGPS(p);
+      const avisoFaixa = validarCasaNaFaixa(p);
+      pacotesNovos.push({ ...p, coords: gps, tipoGPS: gps?.tipo || 'nao_encontrado', avisoFaixa, tempoMedioParadaSeg: gps?.tempoMedioParadaSeg || null, transportadora });
+    }
+
+    // Unifica com o que já tinha sido importado antes, em vez de zerar — permite juntar
+    // vários CSVs (de transportadoras diferentes) na mesma rota do dia.
+    pacotesAnalisados = [...pacotesAnalisados, ...pacotesNovos];
+    rotaBoundsAjustadosRevisao = false; // reajusta o zoom do mapa de revisão pra enquadrar os novos pins também
+    document.getElementById('rota-input').value = ''; // limpa pra próxima importação não duplicar o conteúdo
+    renderAnalise(pacotesAnalisados, naoReconhecidos);
+  } catch(e){
+    console.error('[Rota]', e);
+    showMsg('Erro ao analisar: ' + e.message, 'err');
+  }
+
+  btn.disabled = false; btn.textContent = '🔍 Analisar lista';
+}
+
+function limparListaImportada(){
+  if(!pacotesAnalisados.length) return;
+  if(!confirm('Apagar todos os '+pacotesAnalisados.length+' pacotes importados até agora e começar do zero?')) return;
+  pacotesAnalisados = [];
+  rotaBoundsAjustadosRevisao = false;
+  document.getElementById('rota-input').value = '';
+  document.getElementById('rota-resultado').style.display = 'none';
+  document.getElementById('rota-paste-wrap').style.display = 'none';
+  document.getElementById('rota-colar-manual-btn').textContent = '📋 Colar lista manualmente';
+  document.getElementById('rota-empty-state').style.display = 'flex';
+  abrirSheetRota('mid');
+  showMsg('🗑 Lista de importação limpa.', 'ok');
+}
+
+function renderAnalise(pacotes, naoReconhecidos){
+  esconderEmptyStateRota();
+  abrirSheetRota('full');
+  const div = document.getElementById('rota-resultado');
+  div.style.display = 'block';
+  document.getElementById('rota-revisao-wrap').style.display = 'block';
+  document.getElementById('rota-lista-final-wrap').style.display = 'none';
+  document.getElementById('rota-fechar-wrap').style.display = 'block';
+  document.getElementById('rota-nav-start-wrap').style.display = 'none';
+  document.getElementById('rota-mapa-wrap').style.display = 'none';
+  document.getElementById('rota-reotimizar-wrap').style.display = 'none';
+
+  const pendentes = pacotes.filter(p => p.casaPendente);
+  const forasDeFaixa = pacotes.filter(p => p.avisoFaixa);
+  const prontos = pacotes.length - pendentes.length;
+
+  document.getElementById('rota-stats').innerHTML =
+    `<div class="rota-stat"><span class="n">${pacotes.length}</span>pacotes</div>
+     <div class="rota-stat"><span class="n" style="color:#1D9E75">${prontos}</span>casa ok</div>
+     <div class="rota-stat"><span class="n" style="color:#EF9F27">${pendentes.length}</span>sem nº casa</div>
+     ${forasDeFaixa.length>0?`<div class="rota-stat"><span class="n" style="color:#E24B4A">${forasDeFaixa.length}</span>fora da faixa</div>`:''}
+     ${naoReconhecidos>0?`<div class="rota-stat"><span class="n" style="color:#E24B4A">${naoReconhecidos}</span>não reconh.</div>`:''}`;
+
+  const aviso = document.getElementById('rota-aviso');
+  if(forasDeFaixa.length > 0){
+    aviso.style.display = 'block';
+    aviso.textContent = `🚨 ${forasDeFaixa.length} endereço(s) com número de casa fora da faixa esperada pro conjunto — confira se não é erro de digitação/leitura do CSV antes de fechar a rota.`;
+  } else if(pendentes.length > 0){
+    aviso.style.display = 'block';
+    aviso.textContent = `⚠️ ${pendentes.length} endereço(s) sem número de casa identificado. Preencha manualmente abaixo antes de fechar a rota (ou deixe em branco para incluir mesmo assim).`;
+  } else {
+    aviso.style.display = 'block';
+    aviso.textContent = '✓ Todos os endereços tiveram o número da casa identificado automaticamente.';
+  }
+
+  const contagemDuplicados = contarDuplicados(pacotes);
+  const lista = document.getElementById('rota-lista');
+  lista.innerHTML = pacotes.map((p, i) => {
+    const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
+    const info = infoTipoGPS(p.tipoGPS);
+    const gpsTxt = `<span class="rota-badge ${info.cls}">${info.txt}</span>`;
+    const dupTag = tagDuplicado(p, contagemDuplicados);
+    return `<div class="rota-item" ${p.avisoFaixa?'style="border-color:#E24B4A;background:#FCEBEB;"':''}>
+      <div class="rota-num${p.casaPendente?' sem-gps':''}">${i+1}</div>
+      <div class="rota-info">
+        <div class="rota-addr">${dupTag}${p.quadra} · Cj. ${p.conjunto||'?'} ${gpsTxt}</div>
+        <div class="rota-detalhe">${p.enderecoOriginal.slice(0,55)}${p.enderecoOriginal.length>55?'...':''}</div>
+        ${contatoFmt?`<div class="rota-contato">📞 ${contatoFmt}</div>`:''}
+        ${p.casaPendente
+          ? `<div style="margin-top:6px;display:flex;align-items:center;gap:6px;">
+               <span style="font-size:11px;color:#856404;">Nº da casa:</span>
+               <input type="text" inputmode="text" class="rota-casa-input" data-idx="${i}" placeholder="ex: 15 ou 11A" style="width:90px;padding:5px 8px;border:1px solid #EF9F27;border-radius:6px;font-size:12px;"/>
+             </div>`
+          : `<div style="font-size:11px;color:${p.avisoFaixa?'#A32D2D':'#1D9E75'};margin-top:3px;font-weight:${p.avisoFaixa?'600':'400'};">${p.avisoFaixa?'🚨 Casa '+p.casa+' — '+p.avisoFaixa:'✓ Casa '+p.casa}</div>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+
+  renderMapaRevisao(pacotes);
+}
+
+// Mapa da etapa de revisão — mostra os endereços já geolocalizados (antes de otimizar a
+// rota) e permite arrastar o pin pra corrigir a posição direto na conferência.
+function renderMapaRevisao(pacotes){
+  const comCoords = pacotes.filter(p => p.coords);
+  const wrap = document.getElementById('rota-mapa-revisao-wrap');
+  if(!comCoords.length){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  if(!rotaMapRevisaoReady){
+    rotaMapRevisao = L.map('rota-mapa-revisao', { zoomControl:true }).setView(CENTER, 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(rotaMapRevisao);
+    rotaMarkersRevisao = L.layerGroup().addTo(rotaMapRevisao);
+    rotaMapRevisaoReady = true;
+  }
+  setTimeout(()=>rotaMapRevisao.invalidateSize(), 100);
+  rotaMarkersRevisao.clearLayers();
+
+  comCoords.forEach(p => {
+    const info = infoTipoGPS(p.tipoGPS);
+    const corPorCls = { gps:'#1D9E75', estc:'#378ADD', est:'#EF9F27', nf:'#E24B4A' };
+    const cor = corPorCls[info.cls] || '#1D9E75';
+    const idxNaLista = pacotes.indexOf(p);
+    const icon = L.divIcon({
+      html: `<div style="background:${cor};border:2px solid white;border-radius:50%;width:25px;height:25px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;box-shadow:0 2px 6px rgba(0,0,0,.3);">${idxNaLista+1}</div>`,
+      className:'', iconSize:[25,25], iconAnchor:[12,12]
+    });
+    const popupHtml = `<b>${idxNaLista+1}. ${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:''}</b><br><span style="font-size:11px;color:#888;">🖐 Arraste pra corrigir a posição</span>`;
+    const marker = L.marker([p.coords.lat, p.coords.lng], { icon, draggable:true }).addTo(rotaMarkersRevisao).bindPopup(popupHtml);
+    marker.on('dragend', () => {
+      const pos = marker.getLatLng();
+      corrigirPosicaoRevisao(p, pos.lat, pos.lng);
+    });
+  });
+
+  if(!rotaBoundsAjustadosRevisao){
+    const bounds = L.latLngBounds(comCoords.map(p => [p.coords.lat, p.coords.lng]));
+    rotaMapRevisao.fitBounds(bounds, { padding:[30,30] });
+    rotaBoundsAjustadosRevisao = true;
+  }
+}
+
+// Corrige a posição de um pacote direto na etapa de revisão (antes de otimizar a rota).
+// A mesma referência do objeto segue pra etapa de otimização, então a correção some
+// naturalmente na rota final e é salva quando a rota é fechada.
+function corrigirPosicaoRevisao(pacote, lat, lng){
+  pacote.coords = { lat, lng, tipo: 'gps' };
+  pacote.tipoGPS = 'gps';
+  pacote.posicaoCorrigidaManualmente = true;
+  renderMapaRevisao(pacotesAnalisados);
+  showMsg('📍 Posição ajustada nesta rota (será salva ao fechar a rota).', 'ok');
+}
+
+// ─── Etapa 2: Fechar rota (aplica casas manuais + otimiza) ────────────────────
+function distancia(a, b){
+  const dlat = a.lat - b.lat, dlng = a.lng - b.lng;
+  return Math.sqrt(dlat*dlat + dlng*dlng);
+}
+
+// Construção inicial por vizinho mais próximo (rápido, sem depender de internet)
+function otimizarRota(pacotes){
+  const inicio = obterPontoPartida();
+  const restantes = [...pacotes];
+  const ordenados = [];
+  let posAtual = inicio;
+  while(restantes.length > 0){
+    let melhorIdx = 0, melhorDist = Infinity;
+    restantes.forEach((p, i) => {
+      if(!p.coords) return;
+      const d = distancia(posAtual, p.coords);
+      if(d < melhorDist){ melhorDist = d; melhorIdx = i; }
+    });
+    const proximo = restantes.splice(melhorIdx, 1)[0];
+    ordenados.push(proximo);
+    if(proximo.coords) posAtual = proximo.coords;
+  }
+  return ordenados;
+}
+
+// Refinamento 2-opt: corrige cruzamentos que o vizinho mais próximo costuma deixar,
+// usando distância real (metros) entre os pontos. Só mexe se realmente encurtar o total.
+function aplicar2opt(pontosComCoords, maxIteracoes){
+  if(pontosComCoords.length < 4) return pontosComCoords;
+  let rota = pontosComCoords.slice();
+  let melhorou = true, tentativas = 0;
+  const limite = maxIteracoes || 300;
+  while(melhorou && tentativas < limite){
+    melhorou = false; tentativas++;
+    for(let i=0; i<rota.length-2; i++){
+      for(let j=i+2; j<rota.length-1; j++){
+        const a=rota[i], b=rota[i+1], c=rota[j], d=rota[j+1];
+        const distAtual = distanciaMetros(a.coords,b.coords) + distanciaMetros(c.coords,d.coords);
+        const distNova   = distanciaMetros(a.coords,c.coords) + distanciaMetros(b.coords,d.coords);
+        if(distNova < distAtual - 1){
+          const meio = rota.slice(i+1, j+1).reverse();
+          rota = [...rota.slice(0,i+1), ...meio, ...rota.slice(j+1)];
+          melhorou = true;
+        }
+      }
+    }
+  }
+  return rota;
+}
+
+// Otimização real via OSRM Trip — considera as ruas de verdade (tempo real de percurso),
+// não só distância em linha reta. É a forma mais precisa de minimizar o tempo do motorista.
+let duracaoViagemOSRMSeg = null; // capturada a cada otimização, usada na estimativa total da rota
+
+async function otimizarRotaComOSRM(pacotesComCoords){
+  if(!pacotesComCoords.length) return [];
+  if(pacotesComCoords.length === 1){ duracaoViagemOSRMSeg = null; return pacotesComCoords; }
+  const origem = obterPontoPartida();
+  const todasCoords = [origem, ...pacotesComCoords.map(p=>p.coords)];
+  const coordsStr = todasCoords.map(c=>c.lng+','+c.lat).join(';');
+  const url = `https://router.project-osrm.org/trip/v1/driving/${coordsStr}?source=first&roundtrip=false&overview=false`;
+  const resp = await fetch(url);
+  const data = await resp.json();
+  if(data.code !== 'Ok' || !data.waypoints) throw new Error('OSRM trip: '+data.code);
+  duracaoViagemOSRMSeg = data.trips?.[0]?.duration || null;
+  // waypoints vem na MESMA ordem da entrada; o índice 0 é a origem (motorista) — removemos.
+  const waypointsPacotes = data.waypoints.slice(1);
+  const comOrdem = waypointsPacotes.map((wp, idxOriginal) => ({
+    pacote: pacotesComCoords[idxOriginal],
+    ordem: wp.waypoint_index
+  }));
+  comOrdem.sort((a,b) => a.ordem - b.ordem);
+  return comOrdem.map(x => x.pacote);
+}
+
+let rotaAtual = [];
+
+async function fecharRota(){
+  // Aplica valores digitados manualmente para casas pendentes, e registra a
+  // correção pra análise futura de padrões que confundem o parser
+  const correcoesParaSalvar = [];
+
+  for(const inp of document.querySelectorAll('.rota-casa-input')){
+    const idx = parseInt(inp.getAttribute('data-idx'));
+    const val = inp.value.trim();
+    if(val && pacotesAnalisados[idx]){
+      const p = pacotesAnalisados[idx];
+      correcoesParaSalvar.push({
+        enderecoOriginal: p.enderecoOriginal || '',
+        cidade: p.cidade || '', bairro: p.bairro || '', quadra: p.quadra || '', conjunto: p.conjunto || '',
+        casaDigitadaManualmente: val,
+        corrigidoPor: usuarioAtual?.email || '', corrigidoPorUid: usuarioAtual?.uid || '',
+        ts: new Date().toISOString()
+      });
+      p.casa = normalizarCasa(val);
+      p.casaPendente = false;
+      // Re-tenta achar GPS agora que tem casa
+      const gps = await encontrarGPS(p);
+      p.coords = gps;
+      p.tipoGPS = gps?.tipo || 'nao_encontrado';
+      p.tempoMedioParadaSeg = gps?.tempoMedioParadaSeg || null;
+      p.avisoFaixa = validarCasaNaFaixa(p);
+    }
+  }
+
+  // Salva os logs de correção em segundo plano, sem travar o fluxo de otimização
+  if(correcoesParaSalvar.length && fb){
+    correcoesParaSalvar.forEach(c => {
+      fb.setDoc(fb.doc(fb.db, 'correcoesParser', Date.now()+'_'+Math.random().toString(36).slice(2,8)), c)
+        .catch(e => console.warn('[Correções] Falha ao salvar log:', e));
+    });
+  }
+
+  const comCoords = pacotesAnalisados.filter(p => p.coords);
+  const semCoords = pacotesAnalisados.filter(p => !p.coords);
+
+  const btn = document.querySelector('#rota-fechar-wrap .rota-btn');
+  if(btn){ btn.disabled = true; btn.textContent = '🛣 Calculando melhor rota...'; }
+
+  let otimizados;
+  try {
+    otimizados = await otimizarRotaComOSRM(comCoords);
+  } catch(e){
+    console.warn('[Rota] OSRM Trip indisponível, usando otimização local:', e);
+    otimizados = aplicar2opt(otimizarRota(comCoords));
+  }
+
+  rotaAtual = [...otimizados, ...semCoords];
+  if(btn){ btn.disabled = false; btn.textContent = '🛣 Otimizar a rota'; }
+  renderRotaFinal(rotaAtual);
+}
+
+function removerParadaDaRota(idx){
+  if(!confirm('Remover esta parada da rota de hoje?')) return;
+  rotaAtual.splice(idx, 1);
+  renderRotaFinal(rotaAtual);
+  showMsg('Parada removida.', 'ok');
+}
+
+function renderRotaFinal(pacotes){
+  document.getElementById('rota-revisao-wrap').style.display = 'none';
+  document.getElementById('rota-lista-final-wrap').style.display = 'block';
+  document.getElementById('rota-fechar-wrap').style.display = 'none';
+  document.getElementById('rota-nav-start-wrap').style.display = 'block';
+
+  const comGPS      = pacotes.filter(p => p.tipoGPS === 'gps').length;
+  const estConjunto = pacotes.filter(p => p.tipoGPS === 'estimado_conjunto').length;
+  const estimado    = pacotes.filter(p => p.tipoGPS === 'estimado').length;
+  const naoAch       = pacotes.filter(p => p.tipoGPS === 'nao_encontrado').length;
+
+  document.getElementById('rota-stats').innerHTML =
+    `<div class="rota-stat"><span class="n">${pacotes.length}</span>pacotes</div>
+     <div class="rota-stat"><span class="n" style="color:#1D9E75">${comGPS}</span>com GPS</div>
+     <div class="rota-stat"><span class="n" style="color:#378ADD">${estConjunto}</span>aprox.</div>
+     <div class="rota-stat"><span class="n" style="color:#EF9F27">${estimado}</span>estimados</div>
+     <div class="rota-stat"><span class="n" style="color:#E24B4A">${naoAch}</span>sem loc.</div>`;
+
+  // Tempo total estimado da rota: deslocamento (OSRM) + tempo médio de parada de cada
+  // endereço (aprendido das entregas anteriores, "perfil do endereço") — só mostra quando
+  // temos o dado real de deslocamento do OSRM (não disponível no fallback local).
+  const wrapTempoTotal = document.getElementById('rota-tempo-total-wrap');
+  if(duracaoViagemOSRMSeg != null){
+    const tempoParadasSeg = pacotes.reduce((s,p) => s + (p.tempoMedioParadaSeg || 60), 0);
+    const totalSeg = duracaoViagemOSRMSeg + tempoParadasSeg;
+    const totalMin = Math.round(totalSeg/60);
+    const horas = Math.floor(totalMin/60), minutos = totalMin%60;
+    const totalFmt = horas>0 ? `${horas}h${minutos.toString().padStart(2,'0')}min` : `${minutos}min`;
+    document.getElementById('rota-tempo-total-texto').textContent =
+      `Tempo total estimado: ~${totalFmt} (deslocamento + tempo médio parado em cada endereço)`;
+    wrapTempoTotal.style.display = 'block';
+  } else {
+    wrapTempoTotal.style.display = 'none';
+  }
+
+  document.getElementById('rota-aviso').style.display = 'none';
+
+  const lista = document.getElementById('rota-lista-final');
+  let prevBairro = '';
+  const contagemDuplicados = contarDuplicados(pacotes);
+  lista.innerHTML = pacotes.map((p, i) => {
+    let sep = '';
+    if(p.bairro !== prevBairro){
+      sep = `<div class="rota-sep">── ${p.bairro} ──</div>`;
+      prevBairro = p.bairro;
+    }
+    const info = infoTipoGPS(p.tipoGPS);
+    const badgeCls = info.cls, badgeTxt = info.txt, numCls = info.numCls;
+    const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
+    const transpTag = p.transportadora ? `<span style="background:#EAF2FB;color:#1B5A8A;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;margin-left:4px;">${p.transportadora}</span>` : '';
+    const dupTag = tagDuplicado(p, contagemDuplicados);
+    const clicavel = p.coords ? `onclick="iniciarNavegacaoNoIndicePacote(${i})" style="cursor:pointer;"` : '';
+    return `${sep}<div class="rota-item" ${clicavel}>
+      <div class="rota-num${numCls}">${i+1}</div>
+      <div class="rota-info">
+        <div class="rota-addr">${dupTag}${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:' · Casa ?'}
+          <span class="rota-badge ${badgeCls}">${badgeTxt}</span>${transpTag}
+        </div>
+        <div class="rota-detalhe">${p.enderecoOriginal.slice(0,60)}${p.enderecoOriginal.length>60?'...':''}</div>
+        ${contatoFmt?`<div class="rota-contato">📞 ${contatoFmt}</div>`:''}
+      </div>
+      <button onclick="event.stopPropagation();removerParadaDaRota(${i})" title="Remover parada" style="background:none;border:none;color:#ccc;font-size:16px;padding:4px 8px;cursor:pointer;flex-shrink:0;">🗑</button>
+    </div>`;
+  }).join('');
+
+  renderRotaMapaVisao(pacotes);
+}
+
+// ─── Mapa de visão geral da rota (estilo Circuit) ─────────────────────────────
+let rotaOverviewMap = null, rotaOverviewReady = false;
+let rotaOverviewMarkers = null, rotaOverviewLine = null;
+let rotaMapRevisao = null, rotaMapRevisaoReady = false, rotaMarkersRevisao = null, rotaBoundsAjustadosRevisao = false;
+
+function renderRotaMapaVisao(pacotes){
+  const comCoords = pacotes.filter(p => p.coords);
+  document.getElementById('rota-mapa-wrap').style.display = comCoords.length ? 'block' : 'none';
+  if(!comCoords.length) return;
+
+  if(!rotaOverviewReady){
+    rotaOverviewMap = L.map('rota-mapa-overview', { zoomControl:true }).setView(CENTER, 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(rotaOverviewMap);
+    rotaOverviewMarkers = L.layerGroup().addTo(rotaOverviewMap);
+    rotaOverviewReady = true;
+  }
+  setTimeout(()=>rotaOverviewMap.invalidateSize(), 100);
+
+  rotaOverviewMarkers.clearLayers();
+  if(rotaOverviewLine){ rotaOverviewMap.removeLayer(rotaOverviewLine); rotaOverviewLine = null; }
+
+  const corPorCls = { gps:'#1D9E75', estc:'#378ADD', est:'#EF9F27', nf:'#E24B4A' };
+
+  comCoords.forEach((p) => {
+    const info = infoTipoGPS(p.tipoGPS);
+    const cor = corPorCls[info.cls] || '#1D9E75';
+    const idxCompleto = rotaAtual.indexOf(p);
+    const numeroExibido = idxCompleto + 1;
+    const icon = L.divIcon({
+      html: `<div style="background:${cor};border:2px solid white;border-radius:50%;width:27px;height:27px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;box-shadow:0 2px 6px rgba(0,0,0,.3);">${numeroExibido}</div>`,
+      className:'', iconSize:[27,27], iconAnchor:[13,13]
+    });
+    const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
+    const montarPopup = () => `<b>${numeroExibido}. ${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:''}</b>`
+      + (contatoFmt ? `<br>📞 ${contatoFmt}` : '')
+      + `<br><span style="font-size:11px;color:#888;">🖐 Arraste o pin se a posição estiver errada</span>`
+      + `<br><button style="margin-top:6px;padding:5px 10px;background:#1D9E75;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;" onclick="iniciarNavegacaoNoIndicePacote(${idxCompleto})">➡ Ir para esta parada</button>`;
+
+    const marker = L.marker([p.coords.lat, p.coords.lng], { icon, draggable:true }).addTo(rotaOverviewMarkers).bindPopup(montarPopup());
+    marker.on('dragend', () => {
+      const pos = marker.getLatLng();
+      corrigirPosicaoPacoteOverview(idxCompleto, pos.lat, pos.lng);
+    });
+  });
+
+  const bounds = L.latLngBounds(comCoords.map(p => [p.coords.lat, p.coords.lng]));
+  rotaOverviewMap.fitBounds(bounds, { padding:[30,30] });
+
+  desenharTrajetoOverview(comCoords);
+}
+
+// Chamado quando o usuário arrasta um pin no mapa de visão geral pra corrigir a posição.
+// Salva a correção como confirmação real no banco e libera o botão de reotimizar.
+async function corrigirPosicaoPacoteOverview(idxCompleto, lat, lng){
+  const p = rotaAtual[idxCompleto];
+  if(!p) return;
+  p.coords = { lat, lng, tipo: 'gps' };
+  p.tipoGPS = 'gps';
+
+  if(fb && p.casa){
+    try{
+      const nCidade=normalizarTexto(p.cidade), nBairro=normalizarTexto(p.bairro), nQuadra=normalizarTexto(p.quadra);
+      const bateEndereco = r => normalizarTexto(r.cidade)===nCidade && normalizarTexto(r.bairro)===nBairro &&
+        normalizarTexto(r.quadra)===nQuadra && compararValor(r.conjunto, p.conjunto) && compararValor(r.casa, p.casa);
+      const existente = registros.find(bateEndereco);
+      if(existente?.localizacaoTravada){
+        showMsg('🔒 Essa localização está travada pelo admin — corrigida só na rota de hoje, não salva no banco.', 'err');
+      } else {
+        const novaConfirmacao = { lat, lng, uid: usuarioAtual?.uid||'', email: usuarioAtual?.email||'', ts: new Date().toISOString() };
+        const todasConfs = [...(existente?.confirmacoes||[]), novaConfirmacao];
+        const docId = existente?.id || (p.cidade+'_'+p.bairro+'_'+p.quadra+'_'+p.conjunto+'_'+p.casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+        await fb.setDoc(fb.doc(fb.db,'registros',docId), {
+          cidade:p.cidade, bairro:p.bairro, quadra:p.quadra, conjunto:p.conjunto, casa:p.casa,
+          obs: existente?.obs||'', foto: existente?.foto||null,
+          lat, lng, confirmacoes: todasConfs, totalConfirmacoes: todasConfs.length,
+          verificado: existente?.verificado||false,
+          ts: existente?.ts || (new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}))
+        }, { merge:true });
+        showMsg('✓ Posição corrigida e salva no banco.', 'ok');
+      }
+    } catch(e){ console.warn('[Correção pin overview]', e); }
+  }
+
+  document.getElementById('rota-reotimizar-wrap').style.display = 'block';
+  renderRotaMapaVisao(rotaAtual); // redesenha com a cor atualizada (agora GPS confirmado)
+}
+
+// Reotimiza a rota usando as posições já corrigidas manualmente
+async function reotimizarComCorrecoes(){
+  const btn = document.getElementById('rota-reotimizar-btn');
+  btn.disabled = true; btn.textContent = '🔄 Recalculando...';
+
+  const comCoords = rotaAtual.filter(p => p.coords);
+  const semCoords = rotaAtual.filter(p => !p.coords);
+
+  let otimizados;
+  try {
+    otimizados = await otimizarRotaComOSRM(comCoords);
+  } catch(e){
+    console.warn('[Rota] OSRM Trip indisponível, usando otimização local:', e);
+    otimizados = aplicar2opt(otimizarRota(comCoords));
+  }
+
+  rotaAtual = [...otimizados, ...semCoords];
+  document.getElementById('rota-reotimizar-wrap').style.display = 'none';
+  btn.disabled = false; btn.textContent = '🔄 Reotimizar rota com correções';
+  renderRotaFinal(rotaAtual);
+  showMsg('🔄 Rota recalculada com as correções feitas.', 'ok');
+}
+
+async function desenharTrajetoOverview(comCoords){
+  if(comCoords.length < 2) return;
+  document.getElementById('rota-mapa-loading').style.display = 'flex';
+  let linePoints;
+  try {
+    const coordsStr = comCoords.map(p => p.coords.lng+','+p.coords.lat).join(';');
+    const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if(data.code === 'Ok' && data.routes?.[0]){
+      linePoints = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+    } else {
+      linePoints = comCoords.map(p => [p.coords.lat, p.coords.lng]);
+    }
+  } catch(e){
+    console.warn('[OSRM overview] Falha, usando linha reta entre paradas:', e);
+    linePoints = comCoords.map(p => [p.coords.lat, p.coords.lng]);
+  }
+  rotaOverviewLine = L.polyline(linePoints, { color:'#378ADD', weight:4, opacity:0.75 }).addTo(rotaOverviewMap);
+  rotaOverviewLine.bringToBack();
+  document.getElementById('rota-mapa-loading').style.display = 'none';
+}
+
+function copiarRota(){
+  const texto = rotaAtual.map((p,i) =>
+    `${i+1}. ${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:' · Casa ?'} [${infoTipoGPS(p.tipoGPS).txt}]`
+  ).join('\n');
+  navigator.clipboard?.writeText(texto).then(()=>showMsg('Rota copiada!','ok')).catch(()=>showMsg('Não foi possível copiar.','err'));
+}
+
+// ─── Navegação guiada no mapa (rota real via OSRM) ────────────────────────────
+let rotaNavegacao = [];
+let navIndex = 0;
+let jaAvisouChegada = false;
+const DISTANCIA_CHEGADA = 30; // metros
+
+let navMap = null;
+let navUserMarker = null, navDestMarker = null, navRouteLine = null;
+let navOutrasParadasLayer = null, navSequenciaLinha = null;
+let navMapReady = false;
+let ultimaRotaBuscada = null; // evita rebuscar a mesma rota repetidamente
+
+function distanciaMetros(a,b){
+  const R = 6371000;
+  const dLat = (b.lat-a.lat)*Math.PI/180, dLng = (b.lng-a.lng)*Math.PI/180;
+  const la1 = a.lat*Math.PI/180, la2 = b.lat*Math.PI/180;
+  const h = Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+
+function iniciarNavegacao(idxInicial){
+  if(!rotaAtual || !rotaAtual.length){ showMsg('Feche uma rota primeiro.','err'); return; }
+  rotaNavegacao = rotaAtual.filter(p => p.coords);
+  if(!rotaNavegacao.length){ showMsg('Nenhum endereço com localização disponível para navegar.','err'); return; }
+  navIndex = typeof idxInicial === 'number' ? Math.max(0, Math.min(idxInicial, rotaNavegacao.length-1)) : 0;
+  jaAvisouChegada = false;
+  ultimaRotaBuscada = null;
+  // Histórico da rota: reinicia o rastreamento a cada início de navegação
+  navInicioTs = Date.now();
+  distanciaPercorridaTotal = 0;
+  ultimaPosParaDistancia = posicaoAtual || null;
+  contadorEntregues = 0;
+  contadorPuladas = 0;
+  $('nav-overlay').classList.add('open');
+  atualizarParadaAtual();
+  setTimeout(()=>{ inicializarNavMap(); carregarRotaAtePonto(); }, 100);
+}
+
+function sairNavegacao(){
+  $('nav-overlay').classList.remove('open');
+}
+
+let navInicioTs = null, distanciaPercorridaTotal = 0, ultimaPosParaDistancia = null;
+let contadorEntregues = 0, contadorPuladas = 0;
+
+let modoConfirmacaoAtivo = false;
+let telemetriaInicioParadaTs = null, telemetriaChegadaTs = null;
+let ultimaEntregaConfirmadaCoord = null;
+let pontoPartidaEscolhido = 'gps'; // 'gps' | 'ultima'
+
+function selecionarPontoPartida(tipo){
+  if(tipo === 'ultima' && !ultimaEntregaConfirmadaCoord){
+    showMsg('Nenhuma entrega confirmada ainda hoje — usando GPS atual.', 'err');
+    tipo = 'gps';
+  }
+  pontoPartidaEscolhido = tipo;
+  const btnGps = document.getElementById('pp-gps'), btnUltima = document.getElementById('pp-ultima');
+  const ativo = 'border:1.5px solid #1D9E75;background:#E1F5EE;color:#0F6E56;font-weight:600;';
+  const inativo = 'border:1.5px solid #ddd;background:#fff;color:#666;';
+  btnGps.style.cssText = 'flex:1;padding:8px;font-size:11px;border-radius:8px;' + (tipo==='gps'?ativo:inativo);
+  btnUltima.style.cssText = 'flex:1;padding:8px;font-size:11px;border-radius:8px;' + (tipo==='ultima'?ativo:inativo);
+}
+
+function obterPontoPartida(){
+  if(pontoPartidaEscolhido === 'ultima' && ultimaEntregaConfirmadaCoord) return ultimaEntregaConfirmadaCoord;
+  return posicaoAtual || { lat: CENTER[0], lng: CENTER[1] };
+}
+const LIMIAR_CONFIRMACAO = 40; // metros — dispersão máxima entre confirmações para considerar consistente
+const MIN_CONFIRMACOES_VERIFICAR = 3;
+
+function atualizarParadaAtual(){
+  const p = rotaNavegacao[navIndex];
+  if(!p) return;
+  $('nav-progress').textContent = 'Parada ' + (navIndex+1) + ' de ' + rotaNavegacao.length;
+  const transpTag = p.transportadora ? ` <span style="background:#EAF2FB;color:#1B5A8A;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;vertical-align:middle;">${p.transportadora}</span>` : '';
+  const dupTag = rotaNavegacao ? tagDuplicado(p, contarDuplicados(rotaNavegacao)) : '';
+  $('nav-addr').innerHTML = dupTag + p.quadra + ' · Cj. ' + (p.conjunto||'?') + (p.casa?' · Casa '+p.casa:' · Casa ?') + transpTag;
+  $('nav-obs').textContent = p.enderecoOriginal ? p.enderecoOriginal.slice(0,90) : '';
+  const contatoFmt = p.contato ? p.contato.replace(/^55/,'').replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3') : '';
+  $('nav-contato').textContent = contatoFmt ? '📞 '+contatoFmt : '';
+  const fw = $('nav-foto-wrap');
+  const match = registros.find(r => normalizarTextoNav(r.quadra)===normalizarTextoNav(p.quadra) && normalizarTextoNav(r.conjunto)===normalizarTextoNav(p.conjunto) && (r.casa==p.casa || !p.casa));
+  if(match?.foto){ $('nav-foto').src = match.foto; fw.style.display='block'; }
+  else fw.style.display='none';
+  jaAvisouChegada = false;
+  resetBotoesNav();
+  // Telemetria: marca o início desta parada
+  telemetriaInicioParadaTs = Date.now();
+  telemetriaChegadaTs = null;
+}
+function normalizarTextoNav(s){ return (s||'').toString().toLowerCase().trim(); }
+
+// ─── Botões de navegação (modo normal vs modo confirmação) ────────────────────
+function resetBotoesNav(){
+  modoConfirmacaoAtivo = false;
+  $('nav-arrived-banner').style.display = 'none';
+  const skipBtn = $('nav-btn-skip');
+  const confirmBtn = $('nav-btn-confirm');
+  skipBtn.textContent = '⏭';
+  skipBtn.onclick = pularParada;
+  confirmBtn.textContent = '✓';
+  confirmBtn.classList.remove('chegou');
+  confirmBtn.onclick = marcarCheguei;
+}
+
+function marcarCheguei(){ entrarModoConfirmacao(); }
+
+function entrarModoConfirmacao(){
+  if(modoConfirmacaoAtivo) return;
+  modoConfirmacaoAtivo = true;
+  telemetriaChegadaTs = Date.now();
+  const banner = $('nav-arrived-banner');
+  banner.style.display = 'block';
+  banner.textContent = '🎯 Chegou! É este o endereço correto?';
+  const skipBtn = $('nav-btn-skip');
+  const confirmBtn = $('nav-btn-confirm');
+  skipBtn.textContent = '❌';
+  skipBtn.onclick = naoEhAqui;
+  confirmBtn.textContent = '✅';
+  confirmBtn.classList.add('chegou');
+  confirmBtn.onclick = simEhAqui;
+  if(navigator.vibrate) navigator.vibrate([200,100,200]);
+}
+
+async function simEhAqui(){
+  await registrarConfirmacaoLocal();
+  contadorEntregues++;
+  confirmarEntrega();
+}
+
+function naoEhAqui(){
+  const banner = $('nav-arrived-banner');
+  banner.style.display = 'block';
+  banner.textContent = '📍 Onde fica o endereço correto?';
+  const skipBtn = $('nav-btn-skip');
+  const confirmBtn = $('nav-btn-confirm');
+  skipBtn.textContent = '⏭';
+  skipBtn.onclick = pularSemMarcar;
+  confirmBtn.textContent = '📍';
+  confirmBtn.classList.remove('chegou');
+  confirmBtn.onclick = abrirMarcacaoLocalCorreto;
+}
+
+function pularSemMarcar(){
+  showMsg('Endereço não confirmado — avançando sem registrar.','err');
+  contadorPuladas++;
+  confirmarEntrega();
+}
+
+function abrirMarcacaoLocalCorreto(){
+  const p = rotaNavegacao[navIndex];
+  if(!p){ confirmarEntrega(); return; }
+  const lat = posicaoAtual?.lat ?? p.coords?.lat ?? CENTER[0];
+  const lng = posicaoAtual?.lng ?? p.coords?.lng ?? CENTER[1];
+  abrirModalPin(lat, lng,
+    'Marcar local correto · '+p.quadra+' Cj.'+(p.conjunto||'?')+' Casa '+(p.casa||'?'),
+    'Arraste o pin ou use o D-Pad até a posição exata da casa.',
+    async (pinPos) => {
+      await registrarConfirmacaoLocal(pinPos);
+      contadorEntregues++;
+      confirmarEntrega();
+    }
+  );
+}
+
+// ─── Registro da confirmação de local (sistema de 3 confirmações) ────────────
+// coordOverride: opcional — usado quando o entregador marca manualmente a posição
+// correta no mapa (fluxo "Não é aqui" → "Marcar local correto"), em vez do GPS bruto.
+async function registrarConfirmacaoLocal(coordOverride){
+  const p = rotaNavegacao[navIndex];
+  const coordUsada = coordOverride || posicaoAtual;
+  if(!p || !coordUsada || !fb) return;
+  const { cidade, bairro, quadra, conjunto } = p;
+  const casa = normalizarCasa(p.casa);
+  if(!casa){ showMsg('Sem número de casa — confirmação não pôde ser vinculada.','err'); return; }
+
+  const nCidade=normalizarTexto(cidade), nBairro=normalizarTexto(bairro), nQuadra=normalizarTexto(quadra);
+  const bateEndereco = r =>
+    normalizarTexto(r.cidade)===nCidade && normalizarTexto(r.bairro)===nBairro &&
+    normalizarTexto(r.quadra)===nQuadra && compararValor(r.conjunto, conjunto) && compararValor(r.casa, casa);
+
+  // Busca por campos (tolerante a "01"/"1"), não pelo ID reconstruído — assim continua
+  // achando e atualizando endereços salvos antes da normalização de IDs, em vez de criar duplicata.
+  const docIdNovo = (cidade+'_'+bairro+'_'+quadra+'_'+conjunto+'_'+casa).replace(/[\s\.çãõáéíóú]/g,c=>({'ç':'c','ã':'a','õ':'o','á':'a','é':'e','í':'i','ó':'o','ú':'u',' ':'_','.':''})[c]||c);
+
+  // Já existe como registro OFICIAL (aprovado)? Continua o fluxo normal, sem passar por aprovação.
+  const existenteOficial = registros.find(bateEndereco);
+  // Ou já existe como pendente (alguém já confirmou antes, ainda não aprovado)?
+  const existentePendente = registrosPendentes.find(bateEndereco);
+  // Escreve no ID que já existe de verdade (mesmo que seja o esquema antigo), ou no novo se for inédito
+  const docId = existenteOficial?.id || existentePendente?.id || docIdNovo;
+  const existente = existenteOficial || existentePendente;
+
+  const novaConfirmacao = {
+    lat: coordUsada.lat, lng: coordUsada.lng,
+    uid: usuarioAtual?.uid || '', email: usuarioAtual?.email || '',
+    ts: new Date().toISOString()
+  };
+  const todasConfs = [...(existente?.confirmacoes || []), novaConfirmacao];
+
+  const latMedio = todasConfs.reduce((s,c)=>s+c.lat,0) / todasConfs.length;
+  const lngMedio = todasConfs.reduce((s,c)=>s+c.lng,0) / todasConfs.length;
+  const centroide = { lat: latMedio, lng: lngMedio };
+  const maxDist = Math.max(...todasConfs.map(c => distanciaMetros(c, centroide)));
+  const verificado = todasConfs.length >= MIN_CONFIRMACOES_VERIFICAR && maxDist <= LIMIAR_CONFIRMACAO;
+  const jaEstavaVerificado = !!existenteOficial?.verificado;
+  const travada = !!existenteOficial?.localizacaoTravada;
+
+  // Se a localização foi travada pelo admin, a confirmação ainda é registrada (fica no
+  // histórico), mas o GPS salvo NUNCA é alterado — só o admin destrava manualmente no painel.
+  const latFinal = travada ? existenteOficial.lat : (verificado ? centroide.lat : novaConfirmacao.lat);
+  const lngFinal = travada ? existenteOficial.lng : (verificado ? centroide.lng : novaConfirmacao.lng);
+
+  const dados = {
+    cidade, bairro, quadra, conjunto, casa,
+    obs: existente?.obs || '',
+    foto: existente?.foto || null,
+    lat: latFinal,
+    lng: lngFinal,
+    confirmacoes: todasConfs,
+    totalConfirmacoes: todasConfs.length,
+    verificado,
+    localizacaoTravada: travada,
+    criadoPor: existente?.criadoPor || usuarioAtual?.email || '',
+    ts: existente?.ts || (new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}))
+  };
+
+  // Endereço já é oficial (ou o próprio admin está confirmando) → segue no fluxo normal,
+  // direto na coleção de registros. Endereço totalmente novo, confirmado por entregador
+  // comum → fica pendente de aprovação, sem entrar na coleção oficial ainda.
+  const ehAdmin = usuarioAtual?.uid === UID_ADMIN;
+  const destino = (existenteOficial || ehAdmin) ? 'registros' : 'registrosPendentes';
+
+  try {
+    await fb.setDoc(fb.doc(fb.db, destino, docId), dados, { merge:true });
+    // Se estava pendente e o admin confirmou agora, promove de vez pra oficial
+    if(existentePendente && ehAdmin){
+      await fb.deleteDoc(fb.doc(fb.db,'registrosPendentes',docId)).catch(()=>{});
+    }
+    ultimaEntregaConfirmadaCoord = { lat: dados.lat, lng: dados.lng }; // ponto de partida alternativo
+    if(destino === 'registrosPendentes'){
+      showMsg('📋 Endereço novo enviado para aprovação do admin.', 'ok');
+    } else if(travada){
+      showMsg('📍 Confirmação registrada — localização travada pelo admin, não foi alterada.', 'ok');
+    } else if(verificado && !jaEstavaVerificado){
+      showMsg('🏅 3 confirmações! Endereço verificado.', 'ok');
+    } else {
+      showMsg('✓ Confirmação registrada ('+todasConfs.length+'/3).', 'ok');
+    }
+  } catch(e){
+    console.error('[Confirmação]', e);
+    showMsg('Erro ao registrar confirmação.', 'err');
+  }
+}
+
+// ─── Mapa de navegação ─────────────────────────────────────────────────────────
+function inicializarNavMap(){
+  if(navMapReady){ setTimeout(()=>navMap.invalidateSize(),50); return; }
+  navMap = L.map('nav-map', { zoomControl: true }).setView(CENTER, 16);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(navMap);
+  navOutrasParadasLayer = L.layerGroup().addTo(navMap);
+  navMapReady = true;
+  setTimeout(()=>navMap.invalidateSize(),100);
+}
+
+// Mostra todas as paradas restantes da rota (além da atual) como pins numerados
+// conectados por uma linha, permitindo pular direto pra qualquer uma delas.
+function renderOutrasParadasNav(){
+  if(!navMap || !navOutrasParadasLayer) return;
+  navOutrasParadasLayer.clearLayers();
+  if(navSequenciaLinha){ navMap.removeLayer(navSequenciaLinha); navSequenciaLinha = null; }
+
+  const restantes = rotaNavegacao.slice(navIndex).filter(p => p.coords);
+  if(restantes.length < 2) return; // só a atual (ou nenhuma) — nada a conectar
+
+  const corPorCls = { gps:'#1D9E75', estc:'#378ADD', est:'#EF9F27', nf:'#E24B4A' };
+
+  // Linha pontilhada conectando a sequência restante (visão geral do trajeto)
+  const pontosLinha = restantes.map(p => [p.coords.lat, p.coords.lng]);
+  navSequenciaLinha = L.polyline(pontosLinha, { color:'#999', weight:3, opacity:0.55, dashArray:'6,7' }).addTo(navMap);
+  navSequenciaLinha.bringToBack();
+
+  // Pins numerados das próximas paradas (exceto a atual, que já tem o pin vermelho grande)
+  rotaNavegacao.forEach((p, idx) => {
+    if(idx <= navIndex || !p.coords) return; // pula a atual e as já concluídas/puladas
+    const info = infoTipoGPS(p.tipoGPS);
+    const cor = corPorCls[info.cls] || '#1D9E75';
+    const icon = L.divIcon({
+      html: `<div style="background:${cor};border:2px solid white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;box-shadow:0 2px 6px rgba(0,0,0,.3);">${idx+1}</div>`,
+      className:'', iconSize:[24,24], iconAnchor:[12,12]
+    });
+    const marker = L.marker([p.coords.lat, p.coords.lng], { icon }).addTo(navOutrasParadasLayer);
+    marker.bindPopup(`<b>${idx+1}. ${p.quadra} · Cj.${p.conjunto||'?'} · Casa ${p.casa||'?'}</b><br><span style="font-size:11px;color:#888;">Toque em "Ir para esta parada" abaixo</span><br><button style="margin-top:6px;padding:5px 10px;background:#1D9E75;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;" onclick="pularParaParadaNav(${idx})">➡ Ir para esta parada</button>`);
+  });
+}
+
+// Pula a navegação diretamente para uma parada específica (fora de ordem)
+function pularParaParadaNav(idx){
+  if(idx < 0 || idx >= rotaNavegacao.length) return;
+  navMap?.closePopup();
+  navIndex = idx;
+  ultimaRotaBuscada = null;
+  atualizarParadaAtual();
+  carregarRotaAtePonto();
+}
+
+async function carregarRotaAtePonto(){
+  const destino = rotaNavegacao[navIndex]?.coords;
+  const origem = posicaoAtual;
+  if(!destino || !origem || !navMap) return;
+
+  const chave = origem.lat.toFixed(4)+','+origem.lng.toFixed(4)+'->'+destino.lat.toFixed(5)+','+destino.lng.toFixed(5);
+  if(chave === ultimaRotaBuscada) { atualizarMarcadoresNav(); return; }
+  ultimaRotaBuscada = chave;
+
+  $('nav-loading').style.display = 'flex';
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${origem.lng},${origem.lat};${destino.lng},${destino.lat}?overview=full&geometries=geojson&steps=true`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if(data.code === 'Ok' && data.routes?.[0]){
+      const coordsRota = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]); // [lng,lat] -> [lat,lng]
+      desenharRotaNoMapa(coordsRota);
+      navPassosRota = data.routes[0].legs?.[0]?.steps || [];
+      navPassoAtualIdx = 0;
+      atualizarTempoDistanciaTotais(data.routes[0].duration, data.routes[0].distance);
+      atualizarInstrucaoManobra();
+    } else {
+      // Fallback: linha reta se OSRM não conseguir calcular
+      desenharRotaNoMapa([[origem.lat,origem.lng],[destino.lat,destino.lng]]);
+      navPassosRota = [];
+      esconderInstrucaoManobra();
+    }
+  } catch(e){
+    console.warn('[OSRM] Falha ao buscar rota, usando linha reta:', e);
+    desenharRotaNoMapa([[origem.lat,origem.lng],[destino.lat,destino.lng]]);
+    navPassosRota = [];
+    esconderInstrucaoManobra();
+  }
+  $('nav-loading').style.display = 'none';
+  renderOutrasParadasNav();
+  atualizarMarcadoresNav();
+  ajustarZoomNavCompleto();
+}
+
+function desenharRotaNoMapa(coords){
+  if(navRouteLine) navMap.removeLayer(navRouteLine);
+  navRouteLine = L.polyline(coords, { color:'#378ADD', weight:5, opacity:0.85 }).addTo(navMap);
+}
+
+function recentralizarNavMap(){
+  if(!navMap || !posicaoAtual) return;
+  navMap.setView([posicaoAtual.lat, posicaoAtual.lng], 17);
+}
+
+// ─── Instrução de manobra (faixa estilo Google no topo) ───────────────────────
+let navPassosRota = [];   // steps do OSRM pra parada atual
+let navPassoAtualIdx = 0; // qual step estamos seguindo agora
+
+const ICONES_MANOBRA = {
+  'uturn':'↩️','sharp right':'↱','right':'➡️','slight right':'↗️',
+  'straight':'⬆️','slight left':'↖️','left':'⬅️','sharp left':'↰',
+  'depart':'📍','arrive':'🏁'
+};
+function iconeEGrauManobra(step){
+  if(!step) return { icone:'🏁', grau:0 };
+  const tipo = step.maneuver?.type;
+  const mod = step.maneuver?.modifier;
+  if(tipo === 'arrive') return { icone:'🏁', grau:0 };
+  if(tipo === 'depart') return { icone:'📍', grau:0 };
+  const graus = { 'uturn':180,'sharp right':120,'right':90,'slight right':45,'straight':0,'slight left':-45,'left':-90,'sharp left':-120 };
+  return { icone: ICONES_MANOBRA[mod] || '⬆️', grau: graus[mod] ?? 0 };
+}
+
+function atualizarInstrucaoManobra(){
+  if(!navPassosRota.length || !posicaoAtual) { esconderInstrucaoManobra(); return; }
+  // Avança o passo se já estamos muito perto do ponto de manobra atual
+  while(navPassoAtualIdx < navPassosRota.length - 1){
+    const passoAtual = navPassosRota[navPassoAtualIdx];
+    const loc = passoAtual.maneuver?.location; // [lng,lat]
+    if(!loc) break;
+    const d = distanciaMetros(posicaoAtual, { lat:loc[1], lng:loc[0] });
+    if(d < 20) navPassoAtualIdx++;
+    else break;
+  }
+  const proximoStep = navPassosRota[navPassoAtualIdx + 1] || navPassosRota[navPassoAtualIdx];
+  if(!proximoStep){ esconderInstrucaoManobra(); return; }
+  const loc = proximoStep.maneuver?.location;
+  const dist = loc ? distanciaMetros(posicaoAtual, { lat:loc[1], lng:loc[0] }) : 0;
+  const { icone, grau } = iconeEGrauManobra(proximoStep);
+  const nomeRua = proximoStep.name || (proximoStep.maneuver?.type==='arrive' ? 'Você chegou' : 'Continue em frente');
+
+  $('nav-instrucao-icone').textContent = icone;
+  $('nav-instrucao-icone').style.transform = 'rotate('+grau+'deg)';
+  $('nav-instrucao-dist').textContent = dist < 1000 ? Math.round(dist)+' m' : (dist/1000).toFixed(1)+' km';
+  $('nav-instrucao-rua').textContent = nomeRua;
+  $('nav-instrucao').classList.add('show');
+}
+function esconderInstrucaoManobra(){
+  $('nav-instrucao')?.classList.remove('show');
+}
+
+function atualizarTempoDistanciaTotais(duracaoSeg, distMetros){
+  const min = Math.max(1, Math.round(duracaoSeg/60));
+  $('nav-barra-tempo').textContent = min + ' min';
+  $('nav-distance').textContent = distMetros < 1000 ? Math.round(distMetros)+' m' : (distMetros/1000).toFixed(1)+' km';
+  const chegada = new Date(Date.now() + duracaoSeg*1000);
+  const hh = chegada.getHours().toString().padStart(2,'0');
+  const mm = chegada.getMinutes().toString().padStart(2,'0');
+  $('nav-eta-hora').textContent = hh+':'+mm;
+  $('nav-eta-badge').classList.add('show');
+}
+
+// Ajusta o zoom pra caber a rota até a parada atual + as próximas paradas visíveis
+function ajustarZoomNavCompleto(){
+  if(!navMap) return;
+  const pontos = [];
+  if(navRouteLine) pontos.push(...navRouteLine.getLatLngs());
+  rotaNavegacao.slice(navIndex, navIndex + 6).forEach(p => { if(p.coords) pontos.push([p.coords.lat, p.coords.lng]); });
+  if(!pontos.length) return;
+  navMap.fitBounds(L.latLngBounds(pontos), { padding:[40,40], maxZoom:17 });
+}
+
+function atualizarMarcadoresNav(){
+  if(!navMap) return;
+  const destino = rotaNavegacao[navIndex]?.coords;
+  if(!destino) return;
+
+  // Marcador do destino (pin vermelho)
+  if(!navDestMarker){
+    const iconDest = L.divIcon({ html:'<div style="width:26px;height:26px;background:#E24B4A;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.35);"></div>', className:'', iconSize:[26,26], iconAnchor:[13,13] });
+    navDestMarker = L.marker([destino.lat, destino.lng], { icon: iconDest }).addTo(navMap);
+  } else {
+    navDestMarker.setLatLng([destino.lat, destino.lng]);
+  }
+
+  // Marcador da posição atual (ponto azul)
+  if(posicaoAtual){
+    const ll = [posicaoAtual.lat, posicaoAtual.lng];
+    if(!navUserMarker){
+      const iconUser = L.divIcon({ html:'<div style="width:16px;height:16px;background:#1D9E75;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px rgba(29,158,117,.4);"></div>', className:'', iconSize:[16,16], iconAnchor:[8,8], zIndexOffset:1000 });
+      navUserMarker = L.marker(ll, { icon: iconUser, zIndexOffset:1000 }).addTo(navMap);
+    } else {
+      navUserMarker.setLatLng(ll);
+    }
+  }
+
+  atualizarDistanciaNav();
+}
+
+function atualizarDistanciaNav(){
+  if(!$('nav-overlay').classList.contains('open')) return;
+  const destino = rotaNavegacao[navIndex]?.coords;
+  if(!destino || !posicaoAtual) return;
+
+  // Obs: o campo de distância total exibido na barra inferior (#nav-distance) é
+  // atualizado por atualizarTempoDistanciaTotais() com o valor real da rota OSRM.
+  // Aqui usamos só a distância em linha reta pra detectar chegada.
+  const dist = distanciaMetros(posicaoAtual, destino);
+
+  if(dist <= DISTANCIA_CHEGADA && !jaAvisouChegada){
+    jaAvisouChegada = true;
+    entrarModoConfirmacao();
+  }
+}
+
+// Chamado a cada atualização do GPS contínuo (hook em ativarGPS)
+function atualizarSetaNav(){
+  if(!$('nav-overlay').classList.contains('open')) return;
+  if(navUserMarker && posicaoAtual){
+    navUserMarker.setLatLng([posicaoAtual.lat, posicaoAtual.lng]);
+  }
+  // Acumula distância percorrida (ignora saltos grandes — provável erro de GPS, não deslocamento real)
+  if(posicaoAtual && ultimaPosParaDistancia){
+    const d = distanciaMetros(ultimaPosParaDistancia, posicaoAtual);
+    if(d > 0 && d < 200) distanciaPercorridaTotal += d;
+  }
+  ultimaPosParaDistancia = posicaoAtual;
+  atualizarDistanciaNav();
+  atualizarInstrucaoManobra();
+  // Recalcula a rota periodicamente se o usuário se afastar muito da rota traçada
+  carregarRotaAtePonto();
+}
+
+function confirmarEntrega(){
+  registrarTelemetriaParadaAtual();
+  navIndex++;
+  ultimaRotaBuscada = null;
+  if(navIndex >= rotaNavegacao.length){
+    if(navigator.vibrate) navigator.vibrate([100,50,100,50,200]);
+    finalizarRotaComResumo();
+    return;
+  }
+  atualizarParadaAtual();
+  carregarRotaAtePonto();
+}
+function pularParada(){ contadorPuladas++; confirmarEntrega(); }
+
+// ─── Resumo final da rota (histórico) ─────────────────────────────────────────
+// ─── Rota enviada pelo admin (recebida pelo entregador) ───────────────────────
+function atualizarBannerRotaEnviada(){
+  const banner = document.getElementById('rota-enviada-banner');
+  if(!banner) return;
+  banner.style.display = rotasEnviadasRecebidas.length ? 'block' : 'none';
+}
+
+async function abrirRotaEnviada(){
+  if(!rotasEnviadasRecebidas.length) return;
+  // Prioriza uma que já esteja "aberta" (retomar), senão pega a mais recente pendente
+  const rota = rotasEnviadasRecebidas.find(r=>r.status==='aberta') || rotasEnviadasRecebidas[0];
+  if(!rota?.pacotes?.length){ showMsg('Rota recebida está vazia.','err'); return; }
+
+  rotaAtual = rota.pacotes;
+  rotaEnviadaAbertaId = rota.id;
+
+  if(rota.status === 'pendente' && fb){
+    fb.setDoc(fb.doc(fb.db,'rotasEnviadas',rota.id), { status:'aberta' }, { merge:true }).catch(()=>{});
+  }
+
+  showTab('rota', true);
+  document.getElementById('rota-resultado').style.display = 'block';
+  document.getElementById('rota-revisao-wrap').style.display = 'none';
+  renderRotaFinal(rotaAtual);
+  showMsg('📬 Rota do administrador carregada — confira e inicie quando estiver pronto.', 'ok');
+}
+
+async function finalizarRotaComResumo(){
+  const duracaoMs = navInicioTs ? Date.now() - navInicioTs : 0;
+  const duracaoMin = Math.round(duracaoMs / 60000);
+  const horas = Math.floor(duracaoMin / 60), minutos = duracaoMin % 60;
+  const duracaoFmt = horas > 0 ? `${horas}h${minutos.toString().padStart(2,'0')}min` : `${minutos}min`;
+  const distanciaKm = (distanciaPercorridaTotal / 1000).toFixed(1);
+
+  const resumo = {
+    motoristaUid: usuarioAtual?.uid || '', motoristaEmail: usuarioAtual?.email || '',
+    totalParadas: rotaNavegacao.length,
+    totalEntregues: contadorEntregues,
+    totalPuladas: contadorPuladas,
+    duracaoTotalMin: duracaoMin,
+    distanciaTotalKm: parseFloat(distanciaKm),
+    dataInicio: navInicioTs ? new Date(navInicioTs).toISOString() : null,
+    dataFim: new Date().toISOString(),
+    ts: new Date().toISOString()
+  };
+
+  if(fb){
+    fb.setDoc(fb.doc(fb.db, 'historicoRotas', Date.now()+'_'+Math.random().toString(36).slice(2,8)), resumo)
+      .catch(e => console.warn('[Histórico] Falha ao salvar:', e));
+    if(rotaEnviadaAbertaId){
+      fb.setDoc(fb.doc(fb.db,'rotasEnviadas',rotaEnviadaAbertaId), { status:'concluida' }, { merge:true }).catch(()=>{});
+      rotaEnviadaAbertaId = null;
+    }
+  }
+
+  mostrarModalResumoRota(resumo, duracaoFmt, distanciaKm);
+  sairNavegacao();
+}
+
+function mostrarModalResumoRota(resumo, duracaoFmt, distanciaKm){
+  const div = document.createElement('div');
+  div.className = 'modal-bg open';
+  div.innerHTML = `
+    <div class="modal" style="text-align:center;">
+      <div style="font-size:48px;margin-bottom:8px;">🎉</div>
+      <h3 style="margin-bottom:4px;">Rota concluída!</h3>
+      <p style="color:#888;font-size:13px;margin-bottom:20px;">Bom trabalho hoje!</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+        <div style="background:#E1F5EE;border-radius:12px;padding:14px;">
+          <div style="font-size:22px;font-weight:800;color:#0F6E56;">${resumo.totalEntregues}</div>
+          <div style="font-size:11px;color:#0F6E56;">entregues</div>
+        </div>
+        <div style="background:#FCEBEB;border-radius:12px;padding:14px;">
+          <div style="font-size:22px;font-weight:800;color:#A32D2D;">${resumo.totalPuladas}</div>
+          <div style="font-size:11px;color:#A32D2D;">puladas</div>
+        </div>
+        <div style="background:#EAF2FB;border-radius:12px;padding:14px;">
+          <div style="font-size:22px;font-weight:800;color:#1B5A8A;">${duracaoFmt}</div>
+          <div style="font-size:11px;color:#1B5A8A;">tempo total</div>
+        </div>
+        <div style="background:#FFF3CD;border-radius:12px;padding:14px;">
+          <div style="font-size:22px;font-weight:800;color:#856404;">${distanciaKm} km</div>
+          <div style="font-size:11px;color:#856404;">percorridos</div>
+        </div>
+      </div>
+      <button class="save-btn" style="width:100%;" onclick="this.closest('.modal-bg').remove()">Fechar</button>
+    </div>`;
+  document.body.appendChild(div);
+}
+
+// ─── Telemetria por entrega (log passivo, sem aprendizado automático) ────────
+function registrarTelemetriaParadaAtual(){
+  if(!fb || !telemetriaInicioParadaTs) return;
+  const p = rotaNavegacao[navIndex];
+  if(!p) return;
+
+  const agora = Date.now();
+  const tempoAteChegar = telemetriaChegadaTs ? Math.round((telemetriaChegadaTs - telemetriaInicioParadaTs)/1000) : null;
+  const tempoParado = telemetriaChegadaTs ? Math.round((agora - telemetriaChegadaTs)/1000) : null;
+  const horaAgora = new Date().getHours();
+
+  const dados = {
+    cidade: p.cidade||'', bairro: p.bairro||'', quadra: p.quadra||'', conjunto: p.conjunto||'', casa: p.casa||'',
+    tempoAteChegarSeg: tempoAteChegar,
+    tempoParadoSeg: tempoParado,
+    velocidadeMediaKmh: parseInt(document.getElementById('nav-speed-val')?.textContent||'0',10) || null,
+    precisaoGpsM: posicaoAtual?.acc ? Math.round(posicaoAtual.acc) : null,
+    horarioEntrega: new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
+    motoristaUid: usuarioAtual?.uid||'', motoristaEmail: usuarioAtual?.email||'',
+    ts: new Date().toISOString()
+  };
+
+  fb.setDoc(fb.doc(fb.db, 'telemetriaEntregas', Date.now()+'_'+Math.random().toString(36).slice(2,8)), dados)
+    .catch(e => console.warn('[Telemetria] Falha ao salvar:', e));
+
+  // Alimenta o "perfil do endereço" diretamente no registro (média móvel), sem o
+  // entregador precisar carregar toda a coleção de telemetria pra usar essa info.
+  if(tempoParado != null){
+    const nCidade=normalizarTexto(p.cidade), nBairro=normalizarTexto(p.bairro), nQuadra=normalizarTexto(p.quadra);
+    const reg = registros.find(r =>
+      normalizarTexto(r.cidade)===nCidade && normalizarTexto(r.bairro)===nBairro &&
+      normalizarTexto(r.quadra)===nQuadra && compararValor(r.conjunto, p.conjunto) && compararValor(r.casa, p.casa)
+    );
+    if(reg){
+      const amostrasAntes = reg.amostrasTempoParada || 0;
+      const mediaAntes = reg.tempoMedioParadaSeg || 0;
+      const novaMedia = Math.round((mediaAntes * amostrasAntes + tempoParado) / (amostrasAntes + 1));
+      fb.setDoc(fb.doc(fb.db,'registros',reg.id), {
+        tempoMedioParadaSeg: novaMedia,
+        amostrasTempoParada: amostrasAntes + 1,
+        ultimaHoraEntrega: horaAgora
+      }, { merge:true }).catch(e => console.warn('[Perfil endereço] Falha ao atualizar:', e));
+    }
+  }
+}
+
+
+// ─── Globais ───────────────────────────────────────────────────────────────────
+window.showTab=showTab; window.fazerLogin=fazerLogin;
+window.analisarLista=analisarLista; window.importarCSV=importarCSV; window.fecharRota=fecharRota; window.copiarRota=copiarRota; window.limparListaImportada=limparListaImportada; window.toggleColarManual=toggleColarManual; window.esconderEmptyStateRota=esconderEmptyStateRota; window.abrirRota=abrirRota; window.abrirSheetRota=abrirSheetRota;
+window.selecionarPontoPartida=selecionarPontoPartida;
+window.removerParadaDaRota=removerParadaDaRota;
+window.reotimizarComCorrecoes=reotimizarComCorrecoes;
+window.abrirRotaEnviada=abrirRotaEnviada;
+window.fazerLogout=fazerLogout; window.abrirCadastro=abrirCadastro;
+window.ativarGPS=ativarGPS; window.solicitarGPS=solicitarGPS;
+window.onCidadeChange=onCidadeChange; window.onBairroChange=onBairroChange; window.onQuadraChange=onQuadraChange;
+window.onFiltroCidadeChange=onFiltroCidadeChange; window.onFiltroBairroChange=onFiltroBairroChange;
+window.centralizarMapa=centralizarMapa; window.filtrarMapa=filtrarMapa;
+window.previewFoto=previewFoto; window.removerFoto=removerFoto; window.iniciarSalvar=iniciarSalvar;
+window.buscarEndereco=buscarEndereco; window.verNoMapa=verNoMapa; window.editarPinEncontrado=editarPinEncontrado;
+window.moverPin=moverPin; window.resetarPin=resetarPin; window.confirmarPin=confirmarPin;
+window.iniciarNavegacao=iniciarNavegacao; window.iniciarNavegacaoNoIndicePacote=iniciarNavegacaoNoIndicePacote;
+window.pularParaParadaNav=pularParaParadaNav;
+window.recentralizarNavMap=recentralizarNavMap;
+window.ajustarZoomNavCompleto=ajustarZoomNavCompleto;
+window.sairNavegacao=sairNavegacao;
+window.confirmarEntrega=confirmarEntrega; window.pularParada=pularParada;
+window.fecharModal=fecharModal;
+window.abrirFotoZoom=abrirFotoZoom; window.fecharFotoZoom=fecharFotoZoom;
+
+// ─── Modo offline básico (PWA) ─────────────────────────────────────────────────
+function atualizarIndicadorConexao(){
+  const banner = document.getElementById('offline-banner');
+  if(!banner) return;
+  banner.style.display = navigator.onLine ? 'none' : 'block';
+}
+window.addEventListener('online', atualizarIndicadorConexao);
+window.addEventListener('offline', atualizarIndicadorConexao);
+atualizarIndicadorConexao();
+
+// Registra o Service Worker — cacheia o app em si e os tiles do mapa já visitados,
+// pra continuar funcionando (ver mapa, navegar, confirmar entregas) mesmo sem sinal.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(e => console.warn('[SW] Falha ao registrar:', e));
+  });
+}
+
+// ─── Modo escuro automático por horário (06h–18h claro, resto escuro) ─────────
+function aplicarTemaPorHorario(){
+  const hora = new Date().getHours();
+  const deveSerEscuro = hora < 6 || hora >= 18;
+  document.documentElement.classList.toggle('dark-mode', deveSerEscuro);
+}
+aplicarTemaPorHorario();
+setInterval(aplicarTemaPorHorario, 5 * 60 * 1000); // reavalia a cada 5 min, caso o app fique aberto passando do horário de corte
+</script>
+</body>
+</html>
