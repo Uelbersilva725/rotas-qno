@@ -425,6 +425,10 @@ html,body{height:100%;background:var(--bg-alt);font-family:-apple-system,BlinkMa
             <span style="font-size:12px;font-weight:600;color:#555;">Revisão dos endereços</span>
           </div>
           <div id="rota-lista"></div>
+          <div id="rota-mapa-revisao-wrap" style="display:none;margin-top:10px;">
+            <div style="font-size:11px;color:#888;margin-bottom:6px;">🗺 Arraste os pins pra corrigir a posição antes de otimizar</div>
+            <div id="rota-mapa-revisao" style="width:100%;height:260px;border-radius:10px;border:1px solid #ddd;position:relative;"></div>
+          </div>
           <div id="rota-fechar-wrap" style="display:none;">
             <div style="margin:10px 0 4px;font-size:12px;font-weight:600;color:#555;">📍 Ponto de partida</div>
             <div style="display:flex;gap:6px;margin-bottom:6px;">
@@ -1497,6 +1501,7 @@ async function analisarLista(){
     // Unifica com o que já tinha sido importado antes, em vez de zerar — permite juntar
     // vários CSVs (de transportadoras diferentes) na mesma rota do dia.
     pacotesAnalisados = [...pacotesAnalisados, ...pacotesNovos];
+    rotaBoundsAjustadosRevisao = false; // reajusta o zoom do mapa de revisão pra enquadrar os novos pins também
     document.getElementById('rota-input').value = ''; // limpa pra próxima importação não duplicar o conteúdo
     renderAnalise(pacotesAnalisados, naoReconhecidos);
   } catch(e){
@@ -1511,6 +1516,7 @@ function limparListaImportada(){
   if(!pacotesAnalisados.length) return;
   if(!confirm('Apagar todos os '+pacotesAnalisados.length+' pacotes importados até agora e começar do zero?')) return;
   pacotesAnalisados = [];
+  rotaBoundsAjustadosRevisao = false;
   document.getElementById('rota-input').value = '';
   document.getElementById('rota-resultado').style.display = 'none';
   showMsg('🗑 Lista de importação limpa.', 'ok');
@@ -1572,6 +1578,60 @@ function renderAnalise(pacotes, naoReconhecidos){
       </div>
     </div>`;
   }).join('');
+
+  renderMapaRevisao(pacotes);
+}
+
+// Mapa da etapa de revisão — mostra os endereços já geolocalizados (antes de otimizar a
+// rota) e permite arrastar o pin pra corrigir a posição direto na conferência.
+function renderMapaRevisao(pacotes){
+  const comCoords = pacotes.filter(p => p.coords);
+  const wrap = document.getElementById('rota-mapa-revisao-wrap');
+  if(!comCoords.length){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  if(!rotaMapRevisaoReady){
+    rotaMapRevisao = L.map('rota-mapa-revisao', { zoomControl:true }).setView(CENTER, 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(rotaMapRevisao);
+    rotaMarkersRevisao = L.layerGroup().addTo(rotaMapRevisao);
+    rotaMapRevisaoReady = true;
+  }
+  setTimeout(()=>rotaMapRevisao.invalidateSize(), 100);
+  rotaMarkersRevisao.clearLayers();
+
+  comCoords.forEach(p => {
+    const info = infoTipoGPS(p.tipoGPS);
+    const corPorCls = { gps:'#1D9E75', estc:'#378ADD', est:'#EF9F27', nf:'#E24B4A' };
+    const cor = corPorCls[info.cls] || '#1D9E75';
+    const idxNaLista = pacotes.indexOf(p);
+    const icon = L.divIcon({
+      html: `<div style="background:${cor};border:2px solid white;border-radius:50%;width:25px;height:25px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;box-shadow:0 2px 6px rgba(0,0,0,.3);">${idxNaLista+1}</div>`,
+      className:'', iconSize:[25,25], iconAnchor:[12,12]
+    });
+    const popupHtml = `<b>${idxNaLista+1}. ${p.quadra} · Cj. ${p.conjunto||'?'}${p.casa?' · Casa '+p.casa:''}</b><br><span style="font-size:11px;color:#888;">🖐 Arraste pra corrigir a posição</span>`;
+    const marker = L.marker([p.coords.lat, p.coords.lng], { icon, draggable:true }).addTo(rotaMarkersRevisao).bindPopup(popupHtml);
+    marker.on('dragend', () => {
+      const pos = marker.getLatLng();
+      corrigirPosicaoRevisao(p, pos.lat, pos.lng);
+    });
+  });
+
+  if(!rotaBoundsAjustadosRevisao){
+    const bounds = L.latLngBounds(comCoords.map(p => [p.coords.lat, p.coords.lng]));
+    rotaMapRevisao.fitBounds(bounds, { padding:[30,30] });
+    rotaBoundsAjustadosRevisao = true;
+  }
+}
+
+// Corrige a posição de um pacote direto na etapa de revisão (antes de otimizar a rota).
+// A mesma referência do objeto segue pra etapa de otimização, então a correção some
+// naturalmente na rota final e é salva quando a rota é fechada.
+function corrigirPosicaoRevisao(pacote, lat, lng){
+  pacote.coords = { lat, lng, tipo: 'gps' };
+  pacote.tipoGPS = 'gps';
+  pacote.posicaoCorrigidaManualmente = true;
+  renderMapaRevisao(pacotesAnalisados);
+  showMsg('📍 Posição ajustada nesta rota (será salva ao fechar a rota).', 'ok');
 }
 
 // ─── Etapa 2: Fechar rota (aplica casas manuais + otimiza) ────────────────────
@@ -1785,6 +1845,7 @@ function renderRotaFinal(pacotes){
 // ─── Mapa de visão geral da rota (estilo Circuit) ─────────────────────────────
 let rotaOverviewMap = null, rotaOverviewReady = false;
 let rotaOverviewMarkers = null, rotaOverviewLine = null;
+let rotaMapRevisao = null, rotaMapRevisaoReady = false, rotaMarkersRevisao = null, rotaBoundsAjustadosRevisao = false;
 
 function renderRotaMapaVisao(pacotes){
   const comCoords = pacotes.filter(p => p.coords);

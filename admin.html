@@ -261,6 +261,10 @@ tr:hover td{background:#FAFBFC}
           <div id="radm-stats" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;"></div>
           <div id="radm-aviso" style="display:none;font-size:12px;padding:10px;border-radius:8px;margin-bottom:12px;"></div>
           <div id="radm-lista-revisao"></div>
+          <div id="radm-mapa-revisao-wrap" style="display:none;margin-top:14px;">
+            <div style="font-size:12px;color:var(--text-3);margin-bottom:6px;">🗺 Arraste os pins pra corrigir a posição antes de otimizar a rota</div>
+            <div id="radm-mapa-revisao" style="width:100%;height:300px;border-radius:10px;border:1px solid var(--border);position:relative;"></div>
+          </div>
           <button class="btn-acao" style="margin-top:12px;background:#378ADD;color:#fff;border-color:#2b6cb0;" onclick="admOtimizarRota()" id="radm-otimizar-btn">🛣 Otimizar rota</button>
         </div>
 
@@ -1695,6 +1699,7 @@ function infoTipoGPSAdmin(tipo){
 }
 
 let radmPacotesAnalisados = [];
+let radmMapRevisao = null, radmMarkersRevisao = null, radmMapRevisaoReady = false, radmBoundsAjustadosRevisao = false;
 // Chave de endereço usada pra detectar pacotes duplicados na mesma casa (ex: 2 encomendas
 // pro mesmo endereço, seja da mesma transportadora ou de listas diferentes unificadas).
 function radmChaveEndereco(p){
@@ -1728,6 +1733,7 @@ function admLimparListaImportada(){
   if(!radmPacotesAnalisados.length){ return; }
   if(!confirm('Apagar todos os '+radmPacotesAnalisados.length+' pacotes importados até agora e começar do zero?')) return;
   radmPacotesAnalisados = [];
+  radmBoundsAjustadosRevisao = false;
   document.getElementById('radm-input').value = '';
   document.getElementById('radm-resultado').style.display = 'none';
   showMsgAdmin('🗑 Lista de importação limpa.');
@@ -1757,6 +1763,7 @@ async function admAnalisarLista(){
   // Unifica com o que já tinha sido importado antes, em vez de zerar — permite juntar
   // vários CSVs (de transportadoras diferentes) numa rota só.
   radmPacotesAnalisados = [...radmPacotesAnalisados, ...pacotesNovos];
+  radmBoundsAjustadosRevisao = false; // reajusta o zoom do mapa de revisão pra enquadrar os novos pins também
   document.getElementById('radm-input').value = ''; // limpa pra próxima importação não duplicar o conteúdo
   btn.disabled = false; btn.textContent = '🔍 Analisar lista';
   admRenderRevisao(radmPacotesAnalisados, naoReconhecidos);
@@ -1801,6 +1808,53 @@ function admRenderRevisao(pacotes, naoReconhecidos){
       ${p.casaPendente?`<input type="text" data-idx="${i}" class="radm-casa-input" placeholder="casa?" style="width:80px;padding:6px 8px;border:1px solid #EF9F27;border-radius:6px;font-size:12px;"/>`:`<div style="font-size:12px;font-weight:700;">Casa ${p.casa}</div>`}
     </div>`;
   }).join('');
+
+  admRenderMapaRevisao(pacotes);
+}
+
+// Mapa da etapa de revisão — mostra os endereços já geolocalizados (mesmo antes de otimizar
+// a rota) e permite arrastar o pin pra corrigir a posição na hora, direto na conferência.
+function admRenderMapaRevisao(pacotes){
+  const comCoords = pacotes.filter(p=>p.coords);
+  const wrap = document.getElementById('radm-mapa-revisao-wrap');
+  if(!comCoords.length){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  if(!radmMapRevisaoReady){
+    radmMapRevisao = L.map('radm-mapa-revisao',{zoomControl:true}).setView(CENTER,14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(radmMapRevisao);
+    radmMarkersRevisao = L.layerGroup().addTo(radmMapRevisao);
+    radmMapRevisaoReady = true;
+  }
+  setTimeout(()=>radmMapRevisao.invalidateSize(),100);
+  radmMarkersRevisao.clearLayers();
+
+  comCoords.forEach(p=>{
+    const info = infoTipoGPSAdmin(p.tipoGPS);
+    const idxNaLista = pacotes.indexOf(p);
+    const icon = L.divIcon({ html:`<div style="background:${info.cor};border:2px solid white;border-radius:50%;width:25px;height:25px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;box-shadow:0 2px 6px rgba(0,0,0,.3);">${idxNaLista+1}</div>`, className:'', iconSize:[25,25], iconAnchor:[12,12] });
+    const popupHtml = `<b>${idxNaLista+1}. ${p.quadra} · Cj.${p.conjunto||'?'} · Casa ${p.casa||'?'}</b><br><span style="font-size:11px;color:#888;">🖐 Arraste pra corrigir a posição</span>`;
+    const marker = L.marker([p.coords.lat,p.coords.lng],{icon,draggable:true}).addTo(radmMarkersRevisao).bindPopup(popupHtml);
+    marker.on('dragend', ()=>{ const pos=marker.getLatLng(); admCorrigirPosicaoRevisao(p, pos.lat, pos.lng); });
+  });
+
+  // Só reajusta zoom/centro quando ainda não tinha feito (evita o mapa "pulando" a cada
+  // arrasto manual de pin) — refeito quando um novo CSV é somado à lista (ver admAnalisarLista).
+  if(!radmBoundsAjustadosRevisao){
+    const bounds = L.latLngBounds(comCoords.map(p=>[p.coords.lat,p.coords.lng]));
+    radmMapRevisao.fitBounds(bounds,{padding:[30,30]});
+    radmBoundsAjustadosRevisao = true;
+  }
+}
+
+// Corrige a posição de um pacote direto na etapa de revisão (antes de otimizar a rota).
+// Marca posicaoCorrigidaManualmente=true — o mesmo objeto segue pra etapa de otimização,
+// então essa correção é preservada e salva no banco quando a rota é fechada.
+function admCorrigirPosicaoRevisao(pacote, lat, lng){
+  pacote.coords = { lat, lng, tipo:'gps' };
+  pacote.tipoGPS = 'gps';
+  pacote.posicaoCorrigidaManualmente = true;
+  admRenderMapaRevisao(radmPacotesAnalisados);
+  showMsgAdmin('📍 Posição ajustada nesta rota (será salva ao fechar a rota).');
 }
 
 function admDistancia(a,b){ const dlat=a.lat-b.lat, dlng=a.lng-b.lng; return Math.sqrt(dlat*dlat+dlng*dlng); }
